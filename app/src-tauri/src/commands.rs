@@ -18,7 +18,7 @@ use tauri::{AppHandle, Emitter, State};
     let released = { let mut s = st.store.lock().unwrap(); let auto = s.snapshot().focus_auto; s.set_focus(Some(on), auto) };
     if !released.is_empty() {
         let text = serde_json::to_string(&released).unwrap_or_default();
-        crate::emit_fx(&app, crate::Fx { kind: "release".into(), session_id: released[0].session_id.clone(), project: released[0].project.clone(), slot: 0, text, visual: true, sound: false });
+        crate::emit_fx(&app, crate::Fx { kind: "release".into(), session_id: released[0].session_id.clone(), project: released[0].project.clone(), slot: 0, text, visual: true, sound: false, monitor: crate::windows::active_monitor_index(&app) });
     }
     broadcast(&app);
 }

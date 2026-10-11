@@ -1,0 +1,31 @@
+/* Tokens y tipografía de los artboards (docs/artboards). Fuentes locales, sin Google Fonts. */
+@font-face { font-family: "Geist"; src: url("../../fonts/Geist.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
+@font-face { font-family: "Geist Mono"; src: url("../../fonts/GeistMono.woff2") format("woff2"); font-weight: 100 900; font-display: block; }
+@font-face { font-family: "Material Symbols Rounded"; src: url("../../fonts/MaterialSymbolsRounded.woff2") format("woff2"); font-weight: 100 700; font-style: normal; font-display: block; }
+
+@property --a { syntax: '<angle>'; inherits: true; initial-value: 0deg; }
+@property --r { syntax: '<percentage>'; inherits: true; initial-value: 0%; }
+@property --p { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
+
+:root {
+  color-scheme: dark;
+  --fg: #e7e9ec; --muted: #8e95a0; --faint: #5d646e; --focus: #a9c8ff; --ink: #060708;
+  --work: #e8eefc; --perm: #ffb02e; --done: #4fe0a0; --idle: #b6c0d4; --err: #ff5a52; --sub: #5cc8ff; --moon: #b9a2ff; --acc: #7aa7ff;
+  --glass: rgba(16,17,21,.78);
+  --f-ui: "Geist", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --f-mono: "Geist Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --e-out: cubic-bezier(.16,1,.3,1); --e-in: cubic-bezier(.7,0,.84,0);
+}
+* { box-sizing: border-box }
+html, body { background: transparent; margin: 0; overflow: hidden }
+body { font-family: var(--f-ui); font-size: 14px; line-height: 1.45; color: var(--fg); -webkit-font-smoothing: antialiased; user-select: none }
+button, input { font: inherit; color: inherit }
+button { cursor: pointer }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 6px }
+[hidden] { display: none !important }
+.ms { font-family: "Material Symbols Rounded"; font-weight: normal; font-style: normal; line-height: 1; letter-spacing: normal; text-transform: none; white-space: nowrap; font-feature-settings: "liga"; display: inline-block; overflow: hidden; width: 1em; flex: none; font-size: 18px }
+.mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-iteration-count: 1 !important }
+}

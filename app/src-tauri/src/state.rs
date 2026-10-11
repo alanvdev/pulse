@@ -37,6 +37,9 @@ pub struct Store {
 }
 
 impl Store {
+    /// Store que cuenta el autocierre desde `now_ms` (el arranque de la app), no desde 1970.
+    pub fn new(now_ms: i64) -> Self { Self { last_event_ms: now_ms, ..Default::default() } }
+
     fn free_slot(&self) -> u8 { (0u8..).find(|n| !self.sessions.values().any(|s| s.slot == *n)).unwrap() }
 
     pub fn focus(&self) -> bool { self.focus_manual.unwrap_or(self.focus_auto) }
@@ -209,6 +212,9 @@ mod tests {
         t.apply(&env("a", 1_000, PulseEvent::SessionEnd));
         assert!(!t.should_exit(1_000 + IDLE_EXIT_MS - 1));
         assert!(t.should_exit(1_000 + IDLE_EXIT_MS));
+        let mut fresh = Store::new(50_000);
+        assert!(!fresh.should_exit(50_000 + 1_000));
+        assert!(fresh.should_exit(50_000 + IDLE_EXIT_MS));
     }
     #[test] fn summary_in_spanish() {
         let mut s = Store::default();

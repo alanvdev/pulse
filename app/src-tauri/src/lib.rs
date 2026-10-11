@@ -17,7 +17,7 @@ pub struct AppState {
 }
 
 #[derive(Clone, Serialize)]
-pub struct Fx { pub kind: String, pub session_id: String, pub project: String, pub slot: u8, pub text: String, pub visual: bool, pub sound: bool }
+pub struct Fx { pub kind: String, pub session_id: String, pub project: String, pub slot: u8, pub text: String, pub visual: bool, pub sound: bool, pub monitor: usize }
 
 pub fn now_ms() -> i64 { std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0) }
 
@@ -37,7 +37,7 @@ pub fn resolve(app: &AppHandle, id: u64, decision: Decision) {
     if let Some(tx) = st.waiters.lock().unwrap().remove(&id) { let _ = tx.send(decision); }
     if let Some(p) = pending {
         logbook::append_resolve(&p.session_id, &p.project, id, match decision { Decision::Allow => Some(true), Decision::Deny => Some(false), Decision::None => None }, now_ms());
-        emit_fx(app, Fx { kind: "resolved".into(), session_id: p.session_id, project: p.project, slot: 0, text: format!("{}|{}", match decision { Decision::Allow => "allow", Decision::Deny => "deny", Decision::None => "none" }, p.command), visual: false, sound: false });
+        emit_fx(app, Fx { kind: "resolved".into(), session_id: p.session_id, project: p.project, slot: 0, text: format!("{}|{}", match decision { Decision::Allow => "allow", Decision::Deny => "deny", Decision::None => "none" }, p.command), visual: false, sound: false, monitor: windows::active_monitor_index(app) });
     }
     broadcast(app);
 }
@@ -60,7 +60,7 @@ fn handle(app: &AppHandle, inc: server::Incoming) {
         if r.defer { st.store.lock().unwrap().defer(&env, kind); }
         if r.sound { st.player.play(cue, cfg.sounds.volume as f32 / 100.0); }
         let text = match &env.event { PulseEvent::Error { message } => message.clone(), PulseEvent::Permission { command, .. } => command.clone(), _ => String::new() };
-        emit_fx(app, Fx { kind: kind.into(), session_id: env.session_id.clone(), project: env.project.clone(), slot, text, visual: r.visual, sound: r.sound });
+        emit_fx(app, Fx { kind: kind.into(), session_id: env.session_id.clone(), project: env.project.clone(), slot, text, visual: r.visual, sound: r.sound, monitor: windows::active_monitor_index(app) });
         if r.visual { chroma::pulse(app, kind, slot); }
     }
     broadcast(app);
@@ -70,7 +70,7 @@ pub fn run() {
     let first = match tauri::async_runtime::block_on(async { server::create_first(pulse_protocol::PIPE_NAME) }) { Ok(s) => s, Err(_) => return };
     tauri::Builder::default()
         .plugin(shortcuts::plugin())
-        .manage(AppState { store: Mutex::new(Store::default()), config: Mutex::new(config::load()), waiters: Mutex::new(HashMap::new()), next_id: AtomicU64::new(0), player: sound::Player::start() })
+        .manage(AppState { store: Mutex::new(Store::new(now_ms())), config: Mutex::new(config::load()), waiters: Mutex::new(HashMap::new()), next_id: AtomicU64::new(0), player: sound::Player::start() })
         .invoke_handler(tauri::generate_handler![commands::get_snapshot, commands::get_config, commands::set_config, commands::decide, commands::allow_all, commands::set_focus, commands::mute_session, commands::daily_summary, commands::set_island_hitbox, commands::island_focus, commands::open_dashboard, commands::toggle_panel])
         .setup(move |app| {
             let h = app.handle().clone();
