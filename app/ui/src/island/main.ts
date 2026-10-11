@@ -40,7 +40,8 @@ function onEffect(fx: Fx) {
   const later = (f: () => void) => setTimeout(f, T(cfg.island.beam ? 520 : 0));
   if (fx.kind === 'resolved') {
     const [d, ...rest] = fx.text.split('|'), cmd = rest.join('|');
-    if (d === 'none') transient({ k: 'info', icon: 'schedule', text: 'Sin respuesta: Claude te pregunta en la terminal' }, 2200);
+    if (d === 'terminal') transient({ k: 'info', icon: 'terminal', text: 'Respondido en la terminal' }, 1600);
+    else if (d === 'none') transient({ k: 'info', icon: 'schedule', text: 'Sin respuesta: Claude te pregunta en la terminal' }, 2200);
     else transient({ k: d === 'allow' ? 'ok' : 'no', project: fx.project, text: cmd }, 1300);
     return;
   }

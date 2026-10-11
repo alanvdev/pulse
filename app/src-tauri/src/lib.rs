@@ -31,13 +31,16 @@ pub fn broadcast(app: &AppHandle) {
 pub fn emit_fx(app: &AppHandle, fx: Fx) { let _ = app.emit("pulse://fx", fx); }
 
 /// Resuelve un permiso pendiente: contesta a `pulse ask`, registra y avisa a las ventanas.
-pub fn resolve(app: &AppHandle, id: u64, decision: Decision) {
+pub fn resolve(app: &AppHandle, id: u64, decision: Decision) { resolve_as(app, id, decision, match decision { Decision::Allow => "allow", Decision::Deny => "deny", Decision::None => "none" }); }
+
+/// Como `resolve`, con la etiqueta que verá la isla (`terminal` = se respondió en la terminal).
+pub fn resolve_as(app: &AppHandle, id: u64, decision: Decision, label: &str) {
     let st = app.state::<AppState>();
     let pending = st.store.lock().unwrap().resolve(id);
     if let Some(tx) = st.waiters.lock().unwrap().remove(&id) { let _ = tx.send(decision); }
     if let Some(p) = pending {
         logbook::append_resolve(&p.session_id, &p.project, id, match decision { Decision::Allow => Some(true), Decision::Deny => Some(false), Decision::None => None }, now_ms());
-        emit_fx(app, Fx { kind: "resolved".into(), session_id: p.session_id, project: p.project, slot: 0, text: format!("{}|{}", match decision { Decision::Allow => "allow", Decision::Deny => "deny", Decision::None => "none" }, p.command), visual: false, sound: false, monitor: windows::active_monitor_index(app) });
+        emit_fx(app, Fx { kind: "resolved".into(), session_id: p.session_id, project: p.project, slot: 0, text: format!("{label}|{}", p.command), visual: false, sound: false, monitor: windows::active_monitor_index(app) });
     }
     broadcast(app);
 }
@@ -47,6 +50,8 @@ fn handle(app: &AppHandle, inc: server::Incoming) {
     let env = inc.env;
     logbook::append(&env);
     let cfg = st.config.lock().unwrap().clone();
+    let answered = st.store.lock().unwrap().answered_elsewhere(&env);
+    for id in answered { resolve_as(app, id, Decision::None, "terminal"); }
     let (cue, focus_on, muted, slot) = { let mut s = st.store.lock().unwrap(); let c = s.apply(&env); (c, s.focus(), s.is_muted(&env.session_id, now_ms()), s.slot_of(&env.session_id)) };
     if let Some(reply) = inc.reply {
         let id = st.next_id.fetch_add(1, Ordering::SeqCst) + 1;
@@ -85,6 +90,9 @@ pub fn run() {
                 tokio::time::sleep(std::time::Duration::from_secs(1)).await;
                 let expired = h2.state::<AppState>().store.lock().unwrap().expire(now_ms());
                 for id in expired { resolve(&h2, id, Decision::None); }
+                // `pulse ask` se cerró (Claude Code dejó de esperar al hook): se respondió en la terminal
+                let gone: Vec<u64> = h2.state::<AppState>().waiters.lock().unwrap().iter().filter(|(_, tx)| tx.is_closed()).map(|(id, _)| *id).collect();
+                for id in gone { resolve_as(&h2, id, Decision::None, "terminal"); }
                 if h2.state::<AppState>().store.lock().unwrap().should_exit(now_ms()) { chroma::shutdown(); h2.exit(0); }
             } });
             focus::start(&h);

@@ -11,9 +11,19 @@ pub fn create_all(app: &AppHandle) -> tauri::Result<()> {
             .inner_size(size.width as f64 / scale, size.height as f64 / scale)
             .build()?;
         w.set_ignore_cursor_events(true)?;
+        no_activate(&w);
     }
     crate::windows::create_island(app)?;        // Task 4
     Ok(())
+}
+
+/// Las ventanas de borde nunca deben quedar como ventana activa (ni robar el foco ni contar como "pantalla completa").
+fn no_activate(w: &tauri::WebviewWindow) {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_NOACTIVATE};
+    if let Ok(h) = w.hwnd() {
+        let h = h.0 as windows_sys::Win32::Foundation::HWND;
+        unsafe { SetWindowLongPtrW(h, GWL_EXSTYLE, GetWindowLongPtrW(h, GWL_EXSTYLE) | WS_EX_NOACTIVATE as isize); }
+    }
 }
 
 /// Monitor donde está la ventana en primer plano (para "monitor activo").

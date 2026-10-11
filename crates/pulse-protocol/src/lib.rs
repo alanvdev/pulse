@@ -25,7 +25,7 @@ pub enum PulseEvent {
     SessionStart, SessionEnd,
     Start { prompt: String },
     Tool { tool: String, target: String },
-    Permission { tool: String, command: String },
+    Permission { tool: String, command: String, #[serde(default)] description: String },
     Idle, Done,
     Error { message: String },
     SubagentStart { agent: String },
@@ -76,7 +76,7 @@ pub fn map_hook(i: &HookInput) -> Option<PulseEvent> {
         "SessionEnd" => PulseEvent::SessionEnd,
         "UserPromptSubmit" => PulseEvent::Start { prompt: truncate(i.prompt.as_deref().unwrap_or("")) },
         "PreToolUse" => PulseEvent::Tool { target: tool_target(&tool, i.tool_input.as_ref()), tool },
-        "PermissionRequest" => PulseEvent::Permission { command: tool_target(&tool, i.tool_input.as_ref()), tool },
+        "PermissionRequest" => PulseEvent::Permission { command: tool_target(&tool, i.tool_input.as_ref()), description: truncate(i.tool_input.as_ref().and_then(|v| v.get("description")).and_then(Value::as_str).unwrap_or("")), tool },
         "Notification" if i.notification_type.as_deref() == Some("idle_prompt") => PulseEvent::Idle,
         "Stop" => PulseEvent::Done,
         "PostToolUseFailure" => PulseEvent::Error { message: truncate(i.error.as_deref().unwrap_or("falló una herramienta")) },
@@ -119,7 +119,8 @@ mod tests {
         assert_eq!(c(r#"{"session_id":"a","hook_event_name":"UserPromptSubmit","prompt":"hola"}"#), Some(PulseEvent::Start { prompt: "hola".into() }));
         assert_eq!(c(r#"{"session_id":"a","hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"npm run lint"}}"#), Some(PulseEvent::Tool { tool: "Bash".into(), target: "npm run lint".into() }));
         assert_eq!(c(r#"{"session_id":"a","hook_event_name":"PreToolUse","tool_name":"Edit","tool_input":{"file_path":"src/H.tsx"}}"#), Some(PulseEvent::Tool { tool: "Edit".into(), target: "src/H.tsx".into() }));
-        assert_eq!(c(r#"{"session_id":"a","hook_event_name":"PermissionRequest","tool_name":"Bash","tool_input":{"command":"npx prisma migrate dev"}}"#), Some(PulseEvent::Permission { tool: "Bash".into(), command: "npx prisma migrate dev".into() }));
+        assert_eq!(c(r#"{"session_id":"a","hook_event_name":"PermissionRequest","tool_name":"Bash","tool_input":{"command":"npx prisma migrate dev"}}"#), Some(PulseEvent::Permission { tool: "Bash".into(), command: "npx prisma migrate dev".into(), description: String::new() }));
+        assert_eq!(c(r#"{"session_id":"a","hook_event_name":"PermissionRequest","tool_name":"Bash","tool_input":{"command":"rm -rf node_modules","description":"Remove node_modules directory"}}"#), Some(PulseEvent::Permission { tool: "Bash".into(), command: "rm -rf node_modules".into(), description: "Remove node_modules directory".into() }));
         assert_eq!(c(r#"{"session_id":"a","hook_event_name":"Notification","notification_type":"idle_prompt"}"#), Some(PulseEvent::Idle));
         assert_eq!(c(r#"{"session_id":"a","hook_event_name":"Notification","notification_type":"permission_prompt"}"#), None);
         assert_eq!(c(r#"{"session_id":"a","hook_event_name":"Stop"}"#), Some(PulseEvent::Done));

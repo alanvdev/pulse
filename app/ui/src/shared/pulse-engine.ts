@@ -30,12 +30,13 @@ export function keyframesFor(shape: string, I: number, g: Geo): Keyframe[] {
     default: return [{ opacity: 0, easing: E }, { opacity: I, offset: .38, easing: E }, { opacity: 0 }];
   }
 }
-let noise = '';
-function noiseURL() {
-  if (noise) return noise;
+/** Ruido en el canal alfa: sirve de máscara para que el grano tome el color de la luz. */
+let grain = '';
+function grainURL() {
+  if (grain) return grain;
   const c = document.createElement('canvas'); c.width = c.height = 96; const x = c.getContext('2d')!; const d = x.createImageData(96, 96);
-  for (let i = 0; i < d.data.length; i += 4) { const v = Math.random() * 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; }
-  x.putImageData(d, 0, 0); return (noise = c.toDataURL());
+  for (let i = 0; i < d.data.length; i += 4) { d.data[i] = d.data[i + 1] = d.data[i + 2] = 255; d.data[i + 3] = Math.random() * 255; }
+  x.putImageData(d, 0, 0); return (grain = c.toDataURL());
 }
 export interface EngineOpts { crisp: boolean; corners: boolean; adapt: boolean; dither: boolean; lightBackground: boolean; reduce: boolean }
 export function pulse(layer: HTMLElement, cfg: PulseCfg, g: Geo, o: EngineOpts) {
@@ -49,7 +50,8 @@ export function pulse(layer: HTMLElement, cfg: PulseCfg, g: Geo, o: EngineOpts) 
   add(edgeMask(side ? t * 1.3 : t, side), .82);
   if (o.crisp) add(lineMask(side), 1);
   if (o.corners && !side) add(cornerMask(t), .45);
-  if (o.dither) { const n = document.createElement('div'); n.style.cssText = `position:absolute;inset:0;background:url(${noiseURL()});mix-blend-mode:overlay;opacity:.5`; setMask(n, edgeMask(t, side)); wrap.appendChild(n); }
+  // Grano tenue del mismo color de la luz, solo donde hay luz (en una ventana transparente un "overlay" gris no tiene con qué mezclarse).
+  if (o.dither) { const n = document.createElement('div'); n.style.cssText = 'position:absolute;inset:0;opacity:.28'; setMask(n, edgeMask(t, side)); const g = document.createElement('div'); g.style.cssText = 'position:absolute;inset:0'; g.style.background = paint; const gm = `url(${grainURL()})`; g.style.maskImage = gm; (g.style as any).webkitMaskImage = gm; n.appendChild(g); wrap.appendChild(n); }
   layer.appendChild(wrap);
   const a = wrap.animate(keyframesFor(shape, I, g), { duration: D, easing: 'linear' });
   const kill = () => wrap.remove(); a.onfinish = kill; setTimeout(kill, D + 400);

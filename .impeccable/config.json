@@ -1,0 +1,20 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "geist",
+        "createdAt": "2026-10-11T22:02:53.265Z",
+        "reason": "Spec source of truth: docs/artboards/*.html and plan Task 3 Step 2 mandate Geist"
+      },
+      {
+        "rule": "overused-font",
+        "value": "geist mono",
+        "createdAt": "2026-10-11T22:02:53.596Z",
+        "reason": "Spec source of truth: docs/artboards/*.html and plan Task 3 Step 2 mandate Geist Mono"
+      }
+    ]
+  }
+}

@@ -15,6 +15,8 @@
 .st{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--c)}
 .st::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c)}
 .cmd{font-family:var(--f-mono);font-size:12.5px;color:#ffd590;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.05);border-radius:8px;padding:8px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:380px}
+.cmd.full{white-space:pre-wrap;word-break:break-all;max-height:112px;overflow:auto;scrollbar-width:none}
+.why{margin-top:3px;font-size:12.5px;font-weight:400;color:#c7ccd3;white-space:normal;max-width:380px}
 .warn{display:flex;align-items:center;gap:6px;font-size:12px;color:#ffc56a}
 .warn .ms{font-size:15px}
 .acts{display:flex;gap:8px}
@@ -67,6 +69,10 @@ kbd.on{opacity:1;background:rgba(255,255,255,.22);transform:translateY(1px)}
 /* ---------- Comando ---------- */
 .c-shell{top:12px;left:50%;translate:-50% 0;border-radius:14px}
 .c-toast{display:flex;align-items:center;gap:10px;padding:8px 14px;height:36px;white-space:nowrap;position:relative}
+.c-toast{max-width:520px}
+.c-toast > .t{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.c-toast > .row{flex:none}
+.c-toast .c-cmd{font-size:12px;color:#ffd590}
 .c-toast .ic{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;background:color-mix(in srgb,var(--c) 18%,transparent);color:var(--c)}
 .c-toast .ic .ms{font-size:15px}
 .c-toast .tm{position:absolute;left:14px;right:14px;bottom:0;height:1px;background:rgba(255,255,255,.35);transform-origin:left}
@@ -76,7 +82,8 @@ kbd.on{opacity:1;background:rgba(255,255,255,.22);transform:translateY(1px)}
 .pal-in .ms{font-size:18px;color:#8b929c}
 .pal-in input{flex:1;background:transparent;border:0;outline:0;color:#f2f4f6;font-size:15px;user-select:text}
 .pal-in input::placeholder{color:#727a85}
-.pal-list{position:relative;max-height:186px;overflow:auto;padding:6px}
+.pal-list{position:relative;max-height:186px;overflow:auto;padding:6px;scrollbar-width:none}
+.pal-list::-webkit-scrollbar{display:none}
 .pal-hl{position:absolute;left:6px;right:6px;top:0;height:34px;border-radius:8px;background:rgba(255,255,255,.075);transition:transform .32s var(--sp),height .2s;pointer-events:none}
 .pal-g{font-size:11px;color:#757d88;padding:8px 10px 4px}
 .pal-it{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:11px;align-items:center;height:34px;padding:0 10px;border-radius:8px;font-size:13px;white-space:nowrap;cursor:pointer}

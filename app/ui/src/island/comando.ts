@@ -2,7 +2,7 @@
 import type { Config, Snapshot } from '../shared/bridge';
 import { COLORS, esc } from '../shared/format';
 import { morph, reduceMotion, T, type Morph, type MorphOpts } from '../shared/motion';
-import { beam, fuzzy, ignite, releaseCard, trPill, type Tr } from './shared';
+import { beam, fuzzy, ignite, permCard, releaseCard, trPill, type Tr } from './shared';
 
 export interface Ctx {
   snap(): Snapshot; cfg(): Config; transient(): Tr | null;
@@ -15,7 +15,7 @@ export function mountComando(board: HTMLElement, ctx: Ctx) {
   const sh = document.createElement('div'); sh.className = 'shell glass c-shell'; sh.style.opacity = '0';
   board.append(sh);
   const m: Morph = { el: sh, w: 0, h: 0, sig: '', op: 0 };
-  let open = false, q = '', sel = 0, items: Item[] = [];
+  let open = false, q = '', sel = 0, items: Item[] = [], hover = false, leaveT = 0;
   const $ = <T extends Element = HTMLElement>(s: string) => sh.querySelector<T>(s);
   const $$ = (s: string) => [...sh.querySelectorAll<HTMLElement>(s)];
 
@@ -60,7 +60,8 @@ export function mountComando(board: HTMLElement, ctx: Ctx) {
         const tmp = document.createElement('div'); tmp.innerHTML = palHTML(); const list = $('.pal-list'); if (list) { list.innerHTML = tmp.querySelector('.pal-list')!.innerHTML; bindRows(); moveHL(true); } ctx.hitbox(sh); return;
       }
       html = palHTML(); sig = 'pal' + Math.random(); o.hidden = false;
-    } else if (s.pending.length) { const it = s.pending[0], danger = it.danger && cfg.hold; html = `<div class="c-toast" data-act="palette"><span class="ic" style="--c:${COLORS.permission}"><span class="ms">front_hand</span></span><span class="t"><b>${esc(it.project)}</b> <span class="muted">quiere ejecutar</span> <span class="mono" style="font-size:12px;color:#ffd590">${esc(it.command)}</span></span>${cfg.keys ? `<span class="row muted" style="gap:5px;font-size:11.5px;margin-left:4px"><kbd data-k="y">Y</kbd>${danger ? 'mantener' : ''}<kbd data-k="n">N</kbd><kbd>↵</kbd></span>` : ''}${cfg.countdown ? '<i class="cd" style="left:14px;right:14px"></i>' : ''}${danger ? '<i class="hold"></i>' : ''}</div>`; sig = 'p' + it.id; o = { ...o, hidden: false, item: it }; }
+    } else if (s.pending.length && hover) { const it = s.pending[0]; html = permCard(it, ctx.cfg(), s.pending.length, s.sessions.find(x => x.id === it.session_id)); sig = 'P' + it.id + s.pending.length; o = { ...o, radius: () => '14px', hidden: false, item: it }; }
+    else if (s.pending.length) { const it = s.pending[0], danger = it.danger && cfg.hold; html = `<div class="c-toast" data-act="palette"><span class="ic" style="--c:${COLORS.permission}"><span class="ms">front_hand</span></span><span class="t"><b>${esc(it.project)}</b> <span class="muted">quiere ejecutar</span> <span class="mono c-cmd">${esc(it.command)}</span></span>${cfg.keys ? `<span class="row muted" style="gap:5px;font-size:11.5px;margin-left:4px">Ctrl Alt<kbd data-k="y">Y</kbd>${danger ? 'mantener' : ''}<kbd data-k="n">N</kbd><kbd title="Abre la paleta">↵</kbd></span>` : ''}${cfg.countdown ? '<i class="cd" style="left:14px;right:14px"></i>' : ''}${danger ? '<i class="hold"></i>' : ''}</div>`; sig = 'p' + it.id; o = { ...o, hidden: false, item: it }; }
     else if (tr) { if (tr.k === 'release') html = releaseCard(tr.items ?? []); else { const p = trPill(tr); html = `<div class="c-toast"><span class="ic" style="--c:${p.c}"><span class="ms ${['done', 'ok'].includes(tr.k) ? 'draw' : ''}">${p.ic}</span></span><span class="t">${p.txt}</span><i class="tm"></i></div>`; } sig = 't' + tr.id; o = { ...o, hidden: false, life: 2600 }; }
     const r = morph(m, sig, html, o);
     if (r.changed) ctx.hitbox(html ? sh : null);
@@ -78,7 +79,15 @@ export function mountComando(board: HTMLElement, ctx: Ctx) {
       setTimeout(() => { const i = $<HTMLInputElement>('input'); if (i && document.activeElement !== i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 40);
     }
   }
-  sh.addEventListener('click', e => { if ((e.target as HTMLElement).closest('[data-act="palette"]')) openPal(); });
+  sh.addEventListener('click', e => {
+    const a = (e.target as HTMLElement).closest<HTMLElement>('[data-act]'); if (!a) return;
+    if (a.dataset.act === 'palette') openPal();
+    else if (a.dataset.act === 'deny') ctx.decide(Number(a.dataset.id), false);
+    else if (a.dataset.act === 'allow' && a.dataset.danger !== '1') ctx.decide(Number(a.dataset.id), true);
+  });
+  // al pasar el mouse por el aviso de permiso se expande a la tarjeta con el comando completo y para qué es
+  sh.addEventListener('mouseenter', () => { clearTimeout(leaveT); if (!hover && !open && ctx.snap().pending.length) { hover = true; render(); } });
+  sh.addEventListener('mouseleave', () => { clearTimeout(leaveT); leaveT = window.setTimeout(() => { if (hover) { hover = false; render(); } }, 250); });
   sh.addEventListener('focusout', e => { if (open && !sh.contains(e.relatedTarget as Node)) setTimeout(() => { if (open && !sh.contains(document.activeElement)) close(); }, 120); });
   window.addEventListener('blur', () => { if (open) close(); });
   return {

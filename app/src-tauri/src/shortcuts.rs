@@ -9,14 +9,14 @@ const HOLD_MS: u64 = 900;
 
 pub fn plugin() -> tauri::plugin::TauriPlugin<Wry> {
     let m = Modifiers::CONTROL | Modifiers::ALT;
-    let (yes, no, pal) = (Shortcut::new(Some(m), Code::KeyY), Shortcut::new(Some(m), Code::KeyN), Shortcut::new(Some(m), Code::Space));
+    let (yes, no, pal, pal2) = (Shortcut::new(Some(m), Code::KeyY), Shortcut::new(Some(m), Code::KeyN), Shortcut::new(Some(m), Code::Space), Shortcut::new(Some(m), Code::Enter));
     tauri_plugin_global_shortcut::Builder::new()
-        .with_shortcuts([yes, no, pal]).expect("atajos")
+        .with_shortcuts([yes, no, pal, pal2]).expect("atajos")
         .with_handler(move |app, sc, ev| {
             let app = app.app_handle().clone();
             let st = app.state::<AppState>();
             let (keys, hold) = { let c = st.config.lock().unwrap(); (c.island.keys, c.island.hold) };
-            if sc == &pal && ev.state == ShortcutState::Pressed { let _ = app.emit("pulse://palette", ()); return; }
+            if (sc == &pal || sc == &pal2) && ev.state == ShortcutState::Pressed { let _ = app.emit("pulse://palette", ()); return; }
             if !keys { return; }
             let top = st.store.lock().unwrap().snapshot().pending.first().cloned();
             let Some(p) = top else { return };

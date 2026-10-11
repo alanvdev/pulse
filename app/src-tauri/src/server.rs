@@ -20,9 +20,11 @@ pub async fn serve(first: NamedPipeServer, name: String, tx: UnboundedSender<Inc
                 if env.ask {
                     let (otx, orx) = oneshot::channel();
                     if tx.send(Incoming { env, reply: Some(otx) }).is_err() { return; }
-                    let decision = orx.await.unwrap_or(Decision::None);
-                    let out = serde_json::to_string(&Reply { decision }).unwrap() + "\n";
-                    let _ = w.write_all(out.as_bytes()).await;
+                    // Si el cliente cierra el pipe antes de la decisión, se suelta `orx` y la app lo detecta con `is_closed()`.
+                    tokio::select! {
+                        d = orx => { let out = serde_json::to_string(&Reply { decision: d.unwrap_or(Decision::None) }).unwrap() + "\n"; let _ = w.write_all(out.as_bytes()).await; }
+                        _ = async { while let Ok(Some(_)) = lines.next_line().await {} } => {}
+                    }
                     return;
                 }
                 let _ = tx.send(Incoming { env, reply: None });

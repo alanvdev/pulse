@@ -2,7 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 export type SessionState = 'Idle' | 'Done' | 'Working' | 'IdleWait' | 'Waiting';
 export interface Session { id: string; project: string; slot: number; state: SessionState; last: string; subagents: number; since_ms: number; last_event_ms: number; actions: number; muted_until_ms: number }
-export interface Pending { id: number; session_id: string; project: string; tool: string; command: string; danger: boolean; at_ms: number; timeout_ms: number }
+export interface Pending { id: number; session_id: string; project: string; tool: string; command: string; description: string; danger: boolean; at_ms: number; timeout_ms: number }
 export interface FeedItem { session_id: string; project: string; text: string; at_ms: number }
 export interface Deferred { session_id: string; project: string; kind: string }
 export interface Snapshot { sessions: Session[]; pending: Pending[]; feed: FeedItem[]; focus: boolean; focus_auto: boolean; deferred: Deferred[] }
@@ -13,7 +13,7 @@ export interface Config {
   island: { mode: 'comando' | 'orbe'; orb_side: 'left' | 'center' | 'right'; keys: boolean; hold: boolean; countdown: boolean; beam: boolean; ask_timeout_s: number };
   pulses: { enabled: boolean; placement: 'active' | 'all'; crisp: boolean; corners: boolean; adapt: boolean; dither: boolean; events: Record<string, PulseCfg> };
   sounds: { enabled: boolean; volume: number; per_event: Record<string, boolean> };
-  focus: { detect_call: boolean; detect_fullscreen: boolean; schedule: boolean; from: string; to: string; rules: Record<string, 'normal' | 'mudo' | 'nada' | 'despues'> };
+  focus: { auto: boolean; detect_call: boolean; detect_fullscreen: boolean; schedule: boolean; from: string; to: string; rules: Record<string, 'normal' | 'mudo' | 'nada' | 'despues'> };
   keyboard: { enabled: boolean; session_keys: boolean; base: number };
   mosaico: { order: string[]; hidden: string[] };
 }

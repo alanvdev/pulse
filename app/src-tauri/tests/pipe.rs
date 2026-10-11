@@ -35,6 +35,19 @@ async fn answers_ask_requests() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn notices_when_ask_client_goes_away() {
+    let name = format!(r"\\.\pipe\pulse-gone-{}", std::process::id());
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+    tokio::spawn(server::serve(server::create_first(&name).unwrap(), name.clone(), tx));
+    let line = serde_json::to_string(&env(true)).unwrap() + "\n";
+    let n = name.clone();
+    tokio::task::spawn_blocking(move || { let mut f = std::fs::OpenOptions::new().read(true).write(true).open(&n).unwrap(); f.write_all(line.as_bytes()).unwrap(); }).await.unwrap();   // se cierra sin esperar respuesta
+    let inc = tokio::time::timeout(std::time::Duration::from_secs(2), rx.recv()).await.unwrap().unwrap();
+    let mut reply = inc.reply.unwrap();
+    tokio::time::timeout(std::time::Duration::from_secs(2), reply.closed()).await.expect("el servidor debe soltar la espera");
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn single_instance() {
     let name = format!(r"\\.\pipe\pulse-dup-{}", std::process::id());
     let _a = server::create_first(&name).unwrap();

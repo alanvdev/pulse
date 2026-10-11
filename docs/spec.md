@@ -71,6 +71,8 @@ Al portar una pieza, se copia su CSS y su lógica de animación desde el artboar
 - **"Ir a la terminal" y "Responder «continúa»" no se implementan:** los hooks no dicen en qué ventana corre cada sesión ni hay API para escribirle a Claude. Se quitan de Comando y Bolsillo.
 - **Pulso "en el monitor de la sesión" → "monitor activo":** el monitor de la ventana en primer plano al llegar el evento. Opción alterna: todos los monitores.
 - **"No molestar" de Windows no se detecta** (no hay API pública). El foco se activa por llamada (micrófono en uso), pantalla completa/presentación, horario, o a mano.
+- **Pantalla completa se detecta revisando la ventana activa** (que no sea de Pulse, que no esté maximizada y que cubra todo su monitor), no con el aviso "ocupado" de Windows: las ventanas de borde de Pulse lo disparaban. El foco automático se puede apagar entero (`focus.auto`), y apagarlo a mano dura solo hasta que cambie lo que lo activó.
+- **Si respondes el permiso en la terminal**, la isla deja de esperar cuando Claude Code cierra el hook o cuando llega otro evento de esa sesión (no cuenta `tool`, porque puede haber herramientas en paralelo).
 - La forma "Desde la terminal" nace en una posición fija por sesión (`slot` 0, 1, 2… → 18 %, 50 %, 82 % del ancho).
 
 ### Descartado

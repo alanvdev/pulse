@@ -31,8 +31,8 @@ pub struct SoundsCfg { pub enabled: bool, pub volume: u32, pub per_event: BTreeM
 impl Default for SoundsCfg { fn default() -> Self { Self { enabled: true, volume: 80, per_event: ["start", "permission", "done", "idle", "error"].iter().map(|k| (k.to_string(), true)).chain([("subagent".to_string(), false)]).collect() } } }
 
 #[derive(Debug, Clone, Serialize, Deserialize)] #[serde(default)]
-pub struct FocusCfg { pub detect_call: bool, pub detect_fullscreen: bool, pub schedule: bool, pub from: String, pub to: String, pub rules: BTreeMap<String, Rule> }
-impl Default for FocusCfg { fn default() -> Self { Self { detect_call: true, detect_fullscreen: true, schedule: false, from: "09:00".into(), to: "11:00".into(), rules: BTreeMap::from([
+pub struct FocusCfg { pub auto: bool, pub detect_call: bool, pub detect_fullscreen: bool, pub schedule: bool, pub from: String, pub to: String, pub rules: BTreeMap<String, Rule> }
+impl Default for FocusCfg { fn default() -> Self { Self { auto: true, detect_call: true, detect_fullscreen: true, schedule: false, from: "09:00".into(), to: "11:00".into(), rules: BTreeMap::from([
     ("start".into(), Rule::Nada), ("permission".into(), Rule::Normal), ("done".into(), Rule::Despues),
     ("idle".into(), Rule::Despues), ("error".into(), Rule::Mudo), ("subagent".into(), Rule::Nada)]) } } }
 

@@ -42,7 +42,7 @@ function Card({ s, p, cfg, fresh, now }: { s: Session; p?: Pending; cfg: Config;
       <div className="min-w-0"><div className="text-[13px] font-medium">{s.project}</div><div className="text-xs text-muted truncate">{p ? 'necesita tu permiso' : s.last || LBL[s.state]}</div></div>
       <span className="font-mono text-[11px] text-faint">{ago(now - s.since_ms)}</span>
     </div>
-    {p && <div className="ex grid gap-[9px]"><div className="font-mono text-xs text-[#ffd590] bg-black/25 rounded-lg px-[9px] py-[7px] truncate">{p.command}</div><PermActs p={p} cfg={cfg} /></div>}
+    {p && <div className="ex grid gap-[9px]">{p.description && <div className="text-xs text-[#c7ccd3]">{p.description}</div>}<div className="font-mono text-xs text-[#ffd590] bg-black/25 rounded-lg px-[9px] py-[7px] break-all line-clamp-3" title={p.command}>{p.command}</div><PermActs p={p} cfg={cfg} /></div>}
   </div>;
 }
 
@@ -102,7 +102,7 @@ function Ajustes({ cfg, save }: { cfg: Config; save: (c: Config) => void }) {
     <Row icon="keyboard" title="Teclado Razer" sub="F1 a F3 por sesión"><Sw on={cfg.keyboard.enabled} label="Teclado Razer" onChange={enabled => set('keyboard', { enabled })} /></Row>
     <Row icon="keyboard_command_key" title="Atajos de teclado" sub="Ctrl+Alt+Y para permitir, Ctrl+Alt+N para denegar"><Sw on={cfg.island.keys} label="Atajos de teclado" onChange={keys => set('island', { keys })} /></Row>
     <Row icon="back_hand" title="Mantener en comandos delicados" sub="git push --force, rm -rf, migrate…"><Sw on={cfg.island.hold} label="Mantener en comandos delicados" onChange={hold => set('island', { hold })} /></Row>
-    <Row icon="dark_mode" title="Modo foco automático" sub="Llamadas y pantalla completa"><Sw on={cfg.focus.detect_call && cfg.focus.detect_fullscreen} label="Modo foco automático" onChange={on => set('focus', { detect_call: on, detect_fullscreen: on })} /></Row>
+    <Row icon="dark_mode" title="Modo foco automático" sub={cfg.focus.auto ? 'Se activa solo en llamadas, pantalla completa y tu horario' : 'Apagado: solo lo activas tú'}><Sw on={cfg.focus.auto} label="Modo foco automático" onChange={auto => set('focus', { auto })} /></Row>
   </>;
 }
 

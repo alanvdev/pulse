@@ -17,7 +17,7 @@ impl Cue { pub fn key(self) -> &'static str { match self { Cue::Start => "start"
 #[derive(Debug, Clone, Serialize)]
 pub struct Session { pub id: String, pub project: String, pub slot: u8, pub state: SessionState, pub last: String, pub subagents: u32, pub since_ms: i64, pub last_event_ms: i64, pub actions: u32, pub muted_until_ms: i64 }
 #[derive(Debug, Clone, Serialize)]
-pub struct Pending { pub id: u64, pub session_id: String, pub project: String, pub tool: String, pub command: String, pub danger: bool, pub at_ms: i64, pub timeout_ms: i64 }
+pub struct Pending { pub id: u64, pub session_id: String, pub project: String, pub tool: String, pub command: String, pub description: String, pub danger: bool, pub at_ms: i64, pub timeout_ms: i64 }
 #[derive(Debug, Clone, Serialize)]
 pub struct FeedItem { pub session_id: String, pub project: String, pub text: String, pub at_ms: i64 }
 #[derive(Debug, Clone, Serialize)]
@@ -77,8 +77,8 @@ impl Store {
     }
 
     pub fn add_pending(&mut self, id: u64, e: &Envelope, timeout_ms: i64) {
-        if let PulseEvent::Permission { tool, command } = &e.event {
-            self.pending.push(Pending { id, session_id: e.session_id.clone(), project: e.project.clone(), tool: tool.clone(), command: command.clone(), danger: is_dangerous(command), at_ms: e.at_ms, timeout_ms });
+        if let PulseEvent::Permission { tool, command, description } = &e.event {
+            self.pending.push(Pending { id, session_id: e.session_id.clone(), project: e.project.clone(), tool: tool.clone(), command: command.clone(), description: description.clone(), danger: is_dangerous(command), at_ms: e.at_ms, timeout_ms });
         }
     }
 
@@ -89,6 +89,13 @@ impl Store {
         Some(p)
     }
 
+    /// Permisos de la sesión de `e` que ya se respondieron en la terminal: si Claude siguió (empezó otro turno, terminó,
+    /// falló, quedó esperando), ya no espera a la isla. Las herramientas no cuentan: pueden correr en paralelo al permiso.
+    pub fn answered_elsewhere(&self, e: &Envelope) -> Vec<u64> {
+        if matches!(e.event, PulseEvent::Permission { .. } | PulseEvent::Tool { .. } | PulseEvent::SessionStart | PulseEvent::SubagentStart { .. }) { return Vec::new(); }
+        self.pending.iter().filter(|p| p.session_id == e.session_id).map(|p| p.id).collect()
+    }
+
     pub fn expire(&mut self, now_ms: i64) -> Vec<u64> {
         self.pending.iter().filter(|p| now_ms - p.at_ms >= p.timeout_ms).map(|p| p.id).collect()
     }
@@ -96,6 +103,8 @@ impl Store {
     pub fn set_focus(&mut self, manual: Option<bool>, auto: bool) -> Vec<Deferred> {
         let was = self.focus();
         if manual.is_some() { self.focus_manual = manual; }
+        // un "apagar a mano" vale solo mientras dure lo que activó el foco automático
+        else if auto != self.focus_auto && self.focus_manual == Some(false) { self.focus_manual = None; }
         self.focus_auto = auto;
         if was && !self.focus() { std::mem::take(&mut self.deferred) } else { Vec::new() }
     }
@@ -139,7 +148,7 @@ mod tests {
     use super::*;
     use pulse_protocol::{Envelope, PulseEvent};
     fn env(sid: &str, at: i64, event: PulseEvent) -> Envelope { Envelope { v: 1, session_id: sid.into(), project: format!("p-{sid}"), cwd: String::new(), at_ms: at, ask: false, event } }
-    fn perm(sid: &str, at: i64, cmd: &str) -> Envelope { env(sid, at, PulseEvent::Permission { tool: "Bash".into(), command: cmd.into() }) }
+    fn perm(sid: &str, at: i64, cmd: &str) -> Envelope { env(sid, at, PulseEvent::Permission { tool: "Bash".into(), command: cmd.into(), description: String::new() }) }
 
     #[test] fn lifecycle_of_a_session() {
         let mut s = Store::default();
@@ -179,6 +188,16 @@ mod tests {
         assert!(s.snapshot().pending.is_empty());
         assert_eq!(s.snapshot().sessions[0].state, SessionState::Working);
     }
+    #[test] fn later_events_mean_it_was_answered_in_the_terminal() {
+        let mut s = Store::default();
+        let e = perm("a", 0, "npm test");
+        s.apply(&e); s.add_pending(3, &e, 30_000);
+        let other = perm("b", 0, "ls"); s.apply(&other); s.add_pending(4, &other, 30_000);
+        assert!(s.answered_elsewhere(&env("a", 1, PulseEvent::Tool { tool: "Bash".into(), target: "x".into() })).is_empty());   // herramientas en paralelo: no cuenta
+        assert_eq!(s.answered_elsewhere(&env("a", 2, PulseEvent::Done)), vec![3]);
+        assert_eq!(s.answered_elsewhere(&env("a", 2, PulseEvent::Start { prompt: "x".into() })), vec![3]);
+        assert!(s.answered_elsewhere(&env("c", 2, PulseEvent::Done)).is_empty());
+    }
     #[test] fn pending_expire_after_timeout() {
         let mut s = Store::default();
         let e = perm("a", 0, "npm run build");
@@ -201,6 +220,14 @@ mod tests {
         assert!(s.snapshot().focus);
         s.set_focus(Some(false), true);
         assert!(!s.snapshot().focus);
+        // el "apagar a mano" vale solo mientras dure lo que lo activó
+        s.set_focus(None, false);
+        s.set_focus(None, true);
+        assert!(s.snapshot().focus);
+        // un "encender a mano" sí se queda aunque cambie lo automático
+        s.set_focus(Some(true), false);
+        s.set_focus(None, true); s.set_focus(None, false);
+        assert!(s.snapshot().focus);
     }
     #[test] fn exit_rules() {
         let mut s = Store::default();

@@ -3,16 +3,34 @@ use tauri::{AppHandle, Manager};
 
 fn hm(s: &str) -> u32 { let mut it = s.split(':').map(|x| x.parse::<u32>().unwrap_or(0)); it.next().unwrap_or(0) * 60 + it.next().unwrap_or(0) }
 
-pub fn detect(c: &FocusCfg, now_min: u32, mic: bool, quns: i32) -> bool {
-    let full = matches!(quns, 2 | 3 | 4);
+pub fn detect(c: &FocusCfg, now_min: u32, mic: bool, fullscreen: bool) -> bool {
+    if !c.auto { return false; }
     let sched = c.schedule && { let (a, b) = (hm(&c.from), hm(&c.to)); if a <= b { now_min >= a && now_min < b } else { now_min >= a || now_min < b } };
-    (c.detect_call && mic) || (c.detect_fullscreen && full) || sched
+    (c.detect_call && mic) || (c.detect_fullscreen && fullscreen) || sched
 }
 
-pub fn notification_state() -> i32 {
-    let mut s = 0i32;
-    unsafe { windows_sys::Win32::UI::Shell::SHQueryUserNotificationState(&mut s) };
-    s
+/// `win` cubre todo `mon` (rectángulos left, top, right, bottom).
+pub fn covers(win: (i32, i32, i32, i32), mon: (i32, i32, i32, i32)) -> bool { win.0 <= mon.0 && win.1 <= mon.1 && win.2 >= mon.2 && win.3 >= mon.3 }
+
+/// ¿La ventana activa es de otra app y cubre todo su monitor (video, juego, presentación)?
+/// No se usa SHQueryUserNotificationState: las ventanas de borde de Pulse cubren el monitor y Windows las toma por pantalla completa.
+pub fn other_app_fullscreen() -> bool {
+    use windows_sys::Win32::{Foundation::RECT, Graphics::Gdi::{GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST}, UI::WindowsAndMessaging::{GetClassNameW, GetForegroundWindow, GetWindowRect, GetWindowThreadProcessId, IsZoomed}};
+    unsafe {
+        let h = GetForegroundWindow();
+        if h.is_null() { return false; }
+        let mut pid = 0u32; GetWindowThreadProcessId(h, &mut pid);
+        if pid == std::process::id() { return false; }
+        let mut name = [0u16; 64]; let n = GetClassNameW(h, name.as_mut_ptr(), name.len() as i32);
+        if matches!(String::from_utf16_lossy(&name[..n.max(0) as usize]).as_str(), "Progman" | "WorkerW" | "Shell_TrayWnd") { return false; }   // escritorio y barra de tareas
+        if IsZoomed(h) != 0 { return false; }   // maximizada no es pantalla completa (con la barra de tareas oculta cubre todo el monitor)
+        let mut r: RECT = std::mem::zeroed();
+        if GetWindowRect(h, &mut r) == 0 { return false; }
+        let mut mi: MONITORINFO = std::mem::zeroed(); mi.cbSize = std::mem::size_of::<MONITORINFO>() as u32;
+        if GetMonitorInfoW(MonitorFromWindow(h, MONITOR_DEFAULTTONEAREST), &mut mi) == 0 { return false; }
+        let m = mi.rcMonitor;
+        covers((r.left, r.top, r.right, r.bottom), (m.left, m.top, m.right, m.bottom))
+    }
 }
 
 /// Micrófono en uso por otra app: alguna entrada de ConsentStore con LastUsedTimeStop == 0.
@@ -54,7 +72,7 @@ pub fn start(app: &AppHandle) {
         tokio::time::sleep(std::time::Duration::from_secs(3)).await;
         let st = a.state::<AppState>();
         let cfg = st.config.lock().unwrap().focus.clone();
-        let auto = detect(&cfg, local_minutes(), mic_in_use(), notification_state());
+        let auto = detect(&cfg, local_minutes(), cfg.auto && cfg.detect_call && mic_in_use(), cfg.auto && cfg.detect_fullscreen && other_app_fullscreen());
         if auto == last { continue; }
         last = auto;
         let released = st.store.lock().unwrap().set_focus(None, auto);
@@ -71,15 +89,25 @@ mod tests {
     use crate::config::FocusCfg;
     #[test] fn detection_rules() {
         let mut c = FocusCfg::default();
-        assert!(!detect(&c, 600, false, 5));          // QUNS_ACCEPTS_NOTIFICATIONS = 5
-        assert!(detect(&c, 600, true, 5));            // llamada
-        assert!(detect(&c, 600, false, 3));           // QUNS_RUNNING_D3D_FULL_SCREEN
-        assert!(detect(&c, 600, false, 4));           // QUNS_PRESENTATION_MODE
-        assert!(detect(&c, 600, false, 2));           // QUNS_BUSY (pantalla completa)
-        c.detect_fullscreen = false; assert!(!detect(&c, 600, false, 3));
+        assert!(!detect(&c, 600, false, false));
+        assert!(detect(&c, 600, true, false));        // llamada
+        assert!(detect(&c, 600, false, true));        // otra app en pantalla completa
+        c.detect_fullscreen = false; assert!(!detect(&c, 600, false, true));
         c.schedule = true; c.from = "09:00".into(); c.to = "11:00".into();
-        assert!(detect(&c, 9 * 60 + 30, false, 5)); assert!(!detect(&c, 11 * 60, false, 5));
+        assert!(detect(&c, 9 * 60 + 30, false, false)); assert!(!detect(&c, 11 * 60, false, false));
         c.from = "22:00".into(); c.to = "02:00".into();
-        assert!(detect(&c, 23 * 60, false, 5)); assert!(detect(&c, 60, false, 5)); assert!(!detect(&c, 12 * 60, false, 5));
+        assert!(detect(&c, 23 * 60, false, false)); assert!(detect(&c, 60, false, false)); assert!(!detect(&c, 12 * 60, false, false));
+    }
+    #[test] fn auto_switch_turns_everything_off() {
+        let mut c = FocusCfg::default();
+        c.auto = false; c.schedule = true; c.from = "00:00".into(); c.to = "23:59".into();
+        assert!(!detect(&c, 600, true, true));
+    }
+    #[test] fn fullscreen_means_covering_the_whole_monitor() {
+        let mon = (0, 0, 1920, 1080);
+        assert!(covers(mon, mon));
+        assert!(covers((-8, -8, 1928, 1088), mon));    // ventana maximizada sin marco que se sale un poco
+        assert!(!covers((0, 0, 1920, 1040), mon));     // maximizada normal: deja ver la barra de tareas
+        assert!(!covers((100, 100, 900, 700), mon));
     }
 }

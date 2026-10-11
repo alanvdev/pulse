@@ -35,10 +35,11 @@ function Pend({ p, more, day }: { p?: Pending; more: number; day: DaySummary | n
     </div></>;
 }
 
+const PREVIEW: [string, string][] = [['start', 'Empieza'], ['permission', 'Permiso'], ['done', 'Terminó'], ['idle', 'Te espera'], ['error', 'Error'], ['subagent', 'Subagente']];
 function Pulso({ cfg }: { cfg: Config }) {
   const mini = useRef<HTMLDivElement>(null);
   const fire = (kind: string) => { const pc = cfg.pulses.events[kind]; if (mini.current && pc) pulse(mini.current, { ...pc, thickness: Math.min(pc.thickness, 26) }, { x: 50, y: 50, side: 'left' }, { crisp: cfg.pulses.crisp, corners: cfg.pulses.corners, adapt: false, dither: cfg.pulses.dither, lightBackground: false, reduce: reduceMotion() }); };
-  return <><h4><Ms>blur_on</Ms>Pulso</h4><div className="mini" ref={mini} /><div className="flex gap-1.5 mt-auto"><button className="wb" type="button" onClick={() => fire('permission')}>Permiso</button><button className="wb" type="button" onClick={() => fire('done')}>Listo</button></div></>;
+  return <><h4><Ms>blur_on</Ms>Pulso</h4><div className="mini" ref={mini} /><div className="flex flex-wrap gap-1.5 mt-auto">{PREVIEW.map(([k, l]) => <button key={k} className="wb" type="button" title={cfg.pulses.events[k]?.shape} onClick={() => fire(k)}>{l}</button>)}</div></>;
 }
 
 function Bitacora({ day }: { day: DaySummary | null }) {
