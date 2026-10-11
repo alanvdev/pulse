@@ -1,6 +1,6 @@
 use crate::{broadcast, config::{self, Config}, now_ms, resolve, AppState};
 use pulse_protocol::Decision;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 #[tauri::command] pub fn get_snapshot(st: State<AppState>) -> crate::state::Snapshot { st.store.lock().unwrap().snapshot() }
 #[tauri::command] pub fn get_config(st: State<AppState>) -> Config { st.config.lock().unwrap().clone() }
@@ -29,7 +29,10 @@ use tauri::{AppHandle, Emitter, State};
 
 // Se completan en las Tasks 4 a 6.
 #[tauri::command] pub fn daily_summary() {}
-#[tauri::command] pub fn set_island_hitbox() {}
-#[tauri::command] pub fn island_focus() {}
+#[derive(serde::Deserialize)] pub struct Rect { x: f64, y: f64, w: f64, h: f64 }
+#[tauri::command] pub fn set_island_hitbox(hb: State<crate::windows::Hitbox>, rect: Option<Rect>) { *hb.0.lock().unwrap() = rect.map(|r| (r.x - 6.0, r.y - 6.0, r.w + 12.0, r.h + 12.0)); }
+#[tauri::command] pub fn island_focus(app: AppHandle, on: bool) {
+    if let Some(w) = app.get_webview_window("island") { let _ = w.set_ignore_cursor_events(!on); if on { let _ = w.set_focus(); } }
+}
 #[tauri::command] pub fn open_dashboard() {}
 #[tauri::command] pub fn toggle_panel() {}

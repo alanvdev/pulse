@@ -1,0 +1,96 @@
+/* Copiado de docs/artboards/isla.html (piezas compartidas, Orbe y Comando). */
+.board { position: fixed; inset: 0; isolation: isolate }
+.beam { position: absolute; z-index: 4; left: 0; right: 0; top: 0; height: 60px; pointer-events: none; opacity: 0 }
+
+/* ---------- shared island pieces ---------- */
+.glass{background:var(--glass);-webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%);box-shadow:inset 0 1px 0 rgba(255,255,255,.07),inset 0 0 0 1px rgba(255,255,255,.06),0 18px 40px -18px rgba(0,0,0,.75)}
+.shell{position:absolute;z-index:6;overflow:hidden;color:#eceef1;font-size:13px;line-height:1.35}
+.layer{position:absolute;left:0;top:0;width:max-content;max-width:520px}
+.row{display:flex;align-items:center;gap:10px;white-space:nowrap}
+.muted{color:#9aa1ab}
+.t b{font-weight:500}
+.card{padding:13px 15px 14px;display:grid;gap:10px;min-width:310px}
+.ch{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12.5px}
+.ch .nm{font-family:var(--f-mono);font-size:12px;color:#c7ccd3}
+.st{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--c)}
+.st::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c)}
+.cmd{font-family:var(--f-mono);font-size:12.5px;color:#ffd590;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.05);border-radius:8px;padding:8px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:380px}
+.warn{display:flex;align-items:center;gap:6px;font-size:12px;color:#ffc56a}
+.warn .ms{font-size:15px}
+.acts{display:flex;gap:8px}
+.acts button{position:relative;flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:9px;padding:7px 10px;font-size:12.5px;font-weight:500;overflow:hidden;transition:transform .12s var(--e-out),background .15s}
+.acts button:active{transform:scale(.96)}
+.b-no{background:rgba(255,255,255,.07);color:#e3e6ea}
+.b-no:hover{background:rgba(255,255,255,.12)}
+.b-yes{background:#eef0f3;color:#0b0d10}
+.b-yes:hover{background:#fff}
+.b-yes .fill{position:absolute;inset:0;background:var(--perm);transform-origin:left;transform:scaleX(var(--hold,0))}
+.b-yes span,.b-yes kbd{position:relative}
+kbd{font-family:var(--f-mono);font-size:10.5px;font-weight:400;padding:0 5px;min-width:18px;text-align:center;border-radius:4px;border:1px solid currentColor;opacity:.5;transition:opacity .12s,transform .12s,background .12s;display:inline-block;line-height:16px}
+kbd.on{opacity:1;background:rgba(255,255,255,.22);transform:translateY(1px)}
+.cd{position:absolute;left:15px;right:15px;bottom:0;height:1.5px;border-radius:2px;background:linear-gradient(90deg,var(--perm),rgba(255,176,46,.4));transform-origin:left}
+.meta{display:flex;gap:14px;font-family:var(--f-mono);font-size:11.5px;color:#8a919b}
+.mini{display:flex;gap:6px}
+.mini button{border:0;background:rgba(255,255,255,.07);border-radius:7px;padding:4px 9px;font-size:12px;color:#dde1e6;display:inline-flex;gap:5px;align-items:center;transition:background .15s,transform .1s}
+.mini button:hover{background:rgba(255,255,255,.13)}
+.mini button:active{transform:scale(.96)}
+.mini .ms{font-size:14px}
+.ok{color:var(--done)}.bad{color:#ff8c84}
+.draw{clip-path:inset(0 100% 0 0);animation:draw .5s var(--e-out) .08s forwards}
+@keyframes draw{to{clip-path:inset(0 0 0 0)}}
+@keyframes liIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+
+/* ---------- Orbe ---------- */
+.o-shell{top:13px;border-radius:99px;cursor:pointer;touch-action:none}
+.o-shell.right{right:16px}.o-shell.left{left:16px}.o-shell.center{left:50%;translate:-50% 0}
+.o-shell.drag{cursor:grabbing}
+.o-shell[data-k="dot"]{background:transparent;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+.o-core{position:relative;width:22px;height:22px;display:grid;place-items:center}
+.o-orbit{position:absolute;inset:0;opacity:0;transition:opacity .4s}
+.o-orbit i{position:absolute;top:2px;left:50%;width:3px;height:3px;margin-left:-1.5px;border-radius:50%;background:var(--c);opacity:.8}
+.o-core.work .o-orbit{opacity:1;animation:spin 1.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.o-dot{width:6px;height:6px;border-radius:50%;background:var(--c);box-shadow:0 0 8px color-mix(in srgb,var(--c) 70%,transparent);transition:background .4s,box-shadow .4s,transform .4s var(--e-out)}
+.o-core.wait .o-dot{animation:obr 1.6s ease-in-out infinite}
+@keyframes obr{0%,100%{transform:scale(1)}15%{transform:scale(1.7)}30%{transform:scale(1)}45%{transform:scale(1.45)}}
+.o-peek{display:flex;align-items:center;gap:8px;padding:0 13px 0 4px;height:28px;font-size:12.5px}
+.o-menu{display:flex;align-items:center;gap:0;padding:0 4px;height:28px}
+.o-menu button{border:0;background:transparent;width:26px;height:26px;border-radius:99px;display:grid;place-items:center;color:#d9dde2;position:relative;transition:background .15s,transform .12s}
+.o-menu button:hover{background:rgba(255,255,255,.1)}
+.o-menu button:active{transform:scale(.9)}
+.o-menu button .ms{font-size:15px}
+.o-menu button[aria-pressed="true"]{color:var(--moon)}
+.o-tip{position:absolute;z-index:8;top:46px;font-size:11.5px;color:#e9ecef;background:rgba(10,11,13,.9);padding:3px 8px;border-radius:6px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s,transform .2s var(--e-out);transform:translateY(-3px)}
+.o-tip.on{opacity:1;transform:none}
+.o-pill{display:flex;align-items:center;gap:8px;padding:0 14px 0 4px;height:28px;font-size:12.5px}
+
+/* ---------- Comando ---------- */
+.c-shell{top:12px;left:50%;translate:-50% 0;border-radius:14px}
+.c-toast{display:flex;align-items:center;gap:10px;padding:8px 14px;height:36px;white-space:nowrap;position:relative}
+.c-toast .ic{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;background:color-mix(in srgb,var(--c) 18%,transparent);color:var(--c)}
+.c-toast .ic .ms{font-size:15px}
+.c-toast .tm{position:absolute;left:14px;right:14px;bottom:0;height:1px;background:rgba(255,255,255,.35);transform-origin:left}
+.c-toast .hold{position:absolute;left:0;bottom:0;height:2px;width:100%;background:var(--perm);transform-origin:left;transform:scaleX(var(--hold,0))}
+.pal{width:520px;display:grid}
+.pal-in{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.07)}
+.pal-in .ms{font-size:18px;color:#8b929c}
+.pal-in input{flex:1;background:transparent;border:0;outline:0;color:#f2f4f6;font-size:15px;user-select:text}
+.pal-in input::placeholder{color:#727a85}
+.pal-list{position:relative;max-height:186px;overflow:auto;padding:6px}
+.pal-hl{position:absolute;left:6px;right:6px;top:0;height:34px;border-radius:8px;background:rgba(255,255,255,.075);transition:transform .32s var(--sp),height .2s;pointer-events:none}
+.pal-g{font-size:11px;color:#757d88;padding:8px 10px 4px}
+.pal-it{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:11px;align-items:center;height:34px;padding:0 10px;border-radius:8px;font-size:13px;white-space:nowrap;cursor:pointer}
+.pal-it .ic{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;background:color-mix(in srgb,var(--c,#9aa1ab) 16%,transparent);color:var(--c,#c7ccd3)}
+.pal-it .ic .ms{font-size:15px}
+.pal-it span{overflow:hidden;text-overflow:ellipsis;color:#d9dde2}
+.pal-it span u{text-decoration:none;color:#fff;font-weight:500}
+.pal-it small{font-family:var(--f-mono);font-size:11px;color:#7a828d}
+.pal-it[aria-selected="true"] small{color:#c7ccd3}
+.pal-foot{display:flex;gap:16px;padding:8px 16px;border-top:1px solid rgba(255,255,255,.06);font-size:11.5px;color:#7a828d}
+.pal-foot kbd{opacity:.7;margin-right:4px}
+.pal-empty{padding:14px 10px;color:#7a828d;font-size:13px}
+
+@media (prefers-reduced-motion:reduce){
+  .o-core.work .o-orbit,.o-core.wait .o-dot{animation:none}
+  .draw{animation:none;clip-path:none}
+}
