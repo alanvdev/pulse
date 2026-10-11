@@ -54,5 +54,29 @@ pub fn create_island(app: &AppHandle) -> tauri::Result<()> {
     } });
     Ok(())
 }
-pub fn toggle_panel(_: &AppHandle) {}
+fn work_area_right_bottom() -> (f64, f64) {
+    use windows_sys::Win32::{Foundation::RECT, UI::WindowsAndMessaging::{SystemParametersInfoW, SPI_GETWORKAREA}};
+    let mut r: RECT = unsafe { std::mem::zeroed() };
+    unsafe { SystemParametersInfoW(SPI_GETWORKAREA, 0, &mut r as *mut _ as _, 0) };
+    (r.right as f64, r.bottom as f64)
+}
+/// Momento en que el panel se ocultó por perder el foco: el clic en la bandeja que lo provocó no debe volver a abrirlo.
+static PANEL_HIDDEN_AT: std::sync::atomic::AtomicI64 = std::sync::atomic::AtomicI64::new(0);
+pub fn toggle_panel(app: &AppHandle) {
+    let win = match app.get_webview_window("panel") { Some(w) => w, None => match create_panel(app) { Ok(w) => w, Err(_) => return } };
+    if win.is_visible().unwrap_or(false) { let _ = win.hide(); return; }
+    if crate::now_ms() - PANEL_HIDDEN_AT.load(std::sync::atomic::Ordering::SeqCst) < 300 { return; }
+    let scale = win.scale_factor().unwrap_or(1.0);
+    let (r, b) = work_area_right_bottom();
+    let _ = win.set_position(tauri::LogicalPosition::new(r / scale - 380.0 - 12.0, b / scale - 540.0 - 12.0));
+    let _ = win.show(); let _ = win.set_focus();
+}
+fn create_panel(app: &AppHandle) -> tauri::Result<tauri::WebviewWindow> {
+    let w = WebviewWindowBuilder::new(app, "panel", WebviewUrl::App("panel.html".into()))
+        .transparent(true).decorations(false).always_on_top(true).skip_taskbar(true).resizable(false).shadow(false)
+        .inner_size(380.0, 540.0).visible(false).build()?;
+    let w2 = w.clone();
+    w.on_window_event(move |e| if let tauri::WindowEvent::Focused(false) = e { if w2.is_visible().unwrap_or(false) { PANEL_HIDDEN_AT.store(crate::now_ms(), std::sync::atomic::Ordering::SeqCst); } let _ = w2.hide(); });
+    Ok(w)
+}
 pub fn open_dashboard(_: &AppHandle) {}

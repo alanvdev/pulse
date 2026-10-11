@@ -27,12 +27,12 @@ use tauri::{AppHandle, Emitter, Manager, State};
     broadcast(&app);
 }
 
-// Se completan en las Tasks 4 a 6.
-#[tauri::command] pub fn daily_summary() {}
+#[tauri::command] pub fn daily_summary() {}   // Task 6
 #[derive(serde::Deserialize)] pub struct Rect { x: f64, y: f64, w: f64, h: f64 }
 #[tauri::command] pub fn set_island_hitbox(hb: State<crate::windows::Hitbox>, rect: Option<Rect>) { *hb.0.lock().unwrap() = rect.map(|r| (r.x - 6.0, r.y - 6.0, r.w + 12.0, r.h + 12.0)); }
 #[tauri::command] pub fn island_focus(app: AppHandle, on: bool) {
     if let Some(w) = app.get_webview_window("island") { let _ = w.set_ignore_cursor_events(!on); if on { let _ = w.set_focus(); } }
 }
-#[tauri::command] pub fn open_dashboard() {}
-#[tauri::command] pub fn toggle_panel() {}
+// Async: en Windows, crear una ventana desde un comando síncrono bloquea el hilo principal.
+#[tauri::command] pub async fn toggle_panel(app: AppHandle) { crate::windows::toggle_panel(&app) }
+#[tauri::command] pub async fn open_dashboard(app: AppHandle) { crate::windows::open_dashboard(&app) }

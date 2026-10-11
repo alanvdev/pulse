@@ -1,0 +1,47 @@
+@import "../shared/tw.css";
+
+/* Efectos de Bolsillo que Tailwind no cubre (copiados de docs/artboards/centro-de-mando.html). */
+html, body, #root { height: 100% }
+.bp{position:fixed;inset:0;border-radius:14px;background:rgba(26,28,34,.92);-webkit-backdrop-filter:blur(28px) saturate(160%);backdrop-filter:blur(28px) saturate(160%);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 0 0 1px rgba(255,255,255,.07);color:#eef0f3;overflow:hidden;transform-origin:calc(100% - 60px) 100%}
+.bp-view{scrollbar-width:none}
+.bp-ring circle{fill:none;stroke-width:4;stroke-linecap:round;transition:stroke .5s,stroke-dasharray .6s var(--e-out)}
+.bp-ring .bg{stroke:rgba(255,255,255,.07)}
+.tile{position:relative;overflow:hidden;transition:background .25s,color .25s,transform .15s var(--e-out)}
+.tile:hover{background:rgba(255,255,255,.11)}
+.tile:active{transform:scale(.94)}
+.tile .ms{font-size:20px;transition:transform .3s cubic-bezier(.3,1.6,.5,1)}
+.tile[aria-pressed="true"]{background:var(--acc);color:#0b1426}
+.tile[aria-pressed="true"] .ms{transform:scale(1.08)}
+.tile .rip{position:absolute;border-radius:50%;background:rgba(255,255,255,.35);transform:scale(0);pointer-events:none}
+.card{background:rgba(255,255,255,.055);transition:background .25s,box-shadow .3s}
+.card:hover{background:rgba(255,255,255,.085)}
+.card.need{background:rgba(255,176,46,.1);box-shadow:inset 0 0 0 1px rgba(255,176,46,.35)}
+.card.enter{animation:cin .5s var(--e-out)}
+@keyframes cin{from{opacity:0;transform:translateY(8px) scale(.98)}}
+.ic{background:color-mix(in srgb,var(--c) 17%,transparent);color:var(--c)}
+.ic .spin{animation:spin 1.4s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ex{animation:exin .45s var(--e-out)}
+@keyframes exin{from{opacity:0;transform:translateY(-4px)}}
+.acts button{position:relative;overflow:hidden;background:rgba(255,255,255,.1);color:#eef0f3;transition:transform .12s var(--e-out),background .15s}
+.acts button:hover{background:rgba(255,255,255,.15)}
+.acts button:active{transform:scale(.95)}
+.acts .y{background:#eef0f3;color:#0b0d10}
+.acts .y:hover{background:#fff}
+.acts .y .fill{position:absolute;inset:0;background:var(--perm);transform-origin:left;transform:scaleX(var(--hold,0))}
+.acts .y > :not(.fill){position:relative}
+.acts kbd{font-family:var(--f-mono);font-size:10px;opacity:.5;border:1px solid currentColor;border-radius:4px;padding:0 4px}
+.bp-ind{position:absolute;top:6px;bottom:6px;left:6px;border-radius:9px;background:rgba(255,255,255,.09);transition:transform .45s var(--sp),width .45s var(--sp)}
+.bp-tabs button[aria-current="true"]{color:#fff}
+.srow + .srow{border-top:1px solid rgba(255,255,255,.06)}
+.iseg button{transition:background .2s,color .2s}
+.iseg button[aria-pressed="true"]{background:rgba(255,255,255,.14);color:#fff}
+.dbar i{height:100%;transform-origin:left;animation:grow .9s var(--e-out) both}
+@keyframes grow{from{transform:scaleX(0)}}
+.sw{position:relative;width:32px;height:19px;flex:none;appearance:none;-webkit-appearance:none;background:rgba(255,255,255,.16);border-radius:99px;margin:0;cursor:pointer;transition:background .2s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:13px;height:13px;border-radius:50%;background:#f1f3f5;transition:transform .24s cubic-bezier(.3,1.6,.5,1)}
+.sw:checked{background:var(--acc)}
+.sw:checked::after{transform:translateX(13px)}
+input[type=range]{accent-color:#eef0f3}
+
+@media (prefers-reduced-motion:reduce){.ic .spin,.card.enter,.dbar i,.ex{animation:none}}

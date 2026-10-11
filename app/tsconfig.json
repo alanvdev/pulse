@@ -1,1 +1,1 @@
-{"compilerOptions":{"target":"ES2022","module":"ESNext","moduleResolution":"Bundler","strict":true,"lib":["ES2022","DOM","DOM.Iterable"],"skipLibCheck":true,"noEmit":true},"include":["ui/src"]}
+{"compilerOptions":{"target":"ES2022","module":"ESNext","moduleResolution":"Bundler","strict":true,"lib":["ES2022","DOM","DOM.Iterable"],"jsx":"react-jsx","skipLibCheck":true,"noEmit":true},"include":["ui/src"]}
