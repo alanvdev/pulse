@@ -101,3 +101,22 @@ kbd.on{opacity:1;background:rgba(255,255,255,.22);transform:translateY(1px)}
   .o-core.work .o-orbit,.o-core.wait .o-dot{animation:none}
   .draw{animation:none;clip-path:none}
 }
+
+/* ---------- Preguntas de Claude ---------- */
+.qcard{width:440px;white-space:normal}
+.q{display:grid;gap:8px}
+.q + .q{padding-top:10px;border-top:1px solid rgba(255,255,255,.06)}
+.qh{display:grid;gap:4px;font-size:13.5px;line-height:1.35}
+.qh b{font-weight:500}
+.qh small{font-size:11.5px;color:#8a919b}
+.qtag{justify-self:start;font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:#ffd590;background:rgba(255,176,46,.12);border-radius:5px;padding:1px 6px}
+.qopts{display:grid;gap:6px}
+.qopt{display:grid;gap:2px;text-align:left;border:0;border-radius:9px;padding:7px 10px;background:rgba(255,255,255,.06);color:#e3e6ea;font-size:12.5px;transition:background .15s,box-shadow .15s,transform .12s var(--e-out)}
+.qopt:hover{background:rgba(255,255,255,.1)}
+.qopt:active{transform:scale(.98)}
+.qopt small{font-size:11.5px;color:#9aa1ab}
+.qopt[aria-pressed="true"]{background:rgba(255,176,46,.14);box-shadow:inset 0 0 0 1px rgba(255,176,46,.55)}
+.qother span{color:#c7ccd3}
+.qin{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:7px 10px;color:#f2f4f6;font-size:12.5px;outline:0;user-select:text}
+.qin:focus{border-color:rgba(255,176,46,.55)}
+.acts button:disabled{opacity:.45;cursor:default}

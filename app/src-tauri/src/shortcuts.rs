@@ -18,7 +18,7 @@ pub fn plugin() -> tauri::plugin::TauriPlugin<Wry> {
             let (keys, hold) = { let c = st.config.lock().unwrap(); (c.island.keys, c.island.hold) };
             if (sc == &pal || sc == &pal2) && ev.state == ShortcutState::Pressed { let _ = app.emit("pulse://palette", ()); return; }
             if !keys { return; }
-            let top = st.store.lock().unwrap().snapshot().pending.first().cloned();
+            let top = st.store.lock().unwrap().first_permission().cloned();
             let Some(p) = top else { return };
             if sc == &no && ev.state == ShortcutState::Pressed { resolve(&app, p.id, Decision::Deny); }
             if sc == &yes {

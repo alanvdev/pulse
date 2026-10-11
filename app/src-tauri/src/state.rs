@@ -1,6 +1,8 @@
 use std::collections::{BTreeMap, VecDeque};
-use pulse_protocol::{is_dangerous, Envelope, PulseEvent};
+use pulse_protocol::{is_dangerous, project_name, Envelope, PulseEvent};
 use serde::Serialize;
+
+fn first_question(q: &serde_json::Value) -> String { q.get(0).and_then(|x| x.get("question")).and_then(|x| x.as_str()).unwrap_or("Claude te hace una pregunta").to_string() }
 
 pub const IDLE_EXIT_MS: i64 = 5 * 60_000;
 pub const STALE_SESSION_MS: i64 = 2 * 3_600_000;
@@ -15,9 +17,9 @@ pub enum Cue { Start, Permission, Done, Idle, Error, Subagent }
 impl Cue { pub fn key(self) -> &'static str { match self { Cue::Start => "start", Cue::Permission => "permission", Cue::Done => "done", Cue::Idle => "idle", Cue::Error => "error", Cue::Subagent => "subagent" } } }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct Session { pub id: String, pub project: String, pub slot: u8, pub state: SessionState, pub last: String, pub subagents: u32, pub since_ms: i64, pub last_event_ms: i64, pub actions: u32, pub muted_until_ms: i64 }
+pub struct Session { pub id: String, pub project: String, #[serde(skip)] pub cwd: String, pub slot: u8, pub state: SessionState, pub last: String, pub subagents: u32, pub since_ms: i64, pub last_event_ms: i64, pub actions: u32, pub muted_until_ms: i64 }
 #[derive(Debug, Clone, Serialize)]
-pub struct Pending { pub id: u64, pub session_id: String, pub project: String, pub tool: String, pub command: String, pub description: String, pub danger: bool, pub at_ms: i64, pub timeout_ms: i64 }
+pub struct Pending { pub id: u64, pub kind: String, pub session_id: String, pub project: String, pub tool: String, pub command: String, pub description: String, pub danger: bool, pub at_ms: i64, pub timeout_ms: i64, pub questions: Option<serde_json::Value> }
 #[derive(Debug, Clone, Serialize)]
 pub struct FeedItem { pub session_id: String, pub project: String, pub text: String, pub at_ms: i64 }
 #[derive(Debug, Clone, Serialize)]
@@ -49,7 +51,7 @@ impl Store {
         if e.event == PulseEvent::SessionEnd { self.sessions.remove(&e.session_id); self.pending.retain(|p| p.session_id != e.session_id); return None; }
         let slot = self.free_slot();
         let s = self.sessions.entry(e.session_id.clone()).or_insert_with(|| Session {
-            id: e.session_id.clone(), project: e.project.clone(), slot, state: SessionState::Idle, last: String::new(),
+            id: e.session_id.clone(), project: e.project.clone(), cwd: e.cwd.clone(), slot, state: SessionState::Idle, last: String::new(),
             subagents: 0, since_ms: e.at_ms, last_event_ms: e.at_ms, actions: 0, muted_until_ms: 0 });
         s.last_event_ms = e.at_ms;
         let set = |s: &mut Session, st: SessionState| if s.state != st { s.state = st; s.since_ms = e.at_ms; };
@@ -63,6 +65,12 @@ impl Store {
                 (None, Some(s.last.clone()))
             }
             PulseEvent::Permission { command, .. } => { set(s, SessionState::Waiting); s.last = command.clone(); (Some(Cue::Permission), Some(format!("Permiso {command}"))) }
+            PulseEvent::Question { questions } => {
+                let q = first_question(questions);
+                if e.ask { set(s, SessionState::Waiting); s.last = format!("Te pregunta: {q}"); (Some(Cue::Permission), Some(format!("Pregunta {q}"))) }
+                else { set(s, SessionState::IdleWait); s.last = format!("Te pregunta en la terminal: {q}"); (Some(Cue::Idle), None) }
+            }
+            PulseEvent::Plan => { set(s, SessionState::IdleWait); s.last = "Plan listo para revisar".into(); (Some(Cue::Idle), Some("Plan listo".into())) }
             PulseEvent::Idle => { set(s, SessionState::IdleWait); (Some(Cue::Idle), None) }
             PulseEvent::Done => { set(s, SessionState::Done); s.subagents = 0; (Some(Cue::Done), Some("Terminó".into())) }
             PulseEvent::Error { message } => { s.last = format!("Falló: {message}"); (Some(Cue::Error), Some(format!("Error {message}"))) }
@@ -77,9 +85,26 @@ impl Store {
     }
 
     pub fn add_pending(&mut self, id: u64, e: &Envelope, timeout_ms: i64) {
-        if let PulseEvent::Permission { tool, command, description } = &e.event {
-            self.pending.push(Pending { id, session_id: e.session_id.clone(), project: e.project.clone(), tool: tool.clone(), command: command.clone(), description: description.clone(), danger: is_dangerous(command), at_ms: e.at_ms, timeout_ms });
+        let base = |kind: &str, tool: &str, command: String, description: String, danger: bool, questions: Option<serde_json::Value>| Pending { id, kind: kind.into(), session_id: e.session_id.clone(), project: e.project.clone(), tool: tool.into(), command, description, danger, at_ms: e.at_ms, timeout_ms, questions };
+        match &e.event {
+            PulseEvent::Permission { tool, command, description } => self.pending.push(base("permission", tool, command.clone(), description.clone(), is_dangerous(command), None)),
+            PulseEvent::Question { questions } => self.pending.push(base("question", "AskUserQuestion", first_question(questions), String::new(), false, Some(questions.clone()))),
+            _ => {}
         }
+    }
+
+    /// El primer permiso de verdad (los atajos Ctrl+Alt+Y/N no contestan preguntas).
+    pub fn first_permission(&self) -> Option<&Pending> { self.pending.iter().find(|p| p.kind == "permission") }
+
+    /// Fija el proyecto de la sesión en su carpeta raíz: Claude hace `cd` a subcarpetas y el `cwd` del hook cambia.
+    /// La raíz es el `cwd` más corto visto que contiene a los demás.
+    pub fn canonical(&mut self, mut e: Envelope) -> Envelope {
+        if let Some(s) = self.sessions.get_mut(&e.session_id) {
+            let (old, new) = (s.cwd.to_lowercase().replace('/', "\\"), e.cwd.to_lowercase().replace('/', "\\"));
+            if !new.is_empty() && (old.is_empty() || (old.starts_with(&new) && old[new.len()..].starts_with('\\'))) { s.cwd = e.cwd.clone(); s.project = project_name(&e.cwd); }
+            e.project = s.project.clone();
+        }
+        e
     }
 
     pub fn resolve(&mut self, id: u64) -> Option<Pending> {
@@ -92,7 +117,7 @@ impl Store {
     /// Permisos de la sesión de `e` que ya se respondieron en la terminal: si Claude siguió (empezó otro turno, terminó,
     /// falló, quedó esperando), ya no espera a la isla. Las herramientas no cuentan: pueden correr en paralelo al permiso.
     pub fn answered_elsewhere(&self, e: &Envelope) -> Vec<u64> {
-        if matches!(e.event, PulseEvent::Permission { .. } | PulseEvent::Tool { .. } | PulseEvent::SessionStart | PulseEvent::SubagentStart { .. }) { return Vec::new(); }
+        if matches!(e.event, PulseEvent::Permission { .. } | PulseEvent::Question { .. } | PulseEvent::Plan | PulseEvent::Tool { .. } | PulseEvent::SessionStart | PulseEvent::SubagentStart { .. }) { return Vec::new(); }
         self.pending.iter().filter(|p| p.session_id == e.session_id).map(|p| p.id).collect()
     }
 
@@ -187,6 +212,35 @@ mod tests {
         assert_eq!(s.resolve(7).unwrap().command, "git push --force");
         assert!(s.snapshot().pending.is_empty());
         assert_eq!(s.snapshot().sessions[0].state, SessionState::Working);
+    }
+    fn question(sid: &str, at: i64, ask: bool) -> Envelope { let mut e = env(sid, at, PulseEvent::Question { questions: serde_json::json!([{ "question": "¿Qué framework?", "header": "Framework", "options": [], "multiSelect": false }]) }); e.ask = ask; e }
+    #[test] fn questions_wait_for_an_answer_and_are_not_permissions() {
+        let mut s = Store::default();
+        let q = question("a", 0, true);
+        assert_eq!(s.apply(&q), Some(Cue::Permission));
+        s.add_pending(5, &q, 60_000);
+        let p = &s.snapshot().pending[0];
+        assert_eq!((p.kind.as_str(), p.command.as_str(), p.danger), ("question", "¿Qué framework?", false));
+        assert!(p.questions.is_some());
+        assert_eq!(s.snapshot().sessions[0].state, SessionState::Waiting);
+        assert!(s.first_permission().is_none(), "Ctrl+Alt+Y/N no deben contestar preguntas");
+        let e = perm("a", 1, "ls"); s.apply(&e); s.add_pending(6, &e, 30_000);
+        assert_eq!(s.first_permission().unwrap().id, 6);
+    }
+    #[test] fn questions_and_plans_in_the_terminal_only_notify() {
+        let mut s = Store::default();
+        assert_eq!(s.apply(&question("a", 0, false)), Some(Cue::Idle));
+        assert_eq!(s.snapshot().sessions[0].state, SessionState::IdleWait);
+        assert_eq!(s.apply(&env("b", 0, PulseEvent::Plan)), Some(Cue::Idle));
+        assert_eq!(s.snapshot().sessions[1].last, "Plan listo para revisar");
+    }
+    #[test] fn project_name_stays_at_the_session_root() {
+        let mut s = Store::default();
+        let mut at = |cwd: &str, t: i64| { let e = s.canonical(Envelope { cwd: cwd.into(), project: pulse_protocol::project_name(cwd), ..env("a", t, PulseEvent::Done) }); s.apply(&e); e.project };   // como en handle()
+        assert_eq!(at(r"D:\p\pulse\app\src", 0), "src");                // primer evento desde una subcarpeta
+        assert_eq!(at(r"D:\p\pulse", 1), "pulse");                      // aparece la raíz
+        assert_eq!(at(r"D:\p\pulse\app\ui\src\island", 2), "pulse");   // cd a subcarpetas no lo cambia
+        assert_eq!(s.snapshot().sessions[0].project, "pulse");
     }
     #[test] fn later_events_mean_it_was_answered_in_the_terminal() {
         let mut s = Store::default();

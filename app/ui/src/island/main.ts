@@ -1,8 +1,9 @@
 import { listen } from '@tauri-apps/api/event';
-import { allowAll, decide, getConfig, getSnapshot, islandFocus, muteSession, onConfig, onFx, onState, openDashboard, setConfig, setFocus, setIslandHitbox, type Config, type Fx, type Snapshot } from '../shared/bridge';
+import { allowAll, answer, decide, skip, getConfig, getSnapshot, islandFocus, muteSession, onConfig, onFx, onState, openDashboard, setConfig, setFocus, setIslandHitbox, type Config, type Fx, type Snapshot } from '../shared/bridge';
 import { SP_MOVE, SP_OPEN, T } from '../shared/motion';
 import { mountComando } from './comando';
 import { mountOrbe, type OrbeCtx } from './orbe';
+import { bindQuestions } from './questions';
 import type { Tr } from './shared';
 
 const board = document.getElementById('board')!;
@@ -20,7 +21,7 @@ function hitbox(el: HTMLElement | null) {
 
 const ctx: OrbeCtx = {
   snap: () => snap, cfg: () => cfg, transient: () => tr,
-  decide: (id, allow) => { decide(id, allow); }, allowAll: () => { allowAll(); }, setFocus: on => { setFocus(on); },
+  decide: (id, allow) => { decide(id, allow); }, answer: (id, a) => { answer(id, a); }, skip: id => { skip(id); }, allowAll: () => { allowAll(); }, setFocus: on => { setFocus(on); },
   muteSession: (id, minutes) => { muteSession(id, minutes); }, openDashboard: () => { openDashboard(); },
   islandFocus: on => { islandFocus(on); }, hitbox,
   setSide: side => { cfg = { ...cfg, island: { ...cfg.island, orb_side: side } }; setConfig(cfg); },
@@ -40,9 +41,17 @@ function onEffect(fx: Fx) {
   const later = (f: () => void) => setTimeout(f, T(cfg.island.beam ? 520 : 0));
   if (fx.kind === 'resolved') {
     const [d, ...rest] = fx.text.split('|'), cmd = rest.join('|');
-    if (d === 'terminal') transient({ k: 'info', icon: 'terminal', text: 'Respondido en la terminal' }, 1600);
+    if (d === 'answer') transient({ k: 'ok', text: `Respuesta enviada: ${cmd}` }, 1800);
+    else if (d === 'skip') transient({ k: 'info', icon: 'terminal', text: 'Respóndela en la terminal' }, 1800);
+    else if (d === 'terminal') transient({ k: 'info', icon: 'terminal', text: 'Respondido en la terminal' }, 1600);
     else if (d === 'none') transient({ k: 'info', icon: 'schedule', text: 'Sin respuesta: Claude te pregunta en la terminal' }, 2200);
     else transient({ k: d === 'allow' ? 'ok' : 'no', project: fx.project, text: cmd }, 1300);
+    return;
+  }
+  if (fx.kind === 'notice') {
+    const [what, ...rest] = fx.text.split('|');
+    if (what === 'plan') transient({ k: 'info', icon: 'assignment', text: `${fx.project}: Claude terminó un plan, revísalo en la terminal` }, 4500);
+    else transient({ k: 'info', icon: 'help', text: `${fx.project} te pregunta en la terminal: ${rest.join('|')}` }, 4500);
     return;
   }
   if (fx.kind === 'release') { mode?.light('focus'); later(() => transient({ k: 'release', items: JSON.parse(fx.text) }, 4200)); return; }
@@ -63,6 +72,7 @@ document.addEventListener('pointerdown', e => { const b = (e.target as HTMLEleme
 (async () => {
   [cfg, snap] = await Promise.all([getConfig(), getSnapshot()]);
   mount();
+  bindQuestions(board, id => snap.pending.find(p => p.id === id), ctx);
   onState(s => { snap = s; render(); });
   onConfig(c => { cfg = c; if (c.island.mode !== modeName) mount(); else render(); });
   onFx(onEffect);

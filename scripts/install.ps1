@@ -31,5 +31,7 @@ foreach ($ev in $events.Keys) {
   if ($s.hooks.ContainsKey($ev)) { $keep = @($s.hooks[$ev] | Where-Object { -not ($_.hooks | Where-Object { $_.command -match 'sounds/play\.ps1|pulse\.exe' }) }) }
   $a = $events[$ev]; $s.hooks[$ev] = $keep + (Entry $a[0] $a[1] $a[2] 35)
 }
+# Preguntas de Claude (AskUserQuestion): la isla puede contestarlas antes de que salgan en la terminal (60 s + margen).
+$s.hooks['PreToolUse'] = @($s.hooks['PreToolUse']) + (Entry 'ask' 'AskUserQuestion' $false 65)
 $s | ConvertTo-Json -Depth 20 | Set-Content $settingsPath -Encoding utf8NoBOM
 Write-Host "Pulse instalado en $dest. Respaldo: $settingsPath.bak-pulse-$stamp"

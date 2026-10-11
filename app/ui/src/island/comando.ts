@@ -2,11 +2,12 @@
 import type { Config, Snapshot } from '../shared/bridge';
 import { COLORS, esc } from '../shared/format';
 import { morph, reduceMotion, T, type Morph, type MorphOpts } from '../shared/motion';
+import { questionCard } from './questions';
 import { beam, fuzzy, ignite, permCard, releaseCard, trPill, type Tr } from './shared';
 
 export interface Ctx {
   snap(): Snapshot; cfg(): Config; transient(): Tr | null;
-  decide(id: number, allow: boolean): void; allowAll(): void; setFocus(on: boolean): void; muteSession(id: string, minutes: number): void; openDashboard(): void;
+  decide(id: number, allow: boolean): void; answer(id: number, answers: Record<string, string>): void; skip(id: number): void; allowAll(): void; setFocus(on: boolean): void; muteSession(id: string, minutes: number): void; openDashboard(): void;
   islandFocus(on: boolean): void; hitbox(el: HTMLElement | null): void;
 }
 type Item = { g: string; icon: string; c: string; text: string; meta: string; run: () => void };
@@ -23,7 +24,7 @@ export function mountComando(board: HTMLElement, ctx: Ctx) {
   function close() { open = false; ctx.islandFocus(false); render(); }
   function build(): Item[] {
     const L: Item[] = [], s = ctx.snap(), now = Date.now();
-    s.pending.forEach(p => { L.push({ g: 'Pendiente', icon: 'check', c: COLORS.done, text: `Permitir ${p.command}`, meta: p.project, run: () => ctx.decide(p.id, true) }); L.push({ g: 'Pendiente', icon: 'close', c: '#ff8c84', text: `Denegar ${p.command}`, meta: p.project, run: () => ctx.decide(p.id, false) }); });
+    s.pending.filter(p => p.kind === 'permission').forEach(p => { L.push({ g: 'Pendiente', icon: 'check', c: COLORS.done, text: `Permitir ${p.command}`, meta: p.project, run: () => ctx.decide(p.id, true) }); L.push({ g: 'Pendiente', icon: 'close', c: '#ff8c84', text: `Denegar ${p.command}`, meta: p.project, run: () => ctx.decide(p.id, false) }); });
     L.push({ g: 'Acciones', icon: 'dark_mode', c: COLORS.focus, text: s.focus ? 'Salir del modo foco' : 'Modo foco por 1 hora', meta: '', run: () => ctx.setFocus(!s.focus) });
     const allMuted = s.sessions.length > 0 && s.sessions.every(x => x.muted_until_ms > now);
     L.push({ g: 'Acciones', icon: allMuted ? 'volume_up' : 'volume_off', c: '#9aa1ab', text: allMuted ? 'Quitar silencio' : 'Silenciar todo 30 min', meta: '', run: () => s.sessions.forEach(x => ctx.muteSession(x.id, allMuted ? 0 : 30)) });
@@ -60,7 +61,8 @@ export function mountComando(board: HTMLElement, ctx: Ctx) {
         const tmp = document.createElement('div'); tmp.innerHTML = palHTML(); const list = $('.pal-list'); if (list) { list.innerHTML = tmp.querySelector('.pal-list')!.innerHTML; bindRows(); moveHL(true); } ctx.hitbox(sh); return;
       }
       html = palHTML(); sig = 'pal' + Math.random(); o.hidden = false;
-    } else if (s.pending.length && hover) { const it = s.pending[0]; html = permCard(it, ctx.cfg(), s.pending.length, s.sessions.find(x => x.id === it.session_id)); sig = 'P' + it.id + s.pending.length; o = { ...o, radius: () => '14px', hidden: false, item: it }; }
+    } else if (s.pending[0]?.kind === 'question') { const it = s.pending[0]; html = questionCard(it, cfg.countdown); sig = 'Q' + it.id; o = { ...o, radius: () => '14px', hidden: false, item: it }; }
+    else if (s.pending.length && hover) { const it = s.pending[0]; html = permCard(it, ctx.cfg(), s.pending.length, s.sessions.find(x => x.id === it.session_id)); sig = 'P' + it.id + s.pending.length; o = { ...o, radius: () => '14px', hidden: false, item: it }; }
     else if (s.pending.length) { const it = s.pending[0], danger = it.danger && cfg.hold; html = `<div class="c-toast" data-act="palette"><span class="ic" style="--c:${COLORS.permission}"><span class="ms">front_hand</span></span><span class="t"><b>${esc(it.project)}</b> <span class="muted">quiere ejecutar</span> <span class="mono c-cmd">${esc(it.command)}</span></span>${cfg.keys ? `<span class="row muted" style="gap:5px;font-size:11.5px;margin-left:4px">Ctrl Alt<kbd data-k="y">Y</kbd>${danger ? 'mantener' : ''}<kbd data-k="n">N</kbd><kbd title="Abre la paleta">↵</kbd></span>` : ''}${cfg.countdown ? '<i class="cd" style="left:14px;right:14px"></i>' : ''}${danger ? '<i class="hold"></i>' : ''}</div>`; sig = 'p' + it.id; o = { ...o, hidden: false, item: it }; }
     else if (tr) { if (tr.k === 'release') html = releaseCard(tr.items ?? []); else { const p = trPill(tr); html = `<div class="c-toast"><span class="ic" style="--c:${p.c}"><span class="ms ${['done', 'ok'].includes(tr.k) ? 'draw' : ''}">${p.ic}</span></span><span class="t">${p.txt}</span><i class="tm"></i></div>`; } sig = 't' + tr.id; o = { ...o, hidden: false, life: 2600 }; }
     const r = morph(m, sig, html, o);

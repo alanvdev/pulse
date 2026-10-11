@@ -30,7 +30,7 @@ async fn answers_ask_requests() {
         let mut out = String::new(); BufReader::new(f).read_line(&mut out).unwrap(); out
     });
     let inc = tokio::time::timeout(std::time::Duration::from_secs(2), rx.recv()).await.unwrap().unwrap();
-    inc.reply.unwrap().send(Decision::Allow).unwrap();
+    inc.reply.unwrap().send(pulse_protocol::Reply { decision: Decision::Allow, answers: None }).unwrap();
     assert_eq!(client.await.unwrap().trim(), r#"{"decision":"allow"}"#);
 }
 

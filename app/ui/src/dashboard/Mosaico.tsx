@@ -1,6 +1,6 @@
 // Mosaico: tablero de piezas reacomodables. Portado de docs/artboards/centro-de-mando.html (WIDGETS, wBody, renderMosaico con FLIP, arrastre, renderSheet, miniPulse) a React + Tailwind.
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { decide, setFocus, type Config, type DaySummary, type Pending, type Snapshot } from '../shared/bridge';
+import { decide, setFocus, skip, type Config, type DaySummary, type Pending, type Snapshot } from '../shared/bridge';
 import { ICON, ago, stateColor } from '../shared/format';
 import { reduceMotion, spring } from '../shared/motion';
 import { pulse } from '../shared/pulse-engine';
@@ -27,6 +27,7 @@ function Pend({ p, more, day }: { p?: Pending; more: number; day: DaySummary | n
   const danger = !!p?.danger && !!cfg?.island.hold;
   const hold = useHold(() => p && decide(p.id, true));
   if (!p) return <><h4><Ms>check_circle</Ms>Pendiente</h4><div className="big" style={{ fontSize: 20 }}>Nada pendiente</div><div className="sub">Te esperó {day ? mins(day.total_waited_ms) : '—'} hoy</div></>;
+  if (p.kind === 'question') return <><h4><Ms style={{ color: '#ffb02e' }}>help</Ms>{p.project} te pregunta</h4><div className="text-[13px] text-[#e6e8eb] line-clamp-2">{p.command}</div><div className="flex gap-1.5 mt-auto items-center"><span className="sub flex-1">Respóndela en la isla</span><button className="wb" type="button" onClick={() => skip(p.id)}>En la terminal</button></div></>;
   return <><h4><Ms style={{ color: '#ffb02e' }}>front_hand</Ms>{p.project} pide permiso</h4><code>{p.command}</code>
     <div className="flex gap-1.5 mt-auto items-center">
       <button className="wb" type="button" onClick={() => decide(p.id, false)}>Denegar</button>

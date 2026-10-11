@@ -2,11 +2,12 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 export type SessionState = 'Idle' | 'Done' | 'Working' | 'IdleWait' | 'Waiting';
 export interface Session { id: string; project: string; slot: number; state: SessionState; last: string; subagents: number; since_ms: number; last_event_ms: number; actions: number; muted_until_ms: number }
-export interface Pending { id: number; session_id: string; project: string; tool: string; command: string; description: string; danger: boolean; at_ms: number; timeout_ms: number }
+export interface Question { question: string; header?: string; options: { label: string; description?: string }[]; multiSelect?: boolean }
+export interface Pending { id: number; kind: 'permission' | 'question'; questions?: Question[] | null; session_id: string; project: string; tool: string; command: string; description: string; danger: boolean; at_ms: number; timeout_ms: number }
 export interface FeedItem { session_id: string; project: string; text: string; at_ms: number }
 export interface Deferred { session_id: string; project: string; kind: string }
 export interface Snapshot { sessions: Session[]; pending: Pending[]; feed: FeedItem[]; focus: boolean; focus_auto: boolean; deferred: Deferred[] }
-export type FxKind = 'start' | 'permission' | 'done' | 'idle' | 'error' | 'subagent' | 'release' | 'resolved';
+export type FxKind = 'start' | 'permission' | 'done' | 'idle' | 'error' | 'subagent' | 'release' | 'resolved' | 'notice';
 export interface Fx { kind: FxKind; session_id: string; project: string; slot: number; text: string; visual: boolean; sound: boolean; monitor: number }
 export interface PulseCfg { color: string; shape: string; duration_ms: number; intensity: number; thickness: number; persistent: boolean }
 export interface Config {
@@ -25,6 +26,8 @@ export const getSnapshot = () => invoke<Snapshot>('get_snapshot');
 export const getConfig = () => invoke<Config>('get_config');
 export const setConfig = (config: Config) => invoke('set_config', { config });
 export const decide = (id: number, allow: boolean) => invoke('decide', { id, allow });
+export const answer = (id: number, answers: Record<string, string>) => invoke('answer', { id, answers });
+export const skip = (id: number) => invoke('skip', { id });
 export const allowAll = () => invoke('allow_all');
 export const setFocus = (on: boolean) => invoke('set_focus', { on });
 export const muteSession = (sessionId: string, minutes: number) => invoke('mute_session', { sessionId, minutes });

@@ -4,12 +4,13 @@ use pulse_protocol::*;
 
 fn now_ms() -> i64 { std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0) }
 
-fn read_envelope(ask: bool) -> Result<Option<Envelope>, String> {
+fn read_input() -> Result<HookInput, String> {
     let mut raw = String::new();
     std::io::stdin().read_to_string(&mut raw).map_err(|e| e.to_string())?;
-    let input: HookInput = serde_json::from_str(&raw).map_err(|e| e.to_string())?;
-    Ok(envelope_from_hook(&input, now_ms(), ask))
+    serde_json::from_str(&raw).map_err(|e| e.to_string())
 }
+
+fn read_envelope(ask: bool) -> Result<Option<Envelope>, String> { Ok(envelope_from_hook(&read_input()?, now_ms(), ask)) }
 
 fn app_path() -> Option<std::path::PathBuf> { std::env::current_exe().ok().map(|p| p.with_file_name("pulse-app.exe")) }
 
@@ -19,7 +20,22 @@ fn emit() -> Result<(), String> {
 }
 
 fn ask() -> Result<(), String> {
-    let Some(env) = read_envelope(true)? else { return Ok(()) };
+    let input = read_input()?;
+    // Pregunta de Claude (PreToolUse de AskUserQuestion): la isla puede contestarla.
+    if let Some(event) = question_hook(&input) {
+        let PulseEvent::Question { questions } = &event else { return Ok(()) };
+        let env = Envelope { v: PROTOCOL_VERSION, session_id: input.session_id.clone(), project: project_name(&input.cwd), cwd: input.cwd.clone(), at_ms: now_ms(), ask: true, event: event.clone() };
+        let line = serde_json::to_string(&env).map_err(|e| e.to_string())? + "\n";
+        let reply = pipe::request(PIPE_NAME, &line, app_path().as_deref(), Duration::from_secs(QUESTION_TIMEOUT_S + 2)).and_then(|r| serde_json::from_str::<Reply>(&r).ok());
+        if let Some(Reply { decision: Decision::Allow, answers: Some(a) }) = reply { println!("{}", answer_output(questions, &a)); }
+        return Ok(());
+    }
+    let Some(mut env) = envelope_from_hook(&input, now_ms(), true) else { return Ok(()) };
+    // Preguntas y planes que llegan como permiso: solo avisar a la isla; se responden en la terminal.
+    if matches!(env.event, PulseEvent::Question { .. } | PulseEvent::Plan) {
+        env.ask = false;
+        return pipe::send_line(PIPE_NAME, &(serde_json::to_string(&env).map_err(|e| e.to_string())? + "\n"), app_path().as_deref());
+    }
     let line = serde_json::to_string(&env).map_err(|e| e.to_string())? + "\n";
     let reply = pipe::request(PIPE_NAME, &line, app_path().as_deref(), Duration::from_secs(ASK_TIMEOUT_S + 2));
     let decision = reply.and_then(|r| serde_json::from_str::<Reply>(&r).ok()).map(|r| r.decision).unwrap_or(Decision::None);

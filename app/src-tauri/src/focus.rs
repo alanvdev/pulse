@@ -12,10 +12,18 @@ pub fn detect(c: &FocusCfg, now_min: u32, mic: bool, fullscreen: bool) -> bool {
 /// `win` cubre todo `mon` (rectángulos left, top, right, bottom).
 pub fn covers(win: (i32, i32, i32, i32), mon: (i32, i32, i32, i32)) -> bool { win.0 <= mon.0 && win.1 <= mon.1 && win.2 >= mon.2 && win.3 >= mon.3 }
 
+/// Una ventana que cubre el monitor es pantalla completa si no está maximizada, o si lo está pero perdió la barra de
+/// título y el borde (así queda un navegador con un video en pantalla completa). Maximizada con título no cuenta:
+/// con la barra de tareas oculta también cubre todo el monitor.
+pub fn is_fullscreen(covers_monitor: bool, zoomed: bool, style: u32) -> bool {
+    const WS_CAPTION: u32 = 0x00C0_0000; const WS_THICKFRAME: u32 = 0x0004_0000;
+    covers_monitor && (!zoomed || style & (WS_CAPTION | WS_THICKFRAME) == 0)
+}
+
 /// ¿La ventana activa es de otra app y cubre todo su monitor (video, juego, presentación)?
 /// No se usa SHQueryUserNotificationState: las ventanas de borde de Pulse cubren el monitor y Windows las toma por pantalla completa.
 pub fn other_app_fullscreen() -> bool {
-    use windows_sys::Win32::{Foundation::RECT, Graphics::Gdi::{GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST}, UI::WindowsAndMessaging::{GetClassNameW, GetForegroundWindow, GetWindowRect, GetWindowThreadProcessId, IsZoomed}};
+    use windows_sys::Win32::{Foundation::RECT, Graphics::Gdi::{GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST}, UI::WindowsAndMessaging::{GetClassNameW, GetForegroundWindow, GetWindowLongW, GetWindowRect, GetWindowThreadProcessId, IsZoomed, GWL_STYLE}};
     unsafe {
         let h = GetForegroundWindow();
         if h.is_null() { return false; }
@@ -23,13 +31,12 @@ pub fn other_app_fullscreen() -> bool {
         if pid == std::process::id() { return false; }
         let mut name = [0u16; 64]; let n = GetClassNameW(h, name.as_mut_ptr(), name.len() as i32);
         if matches!(String::from_utf16_lossy(&name[..n.max(0) as usize]).as_str(), "Progman" | "WorkerW" | "Shell_TrayWnd") { return false; }   // escritorio y barra de tareas
-        if IsZoomed(h) != 0 { return false; }   // maximizada no es pantalla completa (con la barra de tareas oculta cubre todo el monitor)
         let mut r: RECT = std::mem::zeroed();
         if GetWindowRect(h, &mut r) == 0 { return false; }
         let mut mi: MONITORINFO = std::mem::zeroed(); mi.cbSize = std::mem::size_of::<MONITORINFO>() as u32;
         if GetMonitorInfoW(MonitorFromWindow(h, MONITOR_DEFAULTTONEAREST), &mut mi) == 0 { return false; }
         let m = mi.rcMonitor;
-        covers((r.left, r.top, r.right, r.bottom), (m.left, m.top, m.right, m.bottom))
+        is_fullscreen(covers((r.left, r.top, r.right, r.bottom), (m.left, m.top, m.right, m.bottom)), IsZoomed(h) != 0, GetWindowLongW(h, GWL_STYLE) as u32)
     }
 }
 
@@ -102,6 +109,13 @@ mod tests {
         let mut c = FocusCfg::default();
         c.auto = false; c.schedule = true; c.from = "00:00".into(); c.to = "23:59".into();
         assert!(!detect(&c, 600, true, true));
+    }
+    #[test] fn maximized_is_not_fullscreen_but_video_fullscreen_is() {
+        // valores reales medidos en este equipo (barra de tareas en ocultar automáticamente)
+        assert!(!is_fullscreen(true, true, 0x17CF0000));   // Warp o Brave maximizados: con barra de título y borde
+        assert!(is_fullscreen(true, true, 0x170B0000));    // Brave con YouTube en pantalla completa: sigue "maximizado", sin título ni borde
+        assert!(is_fullscreen(true, false, 0x16CF0000));   // pantalla completa sin maximizar
+        assert!(!is_fullscreen(false, false, 0x170B0000)); // no cubre el monitor
     }
     #[test] fn fullscreen_means_covering_the_whole_monitor() {
         let mon = (0, 0, 1920, 1080);

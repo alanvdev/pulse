@@ -10,8 +10,11 @@ use tauri::{AppHandle, Emitter, Manager, State};
     let _ = app.emit("pulse://config", &config);
 }
 #[tauri::command] pub fn decide(app: AppHandle, id: u64, allow: bool) { resolve(&app, id, if allow { Decision::Allow } else { Decision::Deny }); }
+#[tauri::command] pub fn answer(app: AppHandle, id: u64, answers: serde_json::Value) { crate::answer(&app, id, answers); }
+/// Deja la pregunta para la terminal (no decide nada).
+#[tauri::command] pub fn skip(app: AppHandle, id: u64) { crate::resolve_as(&app, id, Decision::None, "skip"); }
 #[tauri::command] pub fn allow_all(app: AppHandle, st: State<AppState>) {
-    let ids: Vec<u64> = st.store.lock().unwrap().snapshot().pending.iter().map(|p| p.id).collect();
+    let ids: Vec<u64> = st.store.lock().unwrap().snapshot().pending.iter().filter(|p| p.kind == "permission").map(|p| p.id).collect();
     for id in ids { resolve(&app, id, Decision::Allow); }
 }
 #[tauri::command] pub fn set_focus(app: AppHandle, st: State<AppState>, on: bool) {

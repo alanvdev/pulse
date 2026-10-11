@@ -1,7 +1,7 @@
 pub mod chroma; pub mod commands; pub mod config; pub mod daylog; pub mod focus; pub mod logbook;
 pub mod server; pub mod shortcuts; pub mod sound; pub mod state; pub mod tray; pub mod windows;
 
-use pulse_protocol::{Decision, PulseEvent};
+use pulse_protocol::{Decision, PulseEvent, Reply};
 use serde::Serialize;
 use state::{Cue, Store};
 use std::{collections::HashMap, sync::{atomic::{AtomicU64, Ordering}, Mutex}};
@@ -11,7 +11,7 @@ use tokio::sync::oneshot;
 pub struct AppState {
     pub store: Mutex<Store>,
     pub config: Mutex<config::Config>,
-    pub waiters: Mutex<HashMap<u64, oneshot::Sender<Decision>>>,
+    pub waiters: Mutex<HashMap<u64, oneshot::Sender<Reply>>>,
     pub next_id: AtomicU64,
     pub player: sound::Player,
 }
@@ -34,20 +34,29 @@ pub fn emit_fx(app: &AppHandle, fx: Fx) { let _ = app.emit("pulse://fx", fx); }
 pub fn resolve(app: &AppHandle, id: u64, decision: Decision) { resolve_as(app, id, decision, match decision { Decision::Allow => "allow", Decision::Deny => "deny", Decision::None => "none" }); }
 
 /// Como `resolve`, con la etiqueta que verá la isla (`terminal` = se respondió en la terminal).
-pub fn resolve_as(app: &AppHandle, id: u64, decision: Decision, label: &str) {
+pub fn resolve_as(app: &AppHandle, id: u64, decision: Decision, label: &str) { finish(app, id, Reply { decision, answers: None }, label, None); }
+
+/// Contesta una pregunta de Claude con `answers` (pregunta → opción elegida).
+pub fn answer(app: &AppHandle, id: u64, answers: serde_json::Value) {
+    let summary = answers.as_object().map(|m| m.values().filter_map(|v| v.as_str()).collect::<Vec<_>>().join(" · ")).unwrap_or_default();
+    finish(app, id, Reply { decision: Decision::Allow, answers: Some(answers) }, "answer", Some(summary));
+}
+
+fn finish(app: &AppHandle, id: u64, reply: Reply, label: &str, text: Option<String>) {
+    let decision = reply.decision;
     let st = app.state::<AppState>();
     let pending = st.store.lock().unwrap().resolve(id);
-    if let Some(tx) = st.waiters.lock().unwrap().remove(&id) { let _ = tx.send(decision); }
+    if let Some(tx) = st.waiters.lock().unwrap().remove(&id) { let _ = tx.send(reply); }
     if let Some(p) = pending {
         logbook::append_resolve(&p.session_id, &p.project, id, match decision { Decision::Allow => Some(true), Decision::Deny => Some(false), Decision::None => None }, now_ms());
-        emit_fx(app, Fx { kind: "resolved".into(), session_id: p.session_id, project: p.project, slot: 0, text: format!("{label}|{}", p.command), visual: false, sound: false, monitor: windows::active_monitor_index(app) });
+        emit_fx(app, Fx { kind: "resolved".into(), session_id: p.session_id, project: p.project, slot: 0, text: format!("{label}|{}", text.unwrap_or(p.command)), visual: false, sound: false, monitor: windows::active_monitor_index(app) });
     }
     broadcast(app);
 }
 
 fn handle(app: &AppHandle, inc: server::Incoming) {
     let st = app.state::<AppState>();
-    let env = inc.env;
+    let env = st.store.lock().unwrap().canonical(inc.env);
     logbook::append(&env);
     let cfg = st.config.lock().unwrap().clone();
     let answered = st.store.lock().unwrap().answered_elsewhere(&env);
@@ -55,7 +64,8 @@ fn handle(app: &AppHandle, inc: server::Incoming) {
     let (cue, focus_on, muted, slot) = { let mut s = st.store.lock().unwrap(); let c = s.apply(&env); (c, s.focus(), s.is_muted(&env.session_id, now_ms()), s.slot_of(&env.session_id)) };
     if let Some(reply) = inc.reply {
         let id = st.next_id.fetch_add(1, Ordering::SeqCst) + 1;
-        st.store.lock().unwrap().add_pending(id, &env, cfg.island.ask_timeout_s as i64 * 1000);
+        let timeout_s = if matches!(env.event, PulseEvent::Question { .. }) { pulse_protocol::QUESTION_TIMEOUT_S as i64 } else { cfg.island.ask_timeout_s as i64 };
+        st.store.lock().unwrap().add_pending(id, &env, timeout_s * 1000);
         st.waiters.lock().unwrap().insert(id, reply);
     }
     if let Some(cue) = cue {
@@ -65,6 +75,9 @@ fn handle(app: &AppHandle, inc: server::Incoming) {
         if r.defer { st.store.lock().unwrap().defer(&env, kind); }
         if r.sound { st.player.play(cue, cfg.sounds.volume as f32 / 100.0); }
         let text = match &env.event { PulseEvent::Error { message } => message.clone(), PulseEvent::Permission { command, .. } => command.clone(), _ => String::new() };
+        // preguntas y planes que se contestan en la terminal: aviso para la isla
+        let notice = match &env.event { PulseEvent::Plan => Some("plan|".to_string()), PulseEvent::Question { questions } if !env.ask => Some(format!("question|{}", questions.get(0).and_then(|q| q.get("question")).and_then(|q| q.as_str()).unwrap_or(""))), _ => None };
+        if let Some(t) = notice { emit_fx(app, Fx { kind: "notice".into(), session_id: env.session_id.clone(), project: env.project.clone(), slot, text: t, visual: false, sound: false, monitor: windows::active_monitor_index(app) }); }
         emit_fx(app, Fx { kind: kind.into(), session_id: env.session_id.clone(), project: env.project.clone(), slot, text, visual: r.visual, sound: r.sound, monitor: windows::active_monitor_index(app) });
         if r.visual { chroma::pulse(app, kind, slot); }
     }
@@ -76,7 +89,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(shortcuts::plugin())
         .manage(AppState { store: Mutex::new(Store::new(now_ms())), config: Mutex::new(config::load()), waiters: Mutex::new(HashMap::new()), next_id: AtomicU64::new(0), player: sound::Player::start() })
-        .invoke_handler(tauri::generate_handler![commands::get_snapshot, commands::get_config, commands::set_config, commands::decide, commands::allow_all, commands::set_focus, commands::mute_session, commands::daily_summary, commands::set_island_hitbox, commands::island_focus, commands::open_dashboard, commands::toggle_panel])
+        .invoke_handler(tauri::generate_handler![commands::get_snapshot, commands::get_config, commands::set_config, commands::decide, commands::answer, commands::skip, commands::allow_all, commands::set_focus, commands::mute_session, commands::daily_summary, commands::set_island_hitbox, commands::island_focus, commands::open_dashboard, commands::toggle_panel])
         .setup(move |app| {
             let h = app.handle().clone();
             tray::create(&h, windows::toggle_panel)?;

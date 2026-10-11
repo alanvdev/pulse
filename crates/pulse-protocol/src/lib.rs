@@ -4,6 +4,8 @@ use serde_json::{json, Value};
 pub const PIPE_NAME: &str = r"\\.\pipe\pulse";
 pub const PROTOCOL_VERSION: u32 = 1;
 pub const ASK_TIMEOUT_S: u64 = 30;
+/// Cuánto espera la isla una respuesta a una pregunta de Claude antes de dejarla en la terminal.
+pub const QUESTION_TIMEOUT_S: u64 = 60;
 const MAX_TEXT: usize = 120;
 
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -30,6 +32,10 @@ pub enum PulseEvent {
     Error { message: String },
     SubagentStart { agent: String },
     SubagentStop { agent: String },
+    /// Claude te pregunta algo (`AskUserQuestion`): `questions` es el arreglo original de la herramienta.
+    Question { questions: Value },
+    /// Claude terminó un plan y pide aprobarlo (`ExitPlanMode`).
+    Plan,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -47,8 +53,8 @@ pub struct Envelope {
 #[serde(rename_all = "lowercase")]
 pub enum Decision { Allow, Deny, None }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct Reply { pub decision: Decision }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Reply { pub decision: Decision, #[serde(default, skip_serializing_if = "Option::is_none")] pub answers: Option<Value> }
 
 pub fn project_name(cwd: &str) -> String {
     cwd.trim_end_matches(['\\', '/']).rsplit(['\\', '/']).next().filter(|s| !s.is_empty()).unwrap_or("sesión").to_string()
@@ -76,6 +82,8 @@ pub fn map_hook(i: &HookInput) -> Option<PulseEvent> {
         "SessionEnd" => PulseEvent::SessionEnd,
         "UserPromptSubmit" => PulseEvent::Start { prompt: truncate(i.prompt.as_deref().unwrap_or("")) },
         "PreToolUse" => PulseEvent::Tool { target: tool_target(&tool, i.tool_input.as_ref()), tool },
+        "PermissionRequest" if tool == "AskUserQuestion" => PulseEvent::Question { questions: questions(i) },
+        "PermissionRequest" if tool == "ExitPlanMode" => PulseEvent::Plan,
         "PermissionRequest" => PulseEvent::Permission { command: tool_target(&tool, i.tool_input.as_ref()), description: truncate(i.tool_input.as_ref().and_then(|v| v.get("description")).and_then(Value::as_str).unwrap_or("")), tool },
         "Notification" if i.notification_type.as_deref() == Some("idle_prompt") => PulseEvent::Idle,
         "Stop" => PulseEvent::Done,
@@ -84,6 +92,13 @@ pub fn map_hook(i: &HookInput) -> Option<PulseEvent> {
         "SubagentStop" => PulseEvent::SubagentStop { agent: i.agent_type.clone().unwrap_or_default() },
         _ => return None,
     })
+}
+
+fn questions(i: &HookInput) -> Value { i.tool_input.as_ref().and_then(|v| v.get("questions")).cloned().unwrap_or(Value::Array(vec![])) }
+
+/// `PreToolUse` de `AskUserQuestion`: la pregunta que la isla puede contestar.
+pub fn question_hook(i: &HookInput) -> Option<PulseEvent> {
+    (i.hook_event_name == "PreToolUse" && i.tool_name.as_deref() == Some("AskUserQuestion")).then(|| PulseEvent::Question { questions: questions(i) })
 }
 
 pub fn envelope_from_hook(i: &HookInput, at_ms: i64, ask: bool) -> Option<Envelope> {
@@ -102,6 +117,11 @@ pub fn permission_output(d: Decision) -> Option<String> {
     let mut decision = json!({ "behavior": behavior });
     if d == Decision::Deny { decision["message"] = json!("Denegado desde Pulse"); }
     Some(json!({ "hookSpecificOutput": { "hookEventName": "PermissionRequest", "decision": decision } }).to_string())
+}
+
+/// JSON de `PreToolUse` que contesta un `AskUserQuestion`: repite las preguntas y agrega `answers` (pregunta → opción).
+pub fn answer_output(questions: &Value, answers: &Value) -> String {
+    json!({ "hookSpecificOutput": { "hookEventName": "PreToolUse", "permissionDecision": "allow", "updatedInput": { "questions": questions, "answers": answers } } }).to_string()
 }
 
 #[cfg(test)]
@@ -144,6 +164,25 @@ mod tests {
     #[test] fn dangerous_commands() {
         for c in ["git push --force origin main", "git push -f", "rm -rf tmp", "npx prisma migrate dev", "git reset --hard HEAD~1", "Remove-Item -Recurse x", "DROP TABLE users"] { assert!(is_dangerous(c), "{c}"); }
         for c in ["npm run build", "git push origin main", "ls -la"] { assert!(!is_dangerous(c), "{c}"); }
+    }
+    #[test] fn questions_and_plans_are_not_permissions() {
+        let q = r#"{"session_id":"a","hook_event_name":"PermissionRequest","tool_name":"AskUserQuestion","tool_input":{"questions":[{"question":"¿Qué framework?","header":"Framework","options":[{"label":"React","description":"x"},{"label":"Vue","description":"y"}],"multiSelect":false}]}}"#;
+        match map_hook(&hook(q)) { Some(PulseEvent::Question { questions }) => assert_eq!(questions[0]["header"], "Framework"), o => panic!("{o:?}") }
+        assert_eq!(map_hook(&hook(r#"{"session_id":"a","hook_event_name":"PermissionRequest","tool_name":"ExitPlanMode","tool_input":{}}"#)), Some(PulseEvent::Plan));
+        // la pregunta se responde en PreToolUse (la vía documentada); el resto de PreToolUse no pasa por aquí
+        let pre = r#"{"session_id":"a","hook_event_name":"PreToolUse","tool_name":"AskUserQuestion","tool_input":{"questions":[{"question":"¿Ya?","header":"H","options":[],"multiSelect":false}]}}"#;
+        assert!(matches!(question_hook(&hook(pre)), Some(PulseEvent::Question { .. })));
+        assert_eq!(question_hook(&hook(r#"{"session_id":"a","hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"ls"}}"#)), None);
+    }
+    #[test] fn answer_output_echoes_questions_and_adds_answers() {
+        let qs = json!([{ "question": "¿Qué framework?", "header": "Framework", "options": [{ "label": "React", "description": "x" }], "multiSelect": false }]);
+        let out: Value = serde_json::from_str(&answer_output(&qs, &json!({ "¿Qué framework?": "React" }))).unwrap();
+        assert_eq!(out["hookSpecificOutput"]["hookEventName"], "PreToolUse");
+        assert_eq!(out["hookSpecificOutput"]["permissionDecision"], "allow");
+        assert_eq!(out["hookSpecificOutput"]["updatedInput"]["questions"], qs);
+        assert_eq!(out["hookSpecificOutput"]["updatedInput"]["answers"]["¿Qué framework?"], "React");
+        let r: Reply = serde_json::from_str(r#"{"decision":"allow"}"#).unwrap();
+        assert!(r.answers.is_none());
     }
     #[test] fn permission_output_shapes() {
         let allow: serde_json::Value = serde_json::from_str(&permission_output(Decision::Allow).unwrap()).unwrap();

@@ -1,6 +1,6 @@
 // Bolsillo: panel de la bandeja. Portado de docs/artboards/centro-de-mando.html (ringSVG, bCard, bView, moveInd, ripple) a React + Tailwind.
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type MouseEvent as RMouseEvent, type ReactNode } from 'react';
-import { decide, openDashboard, setFocus, type Config, type DaySummary, type Pending, type Session, type Snapshot } from '../shared/bridge';
+import { decide, openDashboard, setFocus, skip, type Config, type DaySummary, type Pending, type Session, type Snapshot } from '../shared/bridge';
 import { ICON, LBL, ago, stateColor } from '../shared/format';
 import { reduceMotion } from '../shared/motion';
 import { useConfig, useDaySummary, useHold, useNow, useSnapshot } from '../shared/react';
@@ -39,10 +39,11 @@ function Card({ s, p, cfg, fresh, now }: { s: Session; p?: Pending; cfg: Config;
   return <div className={`card rounded-xl px-3 py-[11px] mb-2 grid gap-[9px] ${p ? 'need' : ''} ${fresh ? 'enter' : ''}`}>
     <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] gap-2.5 items-center">
       <span className="ic w-[30px] h-[30px] rounded-[9px] grid place-items-center" style={cssVar({ '--c': c })}><Ms className={s.state === 'Working' && !reduceMotion() ? 'spin' : ''} style={{ fontSize: 16 }}>{ICON[s.state]}</Ms></span>
-      <div className="min-w-0"><div className="text-[13px] font-medium">{s.project}</div><div className="text-xs text-muted truncate">{p ? 'necesita tu permiso' : s.last || LBL[s.state]}</div></div>
+      <div className="min-w-0"><div className="text-[13px] font-medium">{s.project}</div><div className="text-xs text-muted truncate">{p ? (p.kind === 'question' ? 'te hizo una pregunta' : 'necesita tu permiso') : s.last || LBL[s.state]}</div></div>
       <span className="font-mono text-[11px] text-faint">{ago(now - s.since_ms)}</span>
     </div>
-    {p && <div className="ex grid gap-[9px]">{p.description && <div className="text-xs text-[#c7ccd3]">{p.description}</div>}<div className="font-mono text-xs text-[#ffd590] bg-black/25 rounded-lg px-[9px] py-[7px] break-all line-clamp-3" title={p.command}>{p.command}</div><PermActs p={p} cfg={cfg} /></div>}
+    {p?.kind === 'question' && <div className="ex grid gap-[9px]"><div className="text-[13px]">{p.command}</div><div className="text-xs text-muted">Respóndela en la isla, arriba de tu pantalla.</div><div className="acts flex gap-1.5"><button type="button" className="flex-1 rounded-[9px] p-[7px] text-[12.5px] font-medium" onClick={() => skip(p.id)}>Responder en la terminal</button></div></div>}
+    {p && p.kind !== 'question' && <div className="ex grid gap-[9px]">{p.description && <div className="text-xs text-[#c7ccd3]">{p.description}</div>}<div className="font-mono text-xs text-[#ffd590] bg-black/25 rounded-lg px-[9px] py-[7px] break-all line-clamp-3" title={p.command}>{p.command}</div><PermActs p={p} cfg={cfg} /></div>}
   </div>;
 }
 
