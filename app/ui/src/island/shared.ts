@@ -17,13 +17,16 @@ export function fuzzy(text: string, query: string): { ok: boolean; html: string 
   return { ok: i === qq.length, html: out };
 }
 
+/** "Quiere ejecutar" para la terminal, "Quiere usar" para el resto de herramientas. */
+export const verb = (tool: string, lower = false) => { const v = tool === 'Bash' || tool === 'PowerShell' ? 'Quiere ejecutar' : 'Quiere usar'; return lower ? v.toLowerCase() : v; };
+
 export const stHTML = (s: Session) => `<span class="st" style="--c:${stateColor(s.state)}">${LBL[s.state]}</span>`;
 
 export function permCard(p: Pending, cfg: Config, total: number, s?: Session) {
   const danger = p.danger && cfg.island.hold, keys = cfg.island.keys;
   return `<div class="card">
     <div class="ch"><span class="nm">${esc(p.project)}</span>${total > 1 ? `<span class="muted mono" style="font-size:11.5px">1 de ${total}</span>` : s ? stHTML(s) : ''}</div>
-    <div class="t" style="font-size:13.5px"><b>Quiere ejecutar</b>${p.description ? `<div class="why">${esc(p.description)}</div>` : ''}</div>
+    <div class="t" style="font-size:13.5px"><b>${verb(p.tool)}</b>${p.description ? `<div class="why">${esc(p.description)}</div>` : ''}</div>
     <div class="cmd full">${esc(p.command)}</div>
     ${danger ? `<div class="warn"><span class="ms">back_hand</span>Comando delicado: mantén presionado para permitir</div>` : ''}
     <div class="acts"><button class="b-no" type="button" data-act="deny" data-id="${p.id}"><span>Denegar</span>${keys ? '<kbd data-k="n">Ctrl+Alt+N</kbd>' : ''}</button><button class="b-yes" type="button" data-act="allow" data-id="${p.id}" data-danger="${danger ? 1 : 0}"><span class="fill"></span><span>${danger ? 'Mantener' : 'Permitir'}</span>${keys ? '<kbd data-k="y">Ctrl+Alt+Y</kbd>' : ''}</button></div>

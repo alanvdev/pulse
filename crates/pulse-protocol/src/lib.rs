@@ -75,6 +75,19 @@ fn tool_target(tool: &str, input: Option<&Value>) -> String {
     }.unwrap_or_default())
 }
 
+/// Qué quiere hacer un permiso, en una línea. Shell: el comando tal cual. Otras herramientas: su nombre y el objetivo
+/// (o un resumen de sus argumentos si Pulse no la conoce: Artifact, herramientas MCP, etc.).
+fn permission_label(tool: &str, input: Option<&Value>) -> String {
+    if matches!(tool, "Bash" | "PowerShell") { return tool_target(tool, input); }
+    let target = tool_target(tool, input);
+    let detail = if !target.is_empty() { target } else {
+        input.and_then(Value::as_object).map(|m| m.iter().filter_map(|(k, v)| match v {
+            Value::String(s) => Some(format!("{k}: {s}")), Value::Number(n) => Some(format!("{k}: {n}")), Value::Bool(b) => Some(format!("{k}: {b}")), _ => None,
+        }).take(3).collect::<Vec<_>>().join(" · ")).unwrap_or_default()
+    };
+    truncate(&if detail.is_empty() { tool.to_string() } else { format!("{tool}: {detail}") })
+}
+
 pub fn map_hook(i: &HookInput) -> Option<PulseEvent> {
     let tool = i.tool_name.clone().unwrap_or_default();
     Some(match i.hook_event_name.as_str() {
@@ -84,7 +97,7 @@ pub fn map_hook(i: &HookInput) -> Option<PulseEvent> {
         "PreToolUse" => PulseEvent::Tool { target: tool_target(&tool, i.tool_input.as_ref()), tool },
         "PermissionRequest" if tool == "AskUserQuestion" => PulseEvent::Question { questions: questions(i) },
         "PermissionRequest" if tool == "ExitPlanMode" => PulseEvent::Plan,
-        "PermissionRequest" => PulseEvent::Permission { command: tool_target(&tool, i.tool_input.as_ref()), description: truncate(i.tool_input.as_ref().and_then(|v| v.get("description")).and_then(Value::as_str).unwrap_or("")), tool },
+        "PermissionRequest" => PulseEvent::Permission { command: permission_label(&tool, i.tool_input.as_ref()), description: truncate(i.tool_input.as_ref().and_then(|v| v.get("description")).and_then(Value::as_str).unwrap_or("")), tool },
         "Notification" if i.notification_type.as_deref() == Some("idle_prompt") => PulseEvent::Idle,
         "Stop" => PulseEvent::Done,
         "PostToolUseFailure" => PulseEvent::Error { message: truncate(i.error.as_deref().unwrap_or("falló una herramienta")) },
@@ -164,6 +177,12 @@ mod tests {
     #[test] fn dangerous_commands() {
         for c in ["git push --force origin main", "git push -f", "rm -rf tmp", "npx prisma migrate dev", "git reset --hard HEAD~1", "Remove-Item -Recurse x", "DROP TABLE users"] { assert!(is_dangerous(c), "{c}"); }
         for c in ["npm run build", "git push origin main", "ls -la"] { assert!(!is_dangerous(c), "{c}"); }
+    }
+    #[test] fn permissions_always_say_what_they_want_to_do() {
+        let c = |j| match map_hook(&hook(j)) { Some(PulseEvent::Permission { command, .. }) => command, o => panic!("{o:?}") };
+        assert_eq!(c(r#"{"session_id":"a","hook_event_name":"PermissionRequest","tool_name":"Edit","tool_input":{"file_path":"src/x.ts","old_string":"a"}}"#), "Edit: src/x.ts");
+        assert_eq!(c(r#"{"session_id":"a","hook_event_name":"PermissionRequest","tool_name":"Artifact","tool_input":{"action":"delete","url":"https://claude.ai/artifact/X"}}"#), "Artifact: action: delete · url: https://claude.ai/artifact/X");
+        assert_eq!(c(r#"{"session_id":"a","hook_event_name":"PermissionRequest","tool_name":"mcp__slack__send","tool_input":{}}"#), "mcp__slack__send");
     }
     #[test] fn questions_and_plans_are_not_permissions() {
         let q = r#"{"session_id":"a","hook_event_name":"PermissionRequest","tool_name":"AskUserQuestion","tool_input":{"questions":[{"question":"¿Qué framework?","header":"Framework","options":[{"label":"React","description":"x"},{"label":"Vue","description":"y"}],"multiSelect":false}]}}"#;
