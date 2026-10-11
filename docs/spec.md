@@ -19,6 +19,7 @@ Al portar una pieza, se copia su CSS y su lógica de animación desde el artboar
 
 ### Arquitectura
 - **Tauri v2 (Rust + WebView2).** Interfaz en HTML/CSS/TypeScript, lógica en Rust.
+- **Interfaz mixta (decidido el 2026-10-11, durante la implementación).** Bordes e isla en TypeScript sin framework: son capas de animación y se portan tal cual desde los artboards. Bolsillo y Mosaico en React + Tailwind: son interfaces con tarjetas, pestañas, ajustes y piezas, y es donde más va a crecer el producto. Las cuatro ventanas comparten `bridge.ts` (tipos y llamadas al núcleo).
 - **Arranque bajo demanda.** El primer hook lanza la app si no está corriendo. La app se cierra sola 5 minutos después de que no queda ninguna sesión activa ni eventos. No se registra en el inicio de Windows.
 - **Hooks → `pulse.exe`.** Un ejecutable pequeño de Rust recibe el JSON del hook por stdin y lo manda a la app por un named pipe (`\\.\pipe\pulse`). Si la app no responde, la lanza y reintenta.
 - **Permisos desde fuera de la terminal.** El hook `PermissionRequest` llama a `pulse ask`, que espera la decisión de la isla hasta un tiempo límite. Si nadie responde, no decide nada y Claude pregunta en la terminal como siempre.
