@@ -6,12 +6,12 @@ Este documento recoge lo que se decidió en la conversación de diseño del 2026
 
 ## Referencias visuales
 
-Los artboards son la fuente de verdad del aspecto y del movimiento. Hay copia local en `docs/artboards/`:
+Los artboards son la fuente de verdad del aspecto y del movimiento. Están en `docs/artboards/`:
 
-| Pieza | Artboard en vivo | Copia local |
-|---|---|---|
-| Isla (Comando y Orbe) | https://claude.ai/artifact/3evEKeuY2pKTunDWi8JX7K | `docs/artboards/isla.html` |
-| Centro de mando (Bolsillo y Mosaico) | https://claude.ai/artifact/B5e5kr2seJdM8xf4fjurgv | `docs/artboards/centro-de-mando.html` |
+| Pieza | Archivo |
+|---|---|
+| Isla (Comando y Orbe) | `docs/artboards/isla.html` |
+| Centro de mando (Bolsillo y Mosaico) | `docs/artboards/centro-de-mando.html` |
 
 Al portar una pieza, se copia su CSS y su lógica de animación desde el artboard (motor de pulsos, `morph()`, resortes con `linear()`), no se reinventa.
 
