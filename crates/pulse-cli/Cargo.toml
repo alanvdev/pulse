@@ -1,0 +1,15 @@
+[package]
+name = "pulse-cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "pulse"
+path = "src/main.rs"
+
+[dependencies]
+pulse-protocol = { path = "../pulse-protocol" }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+windows-sys = { version = "0.59", features = ["Win32_System_Pipes", "Win32_Storage_FileSystem", "Win32_Foundation", "Win32_Security", "Win32_System_IO"] }

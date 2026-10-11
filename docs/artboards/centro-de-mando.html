@@ -1,0 +1,472 @@
+<title>Pulse · Centro de mando</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..500,0..1,0&display=block" rel="stylesheet">
+<style>
+/* Layout: las dos direcciones elegidas, una por fila, cada una en su escritorio simulado y funcionando. Barra de eventos fija arriba. Tema oscuro único. */
+:root{
+  color-scheme: dark;
+  --bg:#0a0b0d; --panel:#121418; --line:#22262c; --line-2:#30353d; --fg:#e7e9ec; --muted:#8e95a0; --faint:#5d646e; --focus:#a9c8ff; --ink:#060708;
+  --work:#e8eefc; --perm:#ffb02e; --done:#4fe0a0; --err:#ff5a52; --idle:#b6c0d4; --moon:#b9a2ff; --acc:#7aa7ff;
+  --f-ui:"Geist", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --f-mono:"Geist Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --e-out:cubic-bezier(.16,1,.3,1);
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg)}
+body{margin:0;font-family:var(--f-ui);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+::selection{background:#2b3a52;color:#fff}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:6px}
+[hidden]{display:none!important}
+.ms{font-family:"Material Symbols Rounded";font-weight:normal;font-style:normal;line-height:1;letter-spacing:normal;text-transform:none;white-space:nowrap;font-feature-settings:"liga";display:inline-block;overflow:hidden;width:1em;flex:none;font-size:18px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.page{max-width:1240px;margin-inline:auto;padding-inline:22px;padding-block:0 60px}
+.head{padding-block:26px 6px}
+.head h1{margin:0 0 4px;font-size:21px;font-weight:600;letter-spacing:-.01em}
+.head p{margin:0;color:var(--muted);max-width:80ch;text-wrap:pretty}
+.bar{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding-block:10px;background:linear-gradient(var(--bg) 80%,transparent)}
+.cb{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line-2);background:#171a1e;padding:5px 11px;border-radius:99px;font-size:12.5px;white-space:nowrap;transition:background .15s,transform .1s}
+.cb:hover{background:#1f2328}
+.cb:active{transform:scale(.97)}
+.cb i{width:7px;height:7px;border-radius:50%;background:var(--c)}
+.cb .ms{font-size:15px}
+.cb[aria-pressed="true"]{border-color:var(--fg)}
+.sep{width:1px;height:20px;background:var(--line)}
+.dirs{display:grid;gap:44px;margin-top:12px}
+.dh{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;justify-content:space-between;margin-bottom:12px}
+.dh h2{margin:0;font-size:17px;font-weight:600}
+.dh p{margin:3px 0 0;color:var(--muted);max-width:82ch;font-size:13.5px;text-wrap:pretty}
+.dh .try{margin-top:6px;font-size:12.5px;color:#c4c9d0}
+.dh .try b{color:#fff;font-weight:500}
+.pick{border:1px solid var(--line-2);background:#171a1e;border-radius:8px;padding:7px 14px;font-size:13px}
+.pick[aria-pressed="true"]{background:var(--fg);color:var(--ink);border-color:var(--fg);font-weight:500}
+.choice{margin-top:40px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.choice p{margin:0;color:var(--muted);font-size:13px;flex:1;min-width:260px}
+.sw{position:relative;width:32px;height:19px;flex:none;appearance:none;-webkit-appearance:none;background:rgba(255,255,255,.16);border-radius:99px;margin:0;cursor:pointer;transition:background .2s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:13px;height:13px;border-radius:50%;background:#f1f3f5;transition:transform .24s cubic-bezier(.3,1.5,.5,1)}
+.sw:checked{background:var(--acc)}
+.sw:checked::after{transform:translateX(13px)}
+.desk{position:relative;height:640px;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:radial-gradient(55% 90% at 12% 115%,#1b2738 0%,transparent 60%),radial-gradient(50% 70% at 95% -10%,#271f33 0%,transparent 60%),#0d1015}
+.task{position:absolute;left:0;right:0;bottom:0;height:44px;background:rgba(20,23,29,.9);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:flex-end;gap:12px;padding-right:14px;color:#cfd4db;font-size:12px;z-index:3}
+.task .ms{font-size:17px}
+.tray{position:relative;border:0;background:transparent;border-radius:7px;width:32px;height:32px;display:grid;place-items:center;color:#fff;transition:background .15s}
+.tray:hover,.tray[aria-expanded="true"]{background:rgba(255,255,255,.1)}
+.tray .ring{width:16px;height:16px;border-radius:50%;border:2px solid var(--c);box-shadow:0 0 8px var(--c);transition:border-color .4s,box-shadow .4s}
+.tray i{position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:var(--perm);box-shadow:0 0 0 2px #14171d;transform:scale(0);transition:transform .3s cubic-bezier(.3,1.6,.5,1)}
+.tray i.on{transform:scale(1)}
+
+/* ============ Bolsillo ============ */
+.bp{position:absolute;right:12px;bottom:54px;width:380px;height:540px;border-radius:14px;background:rgba(26,28,34,.84);-webkit-backdrop-filter:blur(28px) saturate(160%);backdrop-filter:blur(28px) saturate(160%);box-shadow:inset 0 1px 0 rgba(255,255,255,.08),inset 0 0 0 1px rgba(255,255,255,.07),0 30px 60px -24px rgba(0,0,0,.8);display:flex;flex-direction:column;color:#eef0f3;overflow:hidden;transform-origin:calc(100% - 60px) 100%;z-index:2}
+@media (max-width:520px){.bp{left:12px;width:auto}}
+.bp-view{flex:1;overflow:auto;padding:16px 16px 10px;scrollbar-width:none}
+.bp-top{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:14px;align-items:center;margin-bottom:16px}
+.bp-ring{position:relative;width:58px;height:58px}
+.bp-ring svg{width:58px;height:58px;transform:rotate(-90deg)}
+.bp-ring circle{fill:none;stroke-width:4;stroke-linecap:round;transition:stroke .5s,stroke-dasharray .6s var(--e-out)}
+.bp-ring .bg{stroke:rgba(255,255,255,.07)}
+.bp-ring b{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--f-mono);font-size:16px;font-weight:500}
+.bp-top h3{margin:0;font-size:18px;font-weight:500;letter-spacing:-.01em}
+.bp-top p{margin:2px 0 0;font-size:12.5px;color:#a7adb6}
+.bp-top .open{border:0;background:rgba(255,255,255,.08);border-radius:8px;width:30px;height:30px;display:grid;place-items:center;color:#d9dde2;transition:background .15s}
+.bp-top .open:hover{background:rgba(255,255,255,.14)}
+.bp-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:16px}
+.tile{position:relative;overflow:hidden;border:0;border-radius:12px;background:rgba(255,255,255,.07);padding:11px 4px 9px;display:grid;justify-items:center;gap:6px;font-size:11px;color:#d8dce1;transition:background .25s,color .25s,transform .15s var(--e-out)}
+.tile:hover{background:rgba(255,255,255,.11)}
+.tile:active{transform:scale(.94)}
+.tile .ms{font-size:20px;transition:transform .3s cubic-bezier(.3,1.6,.5,1)}
+.tile[aria-pressed="true"]{background:var(--acc);color:#0b1426}
+.tile[aria-pressed="true"] .ms{transform:scale(1.08)}
+.tile .rip{position:absolute;border-radius:50%;background:rgba(255,255,255,.35);transform:scale(0);pointer-events:none}
+.bp-h{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#8a919b;margin:4px 2px 8px}
+.card{background:rgba(255,255,255,.055);border-radius:12px;padding:11px 12px;margin-bottom:8px;display:grid;gap:9px;transition:background .25s,box-shadow .3s}
+.card:hover{background:rgba(255,255,255,.085)}
+.card.need{background:rgba(255,176,46,.1);box-shadow:inset 0 0 0 1px rgba(255,176,46,.35)}
+.card.enter{animation:cin .5s var(--e-out)}
+@keyframes cin{from{opacity:0;transform:translateY(8px) scale(.98)}}
+.c1{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}
+.ic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:color-mix(in srgb,var(--c) 17%,transparent);color:var(--c)}
+.ic .ms{font-size:16px}
+.ic .spin{animation:spin 1.4s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.nm{font-size:13px;font-weight:500}
+.ac{font-size:12px;color:#a7adb6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm{font-family:var(--f-mono);font-size:11px;color:#8a919b}
+.cmd{font-family:var(--f-mono);font-size:12px;color:#ffd590;background:rgba(0,0,0,.25);border-radius:8px;padding:7px 9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ex{display:grid;gap:9px;animation:exin .45s var(--e-out)}
+@keyframes exin{from{opacity:0;transform:translateY(-4px)}}
+.acts{display:flex;gap:6px}
+.acts button{flex:1;border:0;border-radius:9px;padding:7px;font-size:12.5px;font-weight:500;background:rgba(255,255,255,.1);color:#eef0f3;display:inline-flex;gap:6px;align-items:center;justify-content:center;transition:transform .12s var(--e-out),background .15s}
+.acts button:hover{background:rgba(255,255,255,.15)}
+.acts button:active{transform:scale(.95)}
+.acts .y{background:#eef0f3;color:#0b0d10}
+.acts .y:hover{background:#fff}
+.acts kbd{font-family:var(--f-mono);font-size:10px;opacity:.5;border:1px solid currentColor;border-radius:4px;padding:0 4px}
+.gone{animation:gone .35s ease-in forwards}
+@keyframes gone{to{opacity:0;transform:translateX(30px)}}
+.bp-tabs{position:relative;display:flex;border-top:1px solid rgba(255,255,255,.07);padding:6px;gap:4px}
+.bp-ind{position:absolute;top:6px;bottom:6px;left:6px;border-radius:9px;background:rgba(255,255,255,.09);transition:transform .45s var(--sp),width .45s var(--sp)}
+.bp-tabs button{position:relative;flex:1;border:0;background:transparent;border-radius:9px;padding:6px;font-size:11.5px;color:#a7adb6;display:grid;justify-items:center;gap:2px;transition:color .2s}
+.bp-tabs button .ms{font-size:19px}
+.bp-tabs button[aria-current="true"]{color:#fff}
+.srow{display:flex;align-items:center;gap:12px;padding:11px 4px;border-top:1px solid rgba(255,255,255,.06);font-size:13px}
+.srow:first-child{border-top:0}
+.srow > .ms{color:#a7adb6}
+.srow small{display:block;font-size:11.5px;color:#8a919b}
+.srow > span:nth-child(2){flex:1;min-width:0}
+.iseg{display:flex;background:rgba(0,0,0,.25);border-radius:8px;padding:2px;gap:2px}
+.iseg button{border:0;background:transparent;border-radius:6px;padding:4px 9px;font-size:12px;color:#a7adb6;transition:background .2s,color .2s}
+.iseg button[aria-pressed="true"]{background:rgba(255,255,255,.14);color:#fff}
+.dbar{height:7px;border-radius:9px;background:rgba(255,255,255,.07);overflow:hidden;display:flex}
+.dbar i{height:100%;transform-origin:left;animation:grow .9s var(--e-out) both}
+@keyframes grow{from{transform:scaleX(0)}}
+
+/* ============ Mosaico ============ */
+.win{position:absolute;inset:16px 16px 60px;border-radius:12px;overflow:hidden;background:#0e1013;box-shadow:inset 0 0 0 1px rgba(255,255,255,.07),0 30px 60px -30px #000;display:flex;flex-direction:column}
+.tbar{height:36px;flex:none;display:flex;align-items:center;gap:10px;padding-left:14px;font-size:12px;color:#8f96a0;border-bottom:1px solid #1b1e23}
+.tl{width:14px;height:14px;border-radius:50%;background:conic-gradient(var(--work),var(--perm),var(--done),#5cc8ff,var(--work));-webkit-mask:radial-gradient(circle,#000 0 30%,transparent 33%,transparent 50%,#000 53%);mask:radial-gradient(circle,#000 0 30%,transparent 33%,transparent 50%,#000 53%)}
+.tbar .sp{flex:1}
+.tbtn{border:1px solid #2a2e35;background:#15181c;border-radius:7px;padding:3px 10px;font-size:12px;color:#d6d9de;display:inline-flex;gap:6px;align-items:center;transition:background .15s}
+.tbtn:hover{background:#1c2025}
+.tbtn[aria-pressed="true"]{background:#e6e8eb;color:#0d0f12;border-color:#e6e8eb}
+.tbtn .ms{font-size:15px}
+.ctl{display:flex;height:100%;margin-left:6px}
+.ctl span{width:44px;display:grid;place-items:center;font-size:15px;opacity:.6}
+.grid{flex:1;overflow:auto;padding:14px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:112px;gap:10px;align-content:start}
+@media (max-width:900px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.w{position:relative;border-radius:16px;background:#15181c;border:1px solid #1f2328;padding:12px 14px;overflow:hidden;display:flex;flex-direction:column;gap:6px;transition:border-color .3s,background .3s,box-shadow .3s}
+.w:hover{border-color:#2a2f36}
+.w h4{margin:0;font-size:11.5px;font-weight:500;color:#8f96a0;display:flex;align-items:center;gap:6px}
+.w h4 .ms{font-size:15px}
+.w.s22{grid-column:span 2;grid-row:span 3}
+.w.s21{grid-column:span 2}
+.w.s12{grid-row:span 2}
+.edit .w{cursor:grab;animation:wig .3s ease-in-out infinite alternate}
+.edit .w:nth-child(2n){animation-delay:-.15s}
+.edit .w.dragging{cursor:grabbing;animation:none;z-index:5;box-shadow:0 20px 40px -10px rgba(0,0,0,.7);border-color:#3a4049;opacity:.95}
+@keyframes wig{from{rotate:-.35deg}to{rotate:.35deg}}
+.x{position:absolute;top:8px;right:8px;width:22px;height:22px;border-radius:50%;border:0;background:#2a2e35;color:#fff;display:grid;place-items:center;transform:scale(0);transition:transform .3s cubic-bezier(.3,1.6,.5,1)}
+.x .ms{font-size:14px}
+.edit .x{transform:scale(1)}
+.big{font-size:28px;font-weight:300;letter-spacing:-.02em;font-family:var(--f-mono)}
+.sub{font-size:12px;color:#8f96a0}
+.sess{display:grid;gap:8px;overflow:auto}
+.s{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 10px;border-radius:11px;background:#1a1d22;font-size:12.5px;transition:background .2s}
+.s:hover{background:#1f2328}
+.s .ms{font-size:16px;color:var(--c)}
+.s small{display:block;color:#8f96a0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pend{background:linear-gradient(135deg,rgba(255,176,46,.17),rgba(255,176,46,.04)),#15181c;border-color:rgba(255,176,46,.4);animation:pendIn .5s var(--e-out)}
+@keyframes pendIn{from{box-shadow:0 0 0 6px rgba(255,176,46,.15)}}
+.pend code{font-family:var(--f-mono);font-size:12px;color:#ffd590;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wrow{display:flex;gap:6px;margin-top:auto;align-items:center}
+.wb{border:0;border-radius:8px;padding:5px 11px;font-size:12px;background:#22262c;color:#e6e8eb;transition:transform .12s var(--e-out),background .15s}
+.wb:hover{background:#2a2f36}
+.wb:active{transform:scale(.95)}
+.wb.y{background:#e6e8eb;color:#0d0f12;font-weight:500}
+.moon{background:radial-gradient(120% 120% at 100% 0%,rgba(185,162,255,.2),transparent 60%),#15181c}
+.moon.on{background:radial-gradient(120% 120% at 100% 0%,rgba(185,162,255,.45),transparent 70%),#1a1630;border-color:rgba(185,162,255,.4)}
+.mini{position:relative;flex:1;min-height:0;border-radius:9px;background:#0d1015;overflow:hidden;border:1px solid #1f2328}
+.keys{display:flex;gap:6px;margin-top:auto}
+.keys span{flex:1;height:32px;border-radius:7px;background:#1f2328;display:grid;place-items:center;font-family:var(--f-mono);font-size:11px;color:#8f96a0;transition:background .4s,box-shadow .4s,color .4s}
+.keys span.lit{background:var(--c);color:#111;box-shadow:0 0 16px var(--c)}
+.spark{display:flex;align-items:flex-end;gap:3px;height:38px;margin-top:auto}
+.spark i{flex:1;background:#2d3239;border-radius:2px;transition:height .5s var(--e-out)}
+.spark i:last-child{background:#e6e8eb}
+.add{border:1.5px dashed #2a2e35;background:transparent;color:#8f96a0;align-items:center;justify-content:center;gap:6px;font-size:13px;flex-direction:row;display:none}
+.edit .add{display:flex}
+.sheet{position:absolute;right:16px;top:52px;width:280px;border-radius:14px;background:rgba(24,27,32,.96);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 20px 40px -14px #000;padding:10px;display:grid;gap:4px;z-index:6;transform-origin:top right;animation:sheetIn .35s var(--e-out)}
+@keyframes sheetIn{from{opacity:0;transform:scale(.94) translateY(-4px)}}
+.sheet h5{margin:2px 6px 6px;font-size:11.5px;font-weight:500;color:#8f96a0}
+.sheet button{display:flex;align-items:center;gap:10px;border:0;background:transparent;border-radius:9px;padding:8px;font-size:13px;color:#e6e8eb;text-align:left;transition:background .15s}
+.sheet button:hover{background:rgba(255,255,255,.07)}
+.sheet button .ms{font-size:17px;color:#8f96a0}
+.sheet p{margin:6px;font-size:12.5px;color:#8f96a0}
+
+@media (prefers-reduced-motion:reduce){.edit .w,.ic .spin,.card.enter,.pend,.dbar i,.ex{animation:none}}
+</style>
+
+<div class="page">
+  <header class="head">
+    <h1>Centro de mando: Bolsillo y Mosaico</h1>
+    <p>Las dos que elegiste, con sus interacciones completas. Las dos muestran los mismos datos en vivo. Una idea para combinarlas: Bolsillo como el panel rápido de la bandeja y Mosaico como la ventana completa que abres desde ahí (botón del recuadro en Bolsillo).</p>
+  </header>
+  <div class="bar" id="bar"></div>
+  <div class="dirs">
+    <section aria-label="Bolsillo"><div class="dh"><div><h2>Bolsillo</h2><p>Sube desde el ícono de la bandeja, como los ajustes rápidos de Windows. Un anillo resume todo, cuatro botones cambian lo más común y las sesiones van en tarjetas. Entras, decides y sales.</p><p class="try">Haz clic en el <b>ícono de la bandeja</b> para cerrarlo y abrirlo, prueba los <b>botones rápidos</b> y cambia de <b>pestaña</b>.</p></div><button class="pick" type="button" data-act="pick" data-v="bolsillo">Elegir</button></div>
+      <div class="desk" id="bDesk"><div class="bp" id="bp"></div><div class="task"><span class="ms">wifi</span><span class="ms">volume_up</span><button class="tray" id="bTray" type="button" aria-label="Pulse" aria-expanded="true"><span class="ring"></span><i></i></button><span class="mono" id="clock"></span></div></div></section>
+    <section aria-label="Mosaico" id="secMosaico"><div class="dh"><div><h2>Mosaico</h2><p>Un tablero de piezas: sesiones, lo pendiente, el día, el foco, una vista previa del pulso y tus teclas F1 a F3. Lo armas a tu gusto.</p><p class="try">Pulsa <b>Editar</b>, <b>arrastra</b> una pieza sobre otra para cambiarla de lugar, quita alguna con <b>−</b> y recupérala con <b>Agregar pieza</b>.</p></div><button class="pick" type="button" data-act="pick" data-v="mosaico">Elegir</button></div>
+      <div class="desk"><div class="win" id="mWin"></div><div class="task"><span class="ms">wifi</span><span class="ms">volume_up</span><span class="mono" data-clock></span></div></div></section>
+  </div>
+  <div class="choice"><p id="choiceTxt"></p><button class="pick" type="button" data-act="copy">Copiar para Claude</button><span class="mono" id="copyNote" style="font-size:12px;color:var(--faint)"></span></div>
+</div>
+
+<script>
+(() => {
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const KEY = 'pulse-centro-v3';
+let PREF = {chosen:null, tab:'ahora', order:null, hidden:[]};
+try { PREF = {...PREF, ...JSON.parse(localStorage.getItem(KEY) || '{}')}; } catch {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(PREF)); } catch {} };
+const hasLinear = CSS.supports('transition-timing-function', 'linear(0, 1)');
+function spring(k, d) { if (!hasLinear) return {e:'cubic-bezier(.32,.72,0,1)', d:520}; let x = 0, v = 0; const dt = 1 / 120, pts = [0]; for (let i = 0; i < 480; i++) { const a = -k * (x - 1) - d * v; v += a * dt; x += v * dt; if (i % 2) pts.push(+x.toFixed(4)); if (i > 30 && Math.abs(1 - x) < .0015 && Math.abs(v) < .01) break; } pts.push(1); return {e:`linear(${pts.join(',')})`, d:Math.round(pts.length * 2 * dt * 1000)}; }
+const SP = spring(230, 22), SPS = spring(300, 30);
+document.documentElement.style.setProperty('--sp', SP.e);
+
+/* ---------- model ---------- */
+const COL = {working:'#e8eefc', waiting:'#ffb02e', done:'#4fe0a0', idlewait:'#b6c0d4', idle:'#69717c'};
+const LBL = {working:'trabajando', waiting:'pide permiso', done:'terminó', idlewait:'te espera', idle:'en calma'};
+const ICO = {working:'progress_activity', waiting:'front_hand', done:'check', idlewait:'hourglass', idle:'bedtime'};
+const now0 = Date.now();
+const SESS = [
+  {id:'s1', name:'hyperflow-app', key:'F1', state:'working', last:'Edit src/components/Header.tsx', subs:0, since:now0 - 252000, actions:34},
+  {id:'s2', name:'proppie-api',   key:'F2', state:'working', last:'Explore: rutas existentes', subs:2, since:now0 - 95000, actions:12},
+  {id:'s3', name:'mcrefacciones', key:'F3', state:'done', last:'Importó 40 fichas técnicas', subs:0, since:now0 - 40000, actions:58},
+];
+const S = id => SESS.find(s => s.id === id);
+const M = {queue:[], focus:false, waited:7 * 60000, spark:[4,6,3,8,5,9,7,6,10,8,7,9,6,11,9,12]};
+const SET = {pulses:true, sound:true, keys:true, island:'comando'};
+let qid = 0;
+const ago = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s / 60)}m ${String(s % 60).padStart(2,'0')}s` : `${Math.floor(s / 3600)}h ${Math.floor(s / 60) % 60}m`; };
+const workingN = () => SESS.filter(s => s.state === 'working').length;
+const needN = () => M.queue.length + SESS.filter(s => s.state === 'idlewait').length;
+const totalActs = () => SESS.reduce((a, s) => a + s.actions, 0);
+const TOOLS = {s1:['Read src/app/layout.tsx','Edit src/lib/cart.ts','Bash npm run typecheck','Edit src/components/Header.tsx','Bash npm test'], s2:['Edit src/routes/reservas.ts','Read prisma/schema.prisma','Bash npm test reservas'], s3:['Read data/fichas.csv','Bash npx tsx scripts/import-fichas.ts']};
+const CMDS = {s1:['npm run build','git push origin feature/header'], s2:['npx prisma migrate dev','npm install zod'], s3:['rm -rf tmp/fichas']};
+function act(type, sid, data) {
+  const s = S(sid);
+  if (type === 'tool') { if (s.state === 'waiting') return; s.state = 'working'; s.last = data; s.actions++; M.spark.push(M.spark.pop() + 1); }
+  if (type === 'start') { s.state = 'working'; s.last = data; s.since = Date.now(); s.actions++; }
+  if (type === 'perm') { if (M.queue.some(q => q.sid === sid)) return; s.state = 'waiting'; s.since = Date.now(); M.queue.push({id:++qid, sid, cmd:data, at:Date.now()}); }
+  if (type === 'done') { s.state = 'done'; s.subs = 0; s.last = 'Terminó la tarea'; s.since = Date.now(); }
+  if (type === 'error') { s.last = 'Falló: ' + data; }
+  if (type === 'idle') { s.state = 'idlewait'; s.since = Date.now(); }
+  renderAll();
+}
+function decide(ok, id, el) {
+  const i = id ? M.queue.findIndex(q => q.id === +id) : 0; if (i < 0 || !M.queue[i]) return;
+  const run = () => { const it = M.queue.splice(i, 1)[0], s = S(it.sid); M.waited += Date.now() - it.at; s.state = 'working'; s.since = Date.now(); s.last = (ok ? 'Permitido: ' : 'Denegado: ') + it.cmd; renderAll(); };
+  const card = el?.closest('.card, .w');
+  if (card && !reduce) { card.animate([{boxShadow:`inset 0 0 0 1px ${ok ? 'rgba(79,224,160,.7)' : 'rgba(255,90,82,.6)'}`}, {boxShadow:'inset 0 0 0 1px transparent'}], {duration:500}); setTimeout(run, 180); } else run();
+}
+function reply(sid) { const s = S(sid); s.state = 'working'; s.since = Date.now(); s.last = 'Respondiste «continúa»'; renderAll(); }
+
+let simOn = true, simT = 0;
+function simStep() {
+  if (!simOn) return;
+  const r = Math.random(), s = SESS[Math.floor(Math.random() * 3)];
+  if (s.state === 'waiting') { if (Date.now() - s.since > 18000) decide(true, M.queue.find(q => q.sid === s.id)?.id); }
+  else if (['done','idlewait','idle'].includes(s.state)) { if (r < .3) act('start', s.id, ['Revisa el checkout','Agrega validación con zod','Optimiza las imágenes'][Math.floor(Math.random() * 3)]); }
+  else if (r < .07 && !M.queue.length) act('perm', s.id, CMDS[s.id][Math.floor(Math.random() * CMDS[s.id].length)]);
+  else if (r < .12) act('done', s.id);
+  else act('tool', s.id, TOOLS[s.id][Math.floor(Math.random() * TOOLS[s.id].length)]);
+  if (Math.random() < .2) { M.spark.shift(); M.spark.push(3 + Math.floor(Math.random() * 10)); }
+  simT = setTimeout(simStep, 1500 + Math.random() * 1600);
+}
+
+/* ---------- ticker for times (no re-render) ---------- */
+function tickTimes() {
+  $$('[data-since]').forEach(e => e.textContent = ago(Date.now() - +e.dataset.since));
+  const t = new Date().toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit', hour12:false});
+  $('#clock').textContent = t; $$('[data-clock]').forEach(e => e.textContent = t);
+}
+setInterval(tickTimes, 1000);
+
+/* ================= Bolsillo ================= */
+const TABS = [['ahora','home','Inicio'],['ajustes','tune','Ajustes'],['dia','bar_chart','Hoy']];
+let bOpen = true, bSig = '', seenCards = new Set(SESS.map(s => s.id));
+function ringSVG() {
+  const L = 2 * Math.PI * 25, seg = L / 3 - 5;
+  return `<svg viewBox="0 0 58 58"><circle class="bg" cx="29" cy="29" r="25"></circle>${SESS.map((s, i) => `<circle cx="29" cy="29" r="25" stroke="${s.state === 'idle' ? 'transparent' : COL[s.state]}" stroke-dasharray="${s.state === 'idle' ? 0 : seg} ${L}" stroke-dashoffset="${-i * L / 3 - 2.5}"></circle>`).join('')}</svg>`;
+}
+function bCard(s) {
+  const it = M.queue.find(q => q.sid === s.id), c = COL[s.state], fresh = !seenCards.has(s.id + s.state);
+  seenCards.add(s.id + s.state);
+  return `<div class="card ${it ? 'need' : ''} ${fresh ? 'enter' : ''}" data-sid="${s.id}"><div class="c1"><span class="ic" style="--c:${c}"><span class="ms ${s.state === 'working' && !reduce ? 'spin' : ''}">${ICO[s.state]}</span></span><div style="min-width:0"><div class="nm">${s.name}</div><div class="ac">${it ? 'necesita tu permiso' : esc(s.last)}</div></div><span class="tm" data-since="${s.since}">${ago(Date.now() - s.since)}</span></div>
+    ${it ? `<div class="ex"><div class="cmd">${esc(it.cmd)}</div><div class="acts"><button type="button" data-act="deny" data-v="${it.id}">Denegar <kbd>N</kbd></button><button class="y" type="button" data-act="allow" data-v="${it.id}">Permitir <kbd>Y</kbd></button></div></div>` : ''}
+    ${s.state === 'idlewait' ? `<div class="ex"><div class="acts"><button type="button" data-act="reply" data-sid="${s.id}"><span class="ms" style="font-size:15px">reply</span>Responder «continúa»</button></div></div>` : ''}</div>`;
+}
+function bView(tab) {
+  if (tab === 'ajustes') return `<div class="bp-h"><span>Ajustes</span></div><div class="srow"><span class="ms">toast</span><span>Modo de la isla<small>${SET.island === 'orbe' ? 'Un punto de luz que se expande' : 'Avisos breves y paleta con Ctrl+Alt+Espacio'}</small></span><span class="iseg">${[['comando','Comando'],['orbe','Orbe']].map(([v, l]) => `<button type="button" data-act="island" data-v="${v}" aria-pressed="${SET.island === v}">${l}</button>`).join('')}</span></div>${[['blur_on','Pulsos en los bordes','Latido ámbar al pedir permiso','pulses'],['graphic_eq','Sonidos','Tus 4 sonidos','sound'],['keyboard','Teclado Razer','F1 a F3 por sesión','keys'],['dark_mode','Modo foco','Llamadas y pantalla completa',''],['keyboard_command_key','Atajos','Ctrl+Alt+Y para permitir','']].map(([ic, t, d, k]) => `<div class="srow"><span class="ms">${ic}</span><span>${t}<small>${d}</small></span>${k ? `<input type="checkbox" class="sw" ${SET[k] ? 'checked' : ''} data-set="${k}" aria-label="${t}">` : '<span class="ms" style="color:#6f767f">chevron_right</span>'}</div>`).join('')}`;
+  if (tab === 'dia') { const L = {s1:[.42,.06], s2:[.33,.03], s3:[.48,.09]}; return `<div class="bp-h"><span>Hoy</span><span class="mono">9:00 a ahora</span></div><div class="card"><div class="c1" style="grid-template-columns:minmax(0,1fr) auto"><div><div class="nm" style="font-size:20px;font-weight:400;font-family:var(--f-mono)">3 h 52 min</div><div class="ac">de trabajo de Claude · te esperó ${Math.round(M.waited / 60000)} min</div></div></div></div>${SESS.map((s, i) => `<div class="card"><div class="c1" style="grid-template-columns:minmax(0,1fr) auto"><span class="nm">${s.name}</span><span class="tm">${s.actions} acciones</span></div><div class="dbar"><i style="width:${L[s.id][0] * 100}%;background:#e8eefc;animation-delay:${i * 80}ms"></i><i style="width:${L[s.id][1] * 100}%;background:#ffb02e;animation-delay:${i * 80 + 200}ms"></i></div></div>`).join('')}<p class="ac" style="margin:4px 2px">Blanco: trabajando. Ámbar: esperando tu permiso.</p>`; }
+  return `<div class="bp-top"><div class="bp-ring">${ringSVG()}<b>${workingN()}</b></div><div><h3>${workingN()} trabajando</h3><p>${needN() ? `${needN()} te necesita${needN() > 1 ? 'n' : ''}` : 'Nada pendiente'}${M.focus ? ' · en foco' : ''}</p></div><button class="open" type="button" data-act="opentab" aria-label="Abrir tablero completo" title="Abrir tablero completo"><span class="ms" style="font-size:17px">open_in_new</span></button></div>
+    <div class="bp-tiles">${[['dark_mode','Foco','focus',M.focus],['notifications_off','Silencio','sound',!SET.sound],['blur_on','Pulsos','pulses',SET.pulses],['keyboard','Teclado','keys',SET.keys]].map(([ic, l, k, on]) => `<button class="tile" type="button" data-act="tile" data-v="${k}" aria-pressed="${on}"><span class="ms">${ic}</span>${l}</button>`).join('')}</div>
+    <div class="bp-h"><span>Sesiones</span><span class="mono">${SESS.length}</span></div>
+    ${[...SESS].sort((a, b) => (b.state === 'waiting') - (a.state === 'waiting') || (b.state === 'idlewait') - (a.state === 'idlewait')).map(bCard).join('')}`;
+}
+function renderBolsillo(force) {
+  const tab = PREF.tab;
+  const sig = tab + '|' + SESS.map(s => s.state + s.last + s.subs).join('|') + M.queue.map(q => q.id).join() + M.focus + JSON.stringify(SET) + bOpen;
+  const bp = $('#bp');
+  $('#bTray .ring').style.setProperty('--c', M.queue.length ? COL.waiting : workingN() ? COL.working : COL.done);
+  $('#bTray i').classList.toggle('on', needN() > 0);
+  if (!bp.dataset.built) {
+    bp.innerHTML = `<div class="bp-view" id="bView"></div><div class="bp-tabs" role="tablist"><i class="bp-ind"></i>${TABS.map(([k, ic, l]) => `<button type="button" role="tab" data-act="btab" data-v="${k}" aria-current="${tab === k}"><span class="ms">${ic}</span>${l}</button>`).join('')}</div>`;
+    bp.dataset.built = 1;
+  }
+  if (sig === bSig && !force) return;
+  if (tab === 'ajustes' && bSig.startsWith('ajustes') && !force) { bSig = sig; return; }
+  bSig = sig;
+  const view = $('#bView'), scroll = view.scrollTop;
+  view.innerHTML = bView(tab); view.scrollTop = scroll;
+  moveInd();
+}
+function moveInd(instant) {
+  const tabs = $$('.bp-tabs button'), cur = tabs.find(b => b.dataset.v === PREF.tab), ind = $('.bp-ind');
+  tabs.forEach(b => b.setAttribute('aria-current', b === cur));
+  if (!cur || !ind) return;
+  if (instant) ind.style.transition = 'none';
+  ind.style.width = cur.offsetWidth + 'px'; ind.style.transform = `translateX(${cur.offsetLeft - 6}px)`;
+  if (instant) { void ind.offsetWidth; ind.style.transition = ''; }
+}
+function toggleBolsillo() {
+  bOpen = !bOpen; const bp = $('#bp'); $('#bTray').setAttribute('aria-expanded', bOpen);
+  if (reduce) { bp.hidden = !bOpen; return; }
+  if (bOpen) { bp.hidden = false; bp.animate([{opacity:0, transform:'translateY(14px) scale(.96)', filter:'blur(4px)'}, {opacity:1, transform:'none', filter:'blur(0)'}], {duration:SP.d, easing:SP.e}); }
+  else bp.animate([{opacity:1, transform:'none'}, {opacity:0, transform:'translateY(10px) scale(.97)'}], {duration:180, easing:'ease-in'}).onfinish = () => bp.hidden = true;
+}
+function ripple(btn, e) {
+  if (reduce) return;
+  const r = btn.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2.2, s = document.createElement('i'); s.className = 'rip';
+  s.style.cssText = `width:${d}px;height:${d}px;left:${(e.clientX || r.left + r.width / 2) - r.left - d / 2}px;top:${(e.clientY || r.top + r.height / 2) - r.top - d / 2}px`;
+  btn.appendChild(s); s.animate([{transform:'scale(0)', opacity:.6}, {transform:'scale(1)', opacity:0}], {duration:550, easing:'cubic-bezier(.16,1,.3,1)'}).onfinish = () => s.remove();
+}
+
+/* ================= Mosaico ================= */
+const WIDGETS = {
+  sess:{name:'Sesiones', icon:'monitoring', size:'s22'},
+  pend:{name:'Pendiente', icon:'front_hand', size:'s21'},
+  hoy:{name:'Hoy', icon:'schedule', size:''},
+  acc:{name:'Acciones', icon:'bolt', size:''},
+  foco:{name:'Foco', icon:'dark_mode', size:''},
+  pulso:{name:'Pulso', icon:'blur_on', size:'s12'},
+  keys:{name:'Teclas por sesión', icon:'keyboard', size:'s21'},
+};
+let order = PREF.order && PREF.order.length ? PREF.order : ['sess','pend','hoy','acc','foco','pulso','keys'];
+let hidden = new Set(PREF.hidden || []), edit = false, sheet = false, mSig = '';
+function wBody(id) {
+  const it = M.queue[0];
+  switch (id) {
+    case 'sess': return `<h4><span class="ms">monitoring</span>Sesiones</h4><div class="sess">${SESS.map(s => `<div class="s" style="--c:${COL[s.state]}"><span class="ms">${ICO[s.state]}</span><span style="min-width:0">${s.name}<small>${esc(s.last)}</small></span><span class="mono" style="font-size:11px;color:#8f96a0" data-since="${s.since}">${ago(Date.now() - s.since)}</span></div>`).join('')}</div>`;
+    case 'pend': return it ? `<h4><span class="ms" style="color:#ffb02e">front_hand</span>${S(it.sid).name} pide permiso</h4><code>${esc(it.cmd)}</code><div class="wrow"><button class="wb" type="button" data-act="deny" data-v="${it.id}">Denegar</button><button class="wb y" type="button" data-act="allow" data-v="${it.id}">Permitir</button>${M.queue.length > 1 ? `<span class="sub">+${M.queue.length - 1} más</span>` : ''}</div>` : `<h4><span class="ms">check_circle</span>Pendiente</h4><div class="big" style="font-size:20px">Nada pendiente</div><div class="sub">Te esperó ${Math.round(M.waited / 60000)} min hoy</div>`;
+    case 'hoy': return `<h4><span class="ms">schedule</span>Hoy</h4><div class="big">3h 52m</div><div class="sub">de trabajo de Claude</div>`;
+    case 'acc': return `<h4><span class="ms">bolt</span>Acciones</h4><div class="big">${totalActs()}</div><div class="spark">${M.spark.map(v => `<i style="height:${Math.min(100, v * 8)}%"></i>`).join('')}</div>`;
+    case 'foco': return `<h4><span class="ms">dark_mode</span>Foco</h4><div class="big" style="font-size:20px">${M.focus ? 'Activo' : 'Apagado'}</div><div class="wrow"><button class="wb ${M.focus ? '' : 'y'}" type="button" data-act="focus">${M.focus ? 'Salir' : 'Activar 1 h'}</button></div>`;
+    case 'pulso': return `<h4><span class="ms">blur_on</span>Pulso</h4><div class="mini" id="mini"></div><div class="wrow"><button class="wb" type="button" data-act="mpulse" data-v="#ffb02e">Permiso</button><button class="wb" type="button" data-act="mpulse" data-v="#4fe0a0">Listo</button></div>`;
+    case 'keys': return `<h4><span class="ms">keyboard</span>Teclas por sesión</h4><div class="keys">${SESS.map(s => `<span class="${s.state === 'waiting' || s.state === 'idlewait' ? 'lit' : ''}" style="--c:${COL[s.state]}" title="${s.name}">${s.key}</span>`).join('')}</div><div class="sub">Se encienden cuando esa sesión te espera</div>`;
+  }
+}
+function renderMosaico(force) {
+  const win = $('#mWin');
+  if (!win.dataset.built) {
+    win.innerHTML = `<div class="tbar"><span class="tl"></span><span>Pulse</span><span class="sp"></span><button class="tbtn" type="button" data-act="medit" aria-pressed="false"><span class="ms">edit</span><span>Editar</span></button><span class="ctl"><span class="ms">remove</span><span class="ms">crop_square</span><span class="ms">close</span></span></div><div class="grid" id="mGrid"></div>`;
+    win.dataset.built = 1;
+  }
+  const sig = order.join() + [...hidden].join() + edit + SESS.map(s => s.state + s.last).join('|') + M.queue.map(q => q.id).join() + M.focus + totalActs();
+  if (sig === mSig && !force) return;
+  mSig = sig;
+  const grid = $('#mGrid');
+  const prev = {}; $$('.w[data-w]', grid).forEach(e => prev[e.dataset.w] = e.getBoundingClientRect());
+  grid.classList.toggle('edit', edit); win.classList.toggle('edit', edit);
+  grid.innerHTML = order.filter(id => !hidden.has(id)).map(id => `<div class="w ${WIDGETS[id].size} ${id === 'pend' && M.queue.length ? 'pend' : ''} ${id === 'foco' ? 'moon' + (M.focus ? ' on' : '') : ''}" data-w="${id}"><button class="x" type="button" data-act="mhide" data-v="${id}" aria-label="Quitar ${WIDGETS[id].name}"><span class="ms">remove</span></button>${wBody(id)}</div>`).join('') + `<button class="w add" type="button" data-act="msheet"><span class="ms">add</span>Agregar pieza</button>`;
+  $('[data-act="medit"]').setAttribute('aria-pressed', edit); $('[data-act="medit"] span:last-child').textContent = edit ? 'Listo' : 'Editar';
+  // FLIP
+  if (!reduce) $$('.w[data-w]', grid).forEach(e => { const p = prev[e.dataset.w]; if (!p) return; const n = e.getBoundingClientRect(); const dx = p.left - n.left, dy = p.top - n.top; if (dx || dy) e.animate([{transform:`translate(${dx}px,${dy}px)`}, {transform:'none'}], {duration:SPS.d, easing:SPS.e}); });
+  renderSheet();
+}
+function renderSheet() {
+  $('#mSheet')?.remove();
+  if (!sheet) return;
+  const list = [...hidden];
+  const el = document.createElement('div'); el.className = 'sheet'; el.id = 'mSheet';
+  el.innerHTML = `<h5>Agregar pieza</h5>${list.length ? list.map(id => `<button type="button" data-act="madd" data-v="${id}"><span class="ms">${WIDGETS[id].icon}</span>${WIDGETS[id].name}</button>`).join('') : '<p>Todas las piezas están en el tablero. Quita alguna con − para verla aquí.</p>'}`;
+  $('#mWin').appendChild(el);
+}
+function miniPulse(c) {
+  const host = $('#mini'); if (!host) return;
+  const e = document.createElement('div'); e.style.cssText = 'position:absolute;inset:0;pointer-events:none'; e.style.background = c;
+  const m = ['to right','to left','to bottom','to top'].map(d => `linear-gradient(${d}, #000 0, #000 1.5px, rgba(0,0,0,.4) 6px, transparent 22px)`).join(',');
+  e.style.webkitMaskImage = m; e.style.maskImage = m; host.appendChild(e);
+  e.animate([{opacity:0},{opacity:.95,offset:.1},{opacity:.12,offset:.3},{opacity:.85,offset:.42},{opacity:0}], {duration:1100, easing:'ease-out'}).onfinish = () => e.remove();
+}
+/* drag to reorder (edit mode) */
+(() => {
+  let drag = null;
+  document.addEventListener('pointerdown', e => {
+    if (!edit) return; const w = e.target.closest('#mGrid .w[data-w]'); if (!w || e.target.closest('button')) return;
+    drag = {id:w.dataset.w, x:e.clientX, y:e.clientY, el:w}; w.classList.add('dragging'); w.setPointerCapture(e.pointerId); e.preventDefault();
+  });
+  document.addEventListener('pointermove', e => {
+    if (!drag) return;
+    drag.el.style.transform = `translate(${e.clientX - drag.x}px,${e.clientY - drag.y}px) scale(1.03)`;
+    drag.el.style.pointerEvents = 'none';
+    const over = document.elementFromPoint(e.clientX, e.clientY)?.closest('#mGrid .w[data-w]');
+    drag.el.style.pointerEvents = '';
+    if (over && over.dataset.w !== drag.id) {
+      const a = order.indexOf(drag.id), b = order.indexOf(over.dataset.w);
+      order.splice(a, 1); order.splice(b, 0, drag.id); PREF.order = order; save();
+      const r0 = drag.el.getBoundingClientRect();
+      renderMosaico(true);
+      const nw = $(`#mGrid .w[data-w="${drag.id}"]`); const r1 = nw.getBoundingClientRect();
+      drag.x += r1.left - r0.left; drag.y += r1.top - r0.top;
+      drag.el = nw; nw.classList.add('dragging'); nw.style.transform = `translate(${e.clientX - drag.x}px,${e.clientY - drag.y}px) scale(1.03)`;
+    }
+  });
+  const end = () => { if (!drag) return; const el = drag.el; el.classList.remove('dragging'); const t = el.style.transform; el.style.transform = ''; if (!reduce && t) el.animate([{transform:t}, {transform:'none'}], {duration:SPS.d, easing:SPS.e}); drag = null; };
+  document.addEventListener('pointerup', end); document.addEventListener('pointercancel', end);
+})();
+
+/* ================= page ================= */
+function renderAll(force) { renderBolsillo(force); renderMosaico(force); tickTimes(); $$('.bar [data-act="focus"]').forEach(b => b.setAttribute('aria-pressed', M.focus)); }
+function renderChoice() {
+  const n = {bolsillo:'Bolsillo (panel desde la bandeja)', mosaico:'Mosaico (tablero de piezas)'}[PREF.chosen];
+  $('#choiceTxt').textContent = n ? `Centro de mando: ${n}.` : 'Todavía no eliges. También puedes quedarte con las dos: Bolsillo como panel rápido y Mosaico como ventana completa.';
+  $$('[data-act="pick"]').forEach(b => { const on = b.dataset.v === PREF.chosen; b.setAttribute('aria-pressed', on); b.textContent = on ? 'Elegida' : 'Elegir'; });
+}
+$('#bar').innerHTML = `<button class="cb" type="button" data-act="sim" aria-pressed="true"><span class="ms">motion_play</span><span id="simTxt">Actividad en vivo</span></button><span class="sep"></span>
+  <button class="cb" type="button" data-act="ev" data-v="perm"><i style="--c:var(--perm)"></i>Pide permiso</button>
+  <button class="cb" type="button" data-act="ev" data-v="done"><i style="--c:var(--done)"></i>Terminó</button>
+  <button class="cb" type="button" data-act="ev" data-v="idle"><i style="--c:var(--idle)"></i>Te espera</button>
+  <button class="cb" type="button" data-act="focus" aria-pressed="false"><span class="ms">dark_mode</span>Foco</button>`;
+
+document.addEventListener('click', e => {
+  const a = e.target.closest('[data-act]');
+  if (sheet && !e.target.closest('#mSheet') && !(a && a.dataset.act === 'msheet')) { sheet = false; renderSheet(); }
+  if (!a) return;
+  const v = a.dataset.v, sid = a.dataset.sid;
+  switch (a.dataset.act) {
+    case 'allow': decide(true, v, a); break;
+    case 'deny': decide(false, v, a); break;
+    case 'reply': reply(sid); break;
+    case 'focus': M.focus = !M.focus; renderAll(); break;
+    case 'tile': ripple(a, e); if (v === 'focus') M.focus = !M.focus; else SET[v] = !SET[v]; a.setAttribute('aria-pressed', v === 'focus' ? M.focus : v === 'sound' ? !SET.sound : SET[v]); setTimeout(() => renderAll(), 260); break;
+    case 'btab': PREF.tab = v; save(); moveInd(); { const view = $('#bView'); if (!reduce) view.animate([{opacity:0, transform:'translateY(6px)'}, {opacity:1, transform:'none'}], {duration:300, easing:'cubic-bezier(.16,1,.3,1)'}); } renderBolsillo(true); break;
+    case 'opentab': $('#secMosaico').scrollIntoView({behavior:reduce ? 'auto' : 'smooth', block:'start'}); break;
+    case 'medit': edit = !edit; sheet = false; renderMosaico(true); break;
+    case 'mhide': hidden.add(v); PREF.hidden = [...hidden]; save(); renderMosaico(true); break;
+    case 'msheet': sheet = !sheet; renderSheet(); break;
+    case 'madd': hidden.delete(v); PREF.hidden = [...hidden]; save(); sheet = false; renderMosaico(true); { const n = $(`#mGrid .w[data-w="${v}"]`); if (n && !reduce) n.animate([{opacity:0, transform:'scale(.9)'}, {opacity:1, transform:'none'}], {duration:SP.d, easing:SP.e}); } break;
+    case 'mpulse': miniPulse(v); break;
+    case 'island': SET.island = v; renderBolsillo(true); break;
+    case 'sim': simOn = !simOn; a.setAttribute('aria-pressed', simOn); $('#simTxt').textContent = simOn ? 'Actividad en vivo' : 'Actividad en pausa'; clearTimeout(simT); if (simOn) simStep(); break;
+    case 'ev': { const pool = SESS.filter(x => x.state !== 'waiting'); const s = pool[Math.floor(Math.random() * pool.length)]; if (!s) break; if (v === 'perm') act('perm', s.id, CMDS[s.id][0]); else if (v === 'done') act('done', s.id); else act('idle', s.id); break; }
+    case 'pick': PREF.chosen = PREF.chosen === v ? null : v; save(); renderChoice(); break;
+    case 'copy': { const t = $('#choiceTxt').textContent; navigator.clipboard.writeText(t).then(() => $('#copyNote').textContent = 'Copiado.').catch(() => { const r = document.createRange(); r.selectNodeContents($('#choiceTxt')); getSelection().removeAllRanges(); getSelection().addRange(r); $('#copyNote').textContent = 'Seleccionado: Ctrl+C.'; }); break; }
+  }
+});
+$('#bTray').addEventListener('click', toggleBolsillo);
+document.addEventListener('change', e => { const t = e.target; if (t.dataset.set) { SET[t.dataset.set] = t.checked; } });
+document.addEventListener('keydown', e => { if (e.target.matches('input') || !M.queue.length) return; const k = e.key.toLowerCase(); if (k === 'y') decide(true, M.queue[0].id, $(`[data-act="allow"][data-v="${M.queue[0].id}"]`)); if (k === 'n') decide(false, M.queue[0].id); });
+window.addEventListener('resize', () => moveInd(true));
+
+renderAll(true); requestAnimationFrame(() => moveInd(true)); renderChoice();
+const demo = new URLSearchParams(location.search).get('demo');
+if (demo === 'perm') setTimeout(() => act('perm', 's2', 'npx prisma migrate dev'), 50);
+if (demo === 'edit') setTimeout(() => { act('perm', 's2', 'npx prisma migrate dev'); edit = true; renderMosaico(true); }, 50);
+if (!reduce && !demo) simT = setTimeout(simStep, 1200); else simOn = false;
+})();
+</script>

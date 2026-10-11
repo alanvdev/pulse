@@ -1,0 +1,672 @@
+<title>Isla: Hilo, Orbe y Comando</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..500,0..1,0&display=block" rel="stylesheet">
+<style>
+/* Layout: tres recortes a tamaño real (parte de arriba del monitor), uno por dirección, a todo lo ancho. Barra de eventos fija arriba y ajustes compartidos al final. Tema oscuro único: es un banco de luz. */
+:root{
+  color-scheme: dark;
+  --bg:#0a0b0d; --panel:#121418; --line:#22262c; --line-2:#30353d; --fg:#e7e9ec; --muted:#8e95a0; --faint:#5d646e; --focus:#a9c8ff; --ink:#060708;
+  --work:#e8eefc; --perm:#ffb02e; --done:#4fe0a0; --idle:#b6c0d4; --err:#ff5a52; --sub:#5cc8ff; --moon:#b9a2ff;
+  --glass:rgba(16,17,21,.78);
+  --f-ui:"Geist", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --f-mono:"Geist Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --e-out:cubic-bezier(.16,1,.3,1); --e-in:cubic-bezier(.7,0,.84,0);
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--fg)}
+body{margin:0;font-family:var(--f-ui);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+::selection{background:#2b3a52;color:#fff}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:6px}
+[hidden]{display:none!important}
+.ms{font-family:"Material Symbols Rounded";font-weight:normal;font-style:normal;line-height:1;letter-spacing:normal;text-transform:none;white-space:nowrap;font-feature-settings:"liga";display:inline-block;overflow:hidden;width:1em;flex:none;font-size:18px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.page{max-width:1240px;margin-inline:auto;padding-inline:22px;padding-block:0 60px}
+.head{padding-block:26px 6px}
+.head h1{margin:0 0 4px;font-size:21px;font-weight:600;letter-spacing:-.01em}
+.head p{margin:0;color:var(--muted);max-width:78ch;text-wrap:pretty}
+.bar{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding-block:10px;background:linear-gradient(var(--bg) 80%,transparent)}
+.cb{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line-2);background:#171a1e;padding:5px 11px;border-radius:99px;font-size:12.5px;white-space:nowrap;transition:background .15s,transform .1s,border-color .15s}
+.cb:hover{background:#1f2328}
+.cb:active{transform:scale(.97)}
+.cb i{width:7px;height:7px;border-radius:50%;background:var(--c)}
+.cb .ms{font-size:15px}
+.cb[aria-pressed="true"]{border-color:var(--fg)}
+.cb.pri{background:var(--fg);color:var(--ink);border-color:var(--fg);font-weight:500}
+.cb .prog{width:34px;height:3px;background:rgba(0,0,0,.2);border-radius:2px;overflow:hidden}
+.cb .prog b{display:block;height:100%;width:0;background:var(--ink)}
+.sep{width:1px;height:20px;background:var(--line)}
+.dirs{display:grid;gap:40px;margin-top:12px}
+.dh{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;justify-content:space-between;margin-bottom:10px}
+.dh h2{margin:0;font-size:17px;font-weight:600}
+.dh p{margin:3px 0 0;color:var(--muted);max-width:80ch;font-size:13.5px;text-wrap:pretty}
+.dh .try{margin-top:6px;font-size:12.5px;color:#c4c9d0}
+.dh .try b{color:#fff;font-weight:500}
+.pick{border:1px solid var(--line-2);background:#171a1e;border-radius:8px;padding:7px 14px;font-size:13px}
+.pick[aria-pressed="true"]{background:var(--fg);color:var(--ink);border-color:var(--fg);font-weight:500}
+.board{position:relative;height:340px;border-radius:12px;overflow:hidden;border:1px solid var(--line);isolation:isolate;user-select:none}
+.board.chosen{border-color:#59606b}
+.wp-dark{background:radial-gradient(55% 120% at 10% 130%,#1b2738 0%,transparent 60%),radial-gradient(45% 100% at 92% -30%,#261f33 0%,transparent 60%),#0d1015}
+.wp-light{background:radial-gradient(55% 120% at 10% 130%,#cdd8e6 0%,transparent 60%),radial-gradient(45% 100% at 92% -30%,#e5dccf 0%,transparent 60%),#eef0f3}
+.wp-code{background:repeating-linear-gradient(to bottom,transparent 0 21px,rgba(255,255,255,.028) 21px 22px),#1e1f22}
+.bezel{position:absolute;z-index:3;left:0;right:0;top:0;height:7px;background:#050506;box-shadow:0 1px 0 rgba(255,255,255,.035)}
+.beam{position:absolute;z-index:4;left:0;right:0;top:7px;height:60px;pointer-events:none;opacity:0}
+.tweaks{margin-top:40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.tw{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:grid;gap:12px;align-content:start}
+.tw h3{margin:0;font-size:12px;font-weight:500;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.seg{display:flex;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:3px;gap:2px}
+.seg button{flex:1;border:0;background:transparent;border-radius:6px;padding:5px 6px;font-size:12.5px;color:var(--muted);white-space:nowrap}
+.seg button[aria-pressed="true"]{background:#1c1f24;color:var(--fg);box-shadow:inset 0 0 0 1px var(--line-2)}
+.tg{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:13px}
+.tg small{display:block;color:var(--muted);font-size:12px}
+.sw{position:relative;width:32px;height:19px;flex:none;appearance:none;-webkit-appearance:none;background:#2a3038;border-radius:99px;margin:0;cursor:pointer;transition:background .2s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:13px;height:13px;border-radius:50%;background:#e5e8ec;transition:transform .24s cubic-bezier(.3,1.5,.5,1)}
+.sw:checked{background:#5d8bd6}
+.sw:checked::after{transform:translateX(13px)}
+.fh{display:flex;justify-content:space-between;font-size:13px}
+.fh output{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+input[type=range]{width:100%;accent-color:var(--fg)}
+.choice{margin-top:14px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+.choice p{margin:0;color:var(--muted);font-size:13px;flex:1;min-width:260px}
+
+/* ---------- shared island pieces ---------- */
+.glass{background:var(--glass);-webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%);box-shadow:inset 0 1px 0 rgba(255,255,255,.07),inset 0 0 0 1px rgba(255,255,255,.06),0 18px 40px -18px rgba(0,0,0,.75)}
+.wp-light .glass{box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(255,255,255,.07),0 18px 40px -20px rgba(30,40,60,.45)}
+.shell{position:absolute;z-index:6;overflow:hidden;color:#eceef1;font-size:13px;line-height:1.35}
+.layer{position:absolute;left:0;top:0;width:max-content;max-width:520px}
+.row{display:flex;align-items:center;gap:10px;white-space:nowrap}
+.muted{color:#9aa1ab}
+.t b{font-weight:500}
+.card{padding:13px 15px 14px;display:grid;gap:10px;min-width:310px}
+.ch{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12.5px}
+.ch .nm{font-family:var(--f-mono);font-size:12px;color:#c7ccd3}
+.st{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--c)}
+.st::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c)}
+.cmd{font-family:var(--f-mono);font-size:12.5px;color:#ffd590;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.05);border-radius:8px;padding:8px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:380px}
+.warn{display:flex;align-items:center;gap:6px;font-size:12px;color:#ffc56a}
+.warn .ms{font-size:15px}
+.acts{display:flex;gap:8px}
+.acts button{position:relative;flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:9px;padding:7px 10px;font-size:12.5px;font-weight:500;overflow:hidden;transition:transform .12s var(--e-out),background .15s}
+.acts button:active{transform:scale(.96)}
+.b-no{background:rgba(255,255,255,.07);color:#e3e6ea}
+.b-no:hover{background:rgba(255,255,255,.12)}
+.b-yes{background:#eef0f3;color:#0b0d10}
+.b-yes:hover{background:#fff}
+.b-yes .fill{position:absolute;inset:0;background:var(--perm);transform-origin:left;transform:scaleX(var(--hold,0))}
+.b-yes span,.b-yes kbd{position:relative}
+kbd{font-family:var(--f-mono);font-size:10.5px;font-weight:400;padding:0 5px;min-width:18px;text-align:center;border-radius:4px;border:1px solid currentColor;opacity:.5;transition:opacity .12s,transform .12s,background .12s;display:inline-block;line-height:16px}
+kbd.on{opacity:1;background:rgba(255,255,255,.22);transform:translateY(1px)}
+.cd{position:absolute;left:15px;right:15px;bottom:0;height:1.5px;border-radius:2px;background:linear-gradient(90deg,var(--perm),rgba(255,176,46,.4));transform-origin:left}
+.meta{display:flex;gap:14px;font-family:var(--f-mono);font-size:11.5px;color:#8a919b}
+.mini{display:flex;gap:6px}
+.mini button{border:0;background:rgba(255,255,255,.07);border-radius:7px;padding:4px 9px;font-size:12px;color:#dde1e6;display:inline-flex;gap:5px;align-items:center;transition:background .15s,transform .1s}
+.mini button:hover{background:rgba(255,255,255,.13)}
+.mini button:active{transform:scale(.96)}
+.mini .ms{font-size:14px}
+.ok{color:var(--done)}.bad{color:#ff8c84}
+.draw{clip-path:inset(0 100% 0 0);animation:draw .5s var(--e-out) .08s forwards}
+@keyframes draw{to{clip-path:inset(0 0 0 0)}}
+
+/* ---------- Hilo ---------- */
+.h-line{position:absolute;z-index:6;top:7px;display:flex;gap:6px;transition:opacity .4s}
+.h-seg{position:relative;height:2px;width:44px;border-radius:0 0 2px 2px;background:var(--c,#cfd5de);opacity:.3;cursor:pointer;transition:width .6s var(--sp),opacity .4s,background .5s,box-shadow .5s,height .25s var(--e-out)}
+.h-seg::before{content:"";position:absolute;left:-3px;right:-3px;top:-7px;height:22px}
+.h-seg.on{opacity:1;box-shadow:0 0 6px 0 color-mix(in srgb,var(--c) 70%,transparent),0 0 18px 1px color-mix(in srgb,var(--c) 30%,transparent)}
+.h-seg:hover,.h-seg.hov{height:3px}
+.h-seg.wait{width:96px;animation:hb 1.6s ease-in-out infinite}
+@keyframes hb{0%,100%{filter:brightness(1)}12%{filter:brightness(1.9)}26%{filter:brightness(1)}38%{filter:brightness(1.6)}}
+.h-seg.idlew{animation:br 3s ease-in-out infinite}
+@keyframes br{50%{opacity:.55}}
+.h-bead{position:absolute;top:0;bottom:0;width:16px;border-radius:2px;background:linear-gradient(90deg,transparent,#fff,transparent);opacity:0}
+.h-seg.work .h-bead{opacity:.95;animation:bead 1.7s cubic-bezier(.45,0,.2,1) infinite}
+@keyframes bead{from{left:-16px}to{left:100%}}
+.wp-light .h-seg:not(.on){--c:#39414d}
+.h-thread{position:absolute;z-index:5;top:9px;width:1px;height:14px;background:linear-gradient(var(--tc,#cfd5de),color-mix(in srgb,var(--tc,#cfd5de) 30%,transparent));transform-origin:top;transform:scaleY(0);transition:transform .28s var(--e-out),left .55s var(--sp),background .4s}
+.h-thread.on{transform:scaleY(1)}
+.h-card{top:23px;transition:left .55s var(--sp)}
+.h-card::before{content:"";position:absolute;left:0;right:0;top:0;height:1px;background:linear-gradient(90deg,transparent,var(--tc,#cfd5de),transparent);opacity:.7;z-index:2}
+
+/* ---------- Orbe ---------- */
+.o-shell{top:13px;border-radius:99px;cursor:pointer;touch-action:none}
+.o-shell.right{right:16px}.o-shell.left{left:16px}.o-shell.center{left:50%;translate:-50% 0}
+.o-shell.drag{cursor:grabbing}
+.o-shell[data-k="dot"]{background:transparent;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+.o-core{position:relative;width:22px;height:22px;display:grid;place-items:center}
+.o-orbit{position:absolute;inset:0;opacity:0;transition:opacity .4s}
+.o-orbit i{position:absolute;top:2px;left:50%;width:3px;height:3px;margin-left:-1.5px;border-radius:50%;background:var(--c);opacity:.8}
+.o-core.work .o-orbit{opacity:1;animation:spin 1.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.o-dot{width:6px;height:6px;border-radius:50%;background:var(--c);box-shadow:0 0 8px color-mix(in srgb,var(--c) 70%,transparent);transition:background .4s,box-shadow .4s,transform .4s var(--e-out)}
+.o-core.wait .o-dot{animation:obr 1.6s ease-in-out infinite}
+@keyframes obr{0%,100%{transform:scale(1)}15%{transform:scale(1.7)}30%{transform:scale(1)}45%{transform:scale(1.45)}}
+.o-rest{width:10px;height:10px;display:grid;place-items:center}
+.o-rest i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.35)}
+.wp-light .o-rest i{background:rgba(0,0,0,.3)}
+.o-peek{display:flex;align-items:center;gap:8px;padding:0 13px 0 4px;height:28px;font-size:12.5px}
+.o-sd{display:flex;gap:4px}
+.o-sd i{width:5px;height:5px;border-radius:50%;background:var(--c)}
+.o-menu{display:flex;align-items:center;gap:0;padding:0 4px;height:28px}
+.o-menu button{border:0;background:transparent;width:26px;height:26px;border-radius:99px;display:grid;place-items:center;color:#d9dde2;position:relative;transition:background .15s,transform .12s}
+.o-menu button:hover{background:rgba(255,255,255,.1)}
+.o-menu button:active{transform:scale(.9)}
+.o-menu button .ms{font-size:15px}
+.o-menu button[aria-pressed="true"]{color:var(--moon)}
+.o-tip{position:absolute;z-index:8;top:46px;font-size:11.5px;color:#e9ecef;background:rgba(10,11,13,.9);padding:3px 8px;border-radius:6px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s,transform .2s var(--e-out);transform:translateY(-3px)}
+.o-tip.on{opacity:1;transform:none}
+.o-pill{display:flex;align-items:center;gap:8px;padding:0 14px 0 4px;height:28px;font-size:12.5px}
+
+/* ---------- Comando ---------- */
+.c-zone{position:absolute;z-index:5;top:0;left:50%;translate:-50% 0;width:420px;height:34px}
+.c-hint{position:absolute;z-index:6;top:12px;left:50%;translate:-50% 0;display:flex;align-items:center;gap:6px;font-size:11.5px;color:rgba(255,255,255,.5);padding:4px 10px;border-radius:99px;border:0;background:rgba(255,255,255,.05);opacity:0;transform:translateY(-6px);transition:opacity .25s,transform .35s var(--e-out),background .2s;pointer-events:none}
+.c-hint .ms{font-size:14px}
+.c-zone:hover + .c-hint,.c-hint:hover,.c-hint.show{opacity:1;transform:none;pointer-events:auto}
+.c-hint:hover{background:rgba(255,255,255,.1);color:#fff}
+.wp-light .c-hint{color:rgba(0,0,0,.5);background:rgba(0,0,0,.05)}
+.c-shell{top:12px;left:50%;translate:-50% 0;border-radius:14px}
+.c-toast{display:flex;align-items:center;gap:10px;padding:8px 14px;height:36px;white-space:nowrap;position:relative}
+.c-toast .ic{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;background:color-mix(in srgb,var(--c) 18%,transparent);color:var(--c)}
+.c-toast .ic .ms{font-size:15px}
+.c-toast .tm{position:absolute;left:14px;right:14px;bottom:0;height:1px;background:rgba(255,255,255,.35);transform-origin:left}
+.pal{width:520px;display:grid}
+.pal-in{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.07)}
+.pal-in .ms{font-size:18px;color:#8b929c}
+.pal-in input{flex:1;background:transparent;border:0;outline:0;color:#f2f4f6;font-size:15px}
+.pal-in input::placeholder{color:#727a85}
+.pal-in .pre{font-size:12px;color:#c7ccd3;background:rgba(255,255,255,.08);border-radius:6px;padding:2px 8px;white-space:nowrap}
+.pal-list{position:relative;max-height:186px;overflow:auto;padding:6px}
+.pal-hl{position:absolute;left:6px;right:6px;top:0;height:34px;border-radius:8px;background:rgba(255,255,255,.075);transition:transform .32s var(--sp),height .2s;pointer-events:none}
+.pal-g{font-size:11px;color:#757d88;padding:8px 10px 4px}
+.pal-it{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:11px;align-items:center;height:34px;padding:0 10px;border-radius:8px;font-size:13px;white-space:nowrap;cursor:pointer}
+.pal-it .ic{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;background:color-mix(in srgb,var(--c,#9aa1ab) 16%,transparent);color:var(--c,#c7ccd3)}
+.pal-it .ic .ms{font-size:15px}
+.pal-it span{overflow:hidden;text-overflow:ellipsis;color:#d9dde2}
+.pal-it span u{text-decoration:none;color:#fff;font-weight:500}
+.pal-it small{font-family:var(--f-mono);font-size:11px;color:#7a828d}
+.pal-it[aria-selected="true"] small{color:#c7ccd3}
+.pal-foot{display:flex;gap:16px;padding:8px 16px;border-top:1px solid rgba(255,255,255,.06);font-size:11.5px;color:#7a828d}
+.pal-foot kbd{opacity:.7;margin-right:4px}
+.pal-empty{padding:14px 10px;color:#7a828d;font-size:13px}
+
+@media (prefers-reduced-motion:reduce){
+  .h-seg.wait,.h-seg.idlew,.h-seg.work .h-bead,.o-core.work .cmt,.o-core.wait .o-dot{animation:none}
+  .draw{animation:none;clip-path:none}
+}
+</style>
+
+<div class="page">
+  <header class="head">
+    <h1>Isla: Hilo, Orbe y Comando</h1>
+    <p>Las tres que elegiste, rehechas con más cuidado. Cada recorte es la parte de arriba de tu monitor a tamaño real y todas reaccionan a los mismos eventos. Prueba la interacción de cada una (está indicada arriba de cada recuadro).</p>
+  </header>
+  <div class="bar" id="bar"></div>
+  <div class="dirs" id="dirs"></div>
+  <div class="tweaks" id="tweaks"></div>
+  <div class="choice"><p id="choiceTxt"></p><button class="pick" type="button" data-act="copy">Copiar para Claude</button><span class="mono" id="copyNote" style="font-size:12px;color:var(--faint)"></span></div>
+</div>
+
+<script>
+(() => {
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const rgb = h => { const n = parseInt(h.slice(1), 16); return [n>>16&255, n>>8&255, n&255]; };
+const rgba = (h, a) => `rgba(${rgb(h).join(',')},${a})`;
+const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+try { CSS.registerProperty({name:'--p', syntax:'<percentage>', inherits:false, initialValue:'0%'}); } catch {}
+
+const KEY = 'pulse-isla-v3';
+let TW = {rest:'line', speed:1, wall:'dark', keys:true, hold:true, countdown:true, timeout:30, beam:true, chosen:null, sel:'s1'};
+try { TW = {...TW, ...JSON.parse(localStorage.getItem(KEY) || '{}')}; } catch {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(TW)); } catch {} };
+const T = ms => ms / TW.speed;
+
+/* spring easing via linear() */
+const hasLinear = CSS.supports('transition-timing-function', 'linear(0, 1)');
+function spring(k, d) {
+  if (!hasLinear) return {e:'cubic-bezier(.32,.72,0,1)', d:520};
+  let x = 0, v = 0; const dt = 1 / 120, pts = [0];
+  for (let i = 0; i < 480; i++) { const a = -k * (x - 1) - d * v; v += a * dt; x += v * dt; if (i % 2) pts.push(+x.toFixed(4)); if (i > 30 && Math.abs(1 - x) < .0015 && Math.abs(v) < .01) break; }
+  pts.push(1); return {e:`linear(${pts.join(',')})`, d:Math.round(pts.length * 2 * dt * 1000)};
+}
+const SP_OPEN = spring(260, 23), SP_CLOSE = spring(340, 38), SP_MOVE = spring(200, 24);
+document.documentElement.style.setProperty('--sp', SP_MOVE.e);
+
+/* ================= model ================= */
+const COL = {working:'#e8eefc', waiting:'#ffb02e', done:'#4fe0a0', idlewait:'#b6c0d4', idle:'#69717c'};
+const LBL = {working:'trabajando', waiting:'pide permiso', done:'terminó', idlewait:'te espera', idle:'en calma'};
+const SESS = [{id:'s1', name:'hyperflow-app'},{id:'s2', name:'proppie-api'},{id:'s3', name:'mcrefacciones'}].map(s => ({...s, state:'idle', last:'', subs:0, since:Date.now(), actions:0, muted:false}));
+const S = id => SESS.find(s => s.id === id);
+const M = {queue:[], focus:false, deferred:[], tr:null};
+let qid = 0, trT = 0;
+const ago = ms => { const s = Math.max(0, Math.floor(ms / 1000)); return s < 60 ? `${s} s` : `${Math.floor(s / 60)} min ${String(s % 60).padStart(2,'0')} s`; };
+const agg = () => { const r = {idle:0, done:1, working:2, idlewait:3, waiting:4}; return SESS.reduce((a, s) => r[s.state] > r[a] ? s.state : a, 'idle'); };
+function transient(t, ms) { M.tr = {...t, id:Math.random()}; clearTimeout(trT); trT = setTimeout(() => { M.tr = null; renderAll(); }, T(ms)); renderAll(); }
+
+let actx;
+function tone(kind) { try { actx = actx || new AudioContext(); const n = actx.currentTime; const seq = {ok:[[880,0,.08],[1320,.07,.12]], no:[[300,0,.1]], tick:[[1500,0,.03]], ev:[[990,0,.06]]}[kind] || [[880,0,.08]]; for (const [f, at, d] of seq) { const o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = f; g.gain.setValueAtTime(0, n + at); g.gain.linearRampToValueAtTime(.06, n + at + .01); g.gain.exponentialRampToValueAtTime(.0001, n + at + d); o.connect(g).connect(actx.destination); o.start(n + at); o.stop(n + at + d + .05); } } catch {} }
+
+const COLORS = {start:COL.working, permission:COL.waiting, done:COL.done, error:'#ff5a52', idle:COL.idlewait, subagent:'#5cc8ff', focus:'#b9a2ff'};
+function emit(ev, sid, data) {
+  const s = S(sid);
+  if (ev !== 'permission' && s.state === 'waiting' && ev !== 'tool') resolve(true, s.id, true);
+  if (ev === 'start') { s.state = 'working'; s.last = data; s.since = Date.now(); s.actions++; }
+  if (ev === 'tool') { if (s.state === 'waiting') return; s.state = 'working'; s.last = data; s.actions++; renderAll(); return; }
+  if (ev === 'sub') { s.subs++; s.state = 'working'; s.actions++; renderAll(); return; }
+  if (ev === 'subdone') { s.subs = Math.max(0, s.subs - 1); renderAll(); return; }
+  if (ev === 'permission') { s.state = 'waiting'; s.since = Date.now(); const it = {id:++qid, sid, cmd:data.cmd, danger:!!data.danger, at:Date.now()}; it.timer = setTimeout(() => expire(it.id), TW.timeout * 1000); comps.forEach(c => c.light?.('permission', sid)); setTimeout(() => { M.queue.push(it); renderAll(); }, T(TW.beam ? 520 : 0)); return; }
+  if (ev === 'done') { const d = Date.now() - s.since; s.state = 'done'; s.subs = 0; s.since = Date.now(); if (M.focus) { M.deferred.push({sid, ev:'done'}); renderAll(); return; } comps.forEach(c => c.light?.('done', sid)); setTimeout(() => transient({k:'done', sid, text:`terminó en ${ago(d)}`}, 2800), T(TW.beam ? 520 : 0)); return; }
+  if (ev === 'error') { if (M.focus) { M.deferred.push({sid, ev:'error'}); renderAll(); return; } comps.forEach(c => c.light?.('error', sid)); setTimeout(() => transient({k:'error', sid, text:data}, 2800), T(TW.beam ? 520 : 0)); return; }
+  if (ev === 'idle') { s.state = 'idlewait'; if (M.focus) { M.deferred.push({sid, ev:'idle'}); } }
+  comps.forEach(c => c.light?.(ev, sid));
+  renderAll();
+}
+function resolve(ok, sid, silent) {
+  const i = sid ? M.queue.findIndex(q => q.sid === sid) : 0; if (i < 0 || !M.queue[i]) return;
+  const it = M.queue.splice(i, 1)[0]; clearTimeout(it.timer);
+  const s = S(it.sid); s.state = 'working'; s.since = Date.now(); s.last = (ok ? 'Permitido: ' : 'Denegado: ') + it.cmd;
+  if (silent) { renderAll(); return; }
+  tone(ok ? 'ok' : 'no');
+  transient({k:ok ? 'ok' : 'no', sid:it.sid, text:it.cmd}, 1300);
+}
+function expire(id) { const i = M.queue.findIndex(q => q.id === id); if (i >= 0) { M.queue.splice(i, 1); transient({k:'info', icon:'schedule', text:'Sin respuesta: Claude te pregunta en la terminal'}, 2200); } }
+function setFocus(on) {
+  M.focus = on; $$('[data-act="focus"]').forEach(b => b.setAttribute('aria-pressed', on));
+  if (!on && M.deferred.length) { const items = M.deferred.slice(); M.deferred = []; comps.forEach(c => c.light?.('focus', items[0].sid)); setTimeout(() => transient({k:'release', items}, 4200), T(520)); }
+  else renderAll();
+}
+function allowAll() { const n = M.queue.length; if (!n) { transient({k:'info', icon:'done_all', text:'No hay permisos pendientes'}, 1600); return; } M.queue.splice(0).forEach(it => { clearTimeout(it.timer); const s = S(it.sid); s.state = 'working'; }); tone('ok'); transient({k:'ok', text:`${n} permiso${n > 1 ? 's' : ''} aprobado${n > 1 ? 's' : ''}`}, 1500); }
+function reply(sid, msg) { const s = S(sid); s.state = 'working'; s.since = Date.now(); s.last = `Le dijiste «${msg}»`; tone('ok'); transient({k:'sent', sid, text:msg}, 1700); }
+function muteAll() { const on = !SESS.every(s => s.muted); SESS.forEach(s => s.muted = on); transient({k:'info', icon:on ? 'volume_off' : 'volume_up', text:on ? 'Silencio por 30 min' : 'Sonido activado'}, 1500); }
+function goTo(sid) { transient({k:'info', icon:'terminal', text:`Abriendo la terminal de ${S(sid).name}`}, 1500); }
+
+/* ================= toolkit ================= */
+function morph(m, sig, html, o = {}) {
+  if (sig === m.sig) return {w:m.w, h:m.h, changed:false};
+  m.sig = sig;
+  const sh = m.el, old = $$(':scope > .layer', sh);
+  const layer = document.createElement('div'); layer.className = 'layer'; layer.innerHTML = html; sh.appendChild(layer);
+  let w = layer.offsetWidth, h = layer.offsetHeight;
+  if (!html) [w, h] = o.empty || [0, 0];
+  const grow = w * h >= m.w * m.h, sp = grow ? SP_OPEN : SP_CLOSE;
+  const r1 = o.radius ? o.radius(w, h) : `${Math.min(h / 2, 16)}px`;
+  const fw = sh.offsetWidth || w, fh = sh.offsetHeight || h, r0 = getComputedStyle(sh).borderRadius;
+  if (m.anim) { try { m.anim.commitStyles(); } catch {} m.anim.cancel(); }
+  sh.style.width = w + 'px'; sh.style.height = h + 'px'; sh.style.borderRadius = r1;
+  m.anim = sh.animate([{width:fw + 'px', height:fh + 'px', borderRadius:r0}, {width:w + 'px', height:h + 'px', borderRadius:r1}], {duration:reduce ? 120 : T(sp.d), easing:reduce ? 'ease-out' : sp.e});
+  m.w = w; m.h = h;
+  const op = o.hidden ? 0 : 1;
+  if (m.op !== op) { sh.animate([{opacity:m.op ?? 1}, {opacity:op}], {duration:T(op ? 180 : 260), fill:'forwards', easing:'ease-out'}); m.op = op; }
+  for (const x of old) { x.style.pointerEvents = 'none'; x.animate(reduce ? [{opacity:1},{opacity:0}] : [{opacity:1, filter:'blur(0)', transform:'scale(1)'}, {opacity:0, filter:'blur(4px)', transform:'scale(.97)'}], {duration:T(150), easing:'ease-in', fill:'forwards'}).onfinish = () => x.remove(); }
+  if (html) layer.animate(reduce ? [{opacity:0},{opacity:1}] : [{opacity:0, filter:'blur(5px)', transform:`translateY(${o.dy ?? 2}px) scale(.985)`}, {opacity:1, filter:'blur(0)', transform:'none'}], {duration:T(320), delay:T(old.length ? 60 : 0), easing:'cubic-bezier(.16,1,.3,1)', fill:'backwards'});
+  const cd = $('.cd', layer);
+  if (cd && o.item) cd.animate([{transform:'scaleX(1)'}, {transform:'scaleX(0)'}], {duration:TW.timeout * 1000, delay:-(Date.now() - o.item.at), easing:'linear', fill:'forwards'});
+  const tm = $('.tm', layer);
+  if (tm && o.life) tm.animate([{transform:'scaleX(1)'}, {transform:'scaleX(0)'}], {duration:T(o.life), easing:'linear', fill:'forwards'});
+  return {w, h, changed:true};
+}
+const stHTML = s => `<span class="st" style="--c:${COL[s.state]}">${LBL[s.state]}</span>`;
+function permCard(it) {
+  const s = S(it.sid), danger = it.danger && TW.hold;
+  return `<div class="card">
+    <div class="ch"><span class="nm">${esc(s.name)}</span>${M.queue.length > 1 ? `<span class="muted mono" style="font-size:11.5px">1 de ${M.queue.length}</span>` : stHTML(s)}</div>
+    <div class="t" style="font-size:13.5px"><b>Quiere ejecutar</b></div>
+    <div class="cmd">${esc(it.cmd)}</div>
+    ${danger ? `<div class="warn"><span class="ms">back_hand</span>Comando delicado: mantén presionado para permitir</div>` : ''}
+    <div class="acts"><button class="b-no" type="button" data-act="deny" data-sid="${s.id}"><span>Denegar</span>${TW.keys ? '<kbd data-k="n">N</kbd>' : ''}</button><button class="b-yes" type="button" data-act="allow" data-sid="${s.id}" data-danger="${danger ? 1 : 0}"><span class="fill"></span><span>${danger ? 'Mantener' : 'Permitir'}</span>${TW.keys ? '<kbd data-k="y">Y</kbd>' : ''}</button></div>
+    ${TW.countdown ? '<i class="cd"></i>' : ''}</div>`;
+}
+function trPill(tr, opt = {}) {
+  const map = {done:['check', COL.done], error:['error', '#ff5a52'], ok:['check', COL.done], no:['close', '#ff8c84'], sent:['north_east', COL.working], info:[tr.icon || 'info', '#cfd4db'], release:['dark_mode', '#b9a2ff']};
+  const [ic, c] = map[tr.k] || ['info', '#cfd4db'];
+  const who = tr.sid ? `<b>${esc(S(tr.sid).name)}</b> ` : '';
+  const txt = tr.k === 'ok' ? (tr.sid ? `Permitido <span class="muted mono" style="font-size:12px">${esc(tr.text)}</span>` : esc(tr.text)) : tr.k === 'no' ? `Denegado <span class="muted mono" style="font-size:12px">${esc(tr.text)}</span>` : tr.k === 'sent' ? `${who}<span class="muted">recibió «${esc(tr.text)}»</span>` : tr.k === 'done' || tr.k === 'error' ? `${who}<span class="${tr.k === 'error' ? 'bad' : 'muted'}">${esc(tr.text)}</span>` : esc(tr.text);
+  return {ic, c, txt};
+}
+function releaseCard(items) {
+  const L = {done:'terminó', error:'falló una tool', idle:'te espera'};
+  return `<div class="card" style="min-width:280px;gap:8px"><div class="ch"><span class="t"><b>Mientras estabas en foco</b></span><span class="muted mono" style="font-size:11.5px">${items.length}</span></div>${items.map((d, i) => `<div class="row" style="font-size:12.5px;justify-content:space-between;opacity:0;animation:liIn .4s var(--e-out) ${T(140 + i * 70)}ms forwards"><span class="mono" style="font-size:12px">${esc(S(d.sid).name)}</span><span class="st" style="--c:${COLORS[d.ev === 'idle' ? 'idle' : d.ev]}">${L[d.ev]}</span></div>`).join('')}</div>`;
+}
+const styleEl = document.createElement('style'); styleEl.textContent = '@keyframes liIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}'; document.head.appendChild(styleEl);
+function beam(board, c, xpx) {
+  if (!TW.beam || reduce) return;
+  const b = $('.beam', board), W = board.clientWidth, tg = Math.max(1, Math.min(99, xpx / W * 100));
+  const g = p => `radial-gradient(80px 1.5px at ${p} 0, ${c}, transparent), radial-gradient(170px 28px at ${p} 0, ${rgba(c,.35)}, transparent)`;
+  b.style.background = [g('var(--p)'), g(`calc(${tg * 2}% - var(--p))`)].join(',');
+  b.animate([{'--p':'0%', opacity:0}, {'--p':`${tg * .3}%`, opacity:1, offset:.22}, {'--p':`${tg}%`, opacity:1, offset:.9}, {'--p':`${tg}%`, opacity:0}], {duration:T(600), easing:'cubic-bezier(.55,0,.75,.2)', fill:'forwards'});
+}
+const ignite = (el, c) => { if (!el || reduce) return; el.animate([{boxShadow:`0 0 0 1px ${rgba(c,.85)}, 0 8px 30px -6px ${rgba(c,.6)}`}, {boxShadow:`0 0 0 1px ${rgba(c,0)}, 0 8px 30px -6px ${rgba(c,0)}`}], {duration:T(1000), easing:'cubic-bezier(.16,1,.3,1)', composite:'add'}); };
+const beat = el => { if (!el || reduce) return; el.animate([{scale:1},{scale:1.04,offset:.14},{scale:1,offset:.3},{scale:1.03,offset:.46},{scale:1}], {duration:T(900), easing:'ease-out', composite:'add'}); };
+const shake = el => { if (!el || reduce) return; el.animate([{translate:'0 0'},{translate:'-3px 0'},{translate:'3px 0'},{translate:'-2px 0'},{translate:'0 0'}], {duration:T(320), composite:'add'}); };
+
+/* ================= HILO ================= */
+function Hilo(board) {
+  const line = document.createElement('div'); line.className = 'h-line';
+  line.innerHTML = SESS.map(s => `<div class="h-seg" data-sid="${s.id}" role="button" tabindex="0" aria-label="${s.name}"><i class="h-bead"></i></div>`).join('');
+  const thread = document.createElement('div'); thread.className = 'h-thread';
+  const card = document.createElement('div'); card.className = 'shell h-card glass';
+  board.append(line, thread, card);
+  const m = {el:card, w:0, h:0, sig:'', op:0}; card.style.opacity = 0;
+  let hover = null, leaveT = 0;
+  const segW = s => s.state === 'waiting' ? 96 : 44;
+  $$('.h-seg', line).forEach(seg => {
+    seg.addEventListener('mouseenter', () => { clearTimeout(leaveT); hover = seg.dataset.sid; render(); });
+    seg.addEventListener('focus', () => { hover = seg.dataset.sid; render(); });
+    seg.addEventListener('mouseleave', () => { leaveT = setTimeout(() => { if (!card.matches(':hover')) { hover = null; render(); } }, 160); });
+  });
+  card.addEventListener('mouseenter', () => clearTimeout(leaveT));
+  card.addEventListener('mouseleave', () => { leaveT = setTimeout(() => { hover = null; render(); }, 160); });
+  function anchorX(sid) {
+    const ws = SESS.map(segW), total = ws.reduce((a, b) => a + b, 0) + 6 * (ws.length - 1);
+    const left = board.clientWidth / 2 - total / 2; let x = left;
+    for (let i = 0; i < SESS.length; i++) { if (SESS[i].id === sid) return x + ws[i] / 2; x += ws[i] + 6; }
+    return board.clientWidth / 2;
+  }
+  function render() {
+    const ws = SESS.map(segW), total = ws.reduce((a, b) => a + b, 0) + 12;
+    line.style.left = (board.clientWidth / 2 - total / 2) + 'px';
+    const calm = SESS.every(s => s.state === 'idle');
+    line.style.opacity = calm && TW.rest === 'hidden' ? 0 : 1;
+    $$('.h-seg', line).forEach(seg => {
+      const s = S(seg.dataset.sid), on = s.state !== 'idle';
+      seg.style.setProperty('--c', M.focus ? '#b9a2ff' : on ? COL[s.state] : (TW.wall === 'light' ? '#39414d' : '#cfd5de'));
+      seg.classList.toggle('on', on || M.focus);
+      seg.classList.toggle('work', s.state === 'working' && !M.focus);
+      seg.classList.toggle('wait', s.state === 'waiting');
+      seg.classList.toggle('idlew', s.state === 'idlewait');
+      seg.classList.toggle('hov', hover === s.id);
+      seg.style.width = calm && TW.rest === 'dot' ? '4px' : segW(s) + 'px';
+    });
+    // what hangs from the line
+    let html = '', sig = 'x', sid = null, tc = '#cfd5de', o = {radius:(w, h) => '4px 4px 14px 14px', dy:-6};
+    const tr = M.tr;
+    if (hover) { const s = S(hover); sid = hover; tc = COL[s.state] === COL.idle ? '#cfd5de' : COL[s.state];
+      const it = M.queue.find(q => q.sid === hover);
+      if (it) { html = permCard(it); sig = 'p' + it.id + M.queue.length; o.item = it; tc = COL.waiting; }
+      else { html = `<div class="card" style="min-width:290px"><div class="ch"><span class="nm">${esc(s.name)}</span>${stHTML(s)}</div><div style="font-size:13px;color:#dfe3e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:330px">${esc(s.last || 'Sin actividad todavía')}</div><div class="meta"><span>${ago(Date.now() - s.since)}</span><span>${s.actions} acciones</span>${s.subs ? `<span>${s.subs} subagentes</span>` : ''}</div><div class="mini"><button type="button" data-act="goto" data-sid="${s.id}"><span class="ms">terminal</span>Ir a la terminal</button><button type="button" data-act="mute" data-sid="${s.id}"><span class="ms">${s.muted ? 'volume_up' : 'volume_off'}</span>${s.muted ? 'Con sonido' : 'Silenciar'}</button>${s.state === 'idlewait' || s.state === 'done' ? `<button type="button" data-act="reply" data-sid="${s.id}"><span class="ms">reply</span>«continúa»</button>` : ''}</div></div>`; sig = 'h' + hover + s.state + s.muted + s.last + s.subs; }
+    } else if (M.queue.length) { const it = M.queue[0]; sid = it.sid; html = permCard(it); sig = 'p' + it.id + M.queue.length; o.item = it; tc = COL.waiting; }
+    else if (tr) { sid = tr.sid || SESS.find(s => s.state !== 'idle')?.id || 's2'; if (tr.k === 'release') { html = releaseCard(tr.items); tc = '#b9a2ff'; } else { const p = trPill(tr); tc = p.c; html = `<div class="row" style="padding:8px 14px;gap:9px"><span class="ms ${['done','ok'].includes(tr.k) ? 'draw' : ''}" style="font-size:17px;color:${p.c}">${p.ic}</span><span class="t">${p.txt}</span></div>`; } sig = 't' + tr.id; }
+    else if (M.focus && M.deferred.length) { sid = 's2'; tc = '#b9a2ff'; html = `<div class="row" style="padding:7px 13px;gap:8px"><span class="ms" style="font-size:15px;color:#b9a2ff">dark_mode</span><span class="muted" style="font-size:12.5px">${M.deferred.length} guardado${M.deferred.length > 1 ? 's' : ''}</span></div>`; sig = 'f' + M.deferred.length; }
+    const open = !!html;
+    o.hidden = !open;
+    card.style.setProperty('--tc', tc); thread.style.setProperty('--tc', tc);
+    const wasOpen = m.op === 1;
+    const r = morph(m, sig, html, o);
+    if (open) {
+      const ax = anchorX(sid), W = board.clientWidth;
+      const left = Math.max(12, Math.min(W - r.w - 12, ax - r.w / 2));
+      if (!wasOpen) { card.style.transition = 'none'; card.style.left = left + 'px'; void card.offsetWidth; card.style.transition = ''; thread.style.transition = 'none'; thread.style.left = ax + 'px'; void thread.offsetWidth; thread.style.transition = ''; if (!reduce) card.animate([{clipPath:'inset(0 0 100% 0 round 4px 4px 14px 14px)'}, {clipPath:'inset(0 0 0% 0 round 4px 4px 14px 14px)'}], {duration:T(420), delay:T(120), easing:'cubic-bezier(.16,1,.3,1)', fill:'backwards'}); }
+      else { card.style.left = left + 'px'; thread.style.left = ax + 'px'; }
+      thread.classList.add('on');
+    } else thread.classList.remove('on');
+  }
+  return {render, light(ev, sid) {
+    const c = COLORS[ev] || '#fff'; beam(board, c, anchorX(sid));
+    setTimeout(() => { const seg = $(`.h-seg[data-sid="${sid}"]`, line); if (seg && !reduce) seg.animate([{filter:'brightness(2.6)', height:'5px'}, {filter:'brightness(1)', height:'2px'}], {duration:T(900), easing:'cubic-bezier(.16,1,.3,1)'}); if (ev === 'error') shake(card); }, T(540));
+  }};
+}
+
+/* ================= ORBE ================= */
+function Orbe(board) {
+  const sh = document.createElement('div'); sh.className = 'shell glass o-shell'; sh.tabIndex = 0; sh.setAttribute('role', 'button'); sh.setAttribute('aria-label', 'Pulse');
+  const tip = document.createElement('div'); tip.className = 'o-tip';
+  board.append(sh, tip);
+  const m = {el:sh, w:0, h:0, sig:'', op:1};
+  let side = TW.orbSide || 'right', hover = false, menu = false;
+  const place = () => { sh.classList.remove('left','right','center'); sh.classList.add(side); };
+  place();
+  sh.addEventListener('mouseenter', () => { hover = true; render(); });
+  board.addEventListener('mouseleave', () => { hover = false; menu = false; render(); });
+  sh.addEventListener('mouseleave', () => { hover = false; setTimeout(render, 10); });
+  // drag + click
+  let down = false, sx = 0, moved = false, base = 0;
+  sh.addEventListener('pointerdown', e => { if (e.target.closest('button')) return; down = true; moved = false; sx = e.clientX; base = 0; sh.setPointerCapture(e.pointerId); });
+  sh.addEventListener('pointermove', e => { if (!down) return; const dx = e.clientX - sx; if (Math.abs(dx) > 5 && !moved) { moved = true; menu = false; sh.classList.add('drag'); render(); } if (moved) sh.style.transform = `translateX(${dx}px) scale(1.12)`; });
+  const up = e => {
+    if (!down) return; down = false;
+    if (moved) {
+      const r = sh.getBoundingClientRect(), b = board.getBoundingClientRect(), x = (r.left + r.width / 2 - b.left) / b.width;
+      const ns = x < .33 ? 'left' : x > .66 ? 'right' : 'center';
+      const before = sh.getBoundingClientRect();
+      sh.style.transform = ''; sh.classList.remove('drag'); side = ns; TW.orbSide = ns; save(); place();
+      const after = sh.getBoundingClientRect();
+      if (!reduce) sh.animate([{transform:`translateX(${before.left - after.left}px) scale(1.12)`}, {transform:'none'}], {duration:T(SP_MOVE.d), easing:SP_MOVE.e});
+      tone('tick');
+    } else if (!e.target.closest('button')) { menu = !menu; render(); }
+  };
+  sh.addEventListener('pointerup', up); sh.addEventListener('pointercancel', up);
+  sh.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target === sh) { e.preventDefault(); menu = !menu; render(); } });
+  const core = (st) => `<div class="o-core ${st === 'working' ? 'work' : ''} ${st === 'waiting' ? 'wait' : ''}" style="--c:${M.focus ? '#b9a2ff' : COL[st] === COL.idle ? '#9aa1ab' : COL[st]}"><span class="o-orbit"><i></i></span><i class="o-dot"></i></div>`;
+  function render() {
+    const st = agg(); const calm = st === 'idle' || st === 'done';
+    let html, sig, o = {radius:(w, h) => h > 40 ? '16px' : '99px'};
+    const tr = M.tr;
+    if (M.queue.length && !menu) { const it = M.queue[0]; html = permCard(it); sig = 'p' + it.id + M.queue.length; o.item = it; }
+    else if (menu) { html = `<div class="o-menu">${core(st)}${[['dark_mode','Modo foco','focus',M.focus],['volume_off','Silenciar 30 min','muteall',SESS.every(s => s.muted)],['done_all','Aprobar todo','allowall',false],['tune','Abrir centro de mando','center',false]].map(([ic, l, a, on]) => `<button type="button" data-act="${a}" data-tip="${l}" aria-label="${l}" aria-pressed="${on}"><span class="ms">${ic}</span></button>`).join('')}</div>`; sig = 'm' + M.focus + SESS.every(s => s.muted); }
+    else if (tr) { if (tr.k === 'release') { html = releaseCard(tr.items); } else { const p = trPill(tr); html = `<div class="o-pill">${core(st)}<span class="ms ${['done','ok'].includes(tr.k) ? 'draw' : ''}" style="font-size:16px;color:${p.c}">${p.ic}</span><span class="t">${p.txt}</span></div>`; } sig = 't' + tr.id; }
+    else if (hover) { const w = SESS.filter(s => s.state === 'working').length, need = SESS.filter(s => s.state === 'idlewait').length; html = `<div class="o-peek">${core(st)}<span class="t">${M.focus ? `<b>En foco</b> <span class="muted">${M.deferred.length} guardados</span>` : w ? `<b>${w}</b> trabajando${need ? ` <span class="muted">· ${need} te espera</span>` : ''}` : need ? `<b>${need}</b> te espera` : '<span class="muted">Todo en calma</span>'}</span></div>`; sig = 'h' + SESS.map(s => s.state).join('') + M.focus + M.deferred.length; }
+    else if (calm && !M.focus) { html = TW.rest === 'hidden' ? '' : `<div class="o-rest"><i></i></div>`; sig = 'r' + TW.rest; o.hidden = TW.rest === 'hidden'; o.empty = [10, 10]; if (TW.rest === 'line') { html = core('idle'); sig = 'r2'; } }
+    else { html = core(st); sig = 'c' + st + M.focus; }
+    sh.dataset.k = (sig.startsWith('c') || sig.startsWith('r')) ? 'dot' : 'open';
+    morph(m, sig, html, o);
+    $$('[data-tip]', sh).forEach(b => { b.onmouseenter = () => { const r = b.getBoundingClientRect(), br = board.getBoundingClientRect(); tip.textContent = b.dataset.tip; tip.style.left = (r.left - br.left + r.width / 2) + 'px'; tip.style.translate = '-50% 0'; tip.classList.add('on'); }; b.onmouseleave = () => tip.classList.remove('on'); b.addEventListener('click', () => { tip.classList.remove('on'); menu = false; setTimeout(render, 30); }); });
+  }
+  return {render, light(ev) {
+    const r = sh.getBoundingClientRect(), b = board.getBoundingClientRect(), c = COLORS[ev] || '#fff';
+    beam(board, c, r.left - b.left + r.width / 2);
+    setTimeout(() => { ignite(sh, c); if (ev === 'permission') beat(sh); if (ev === 'error') shake(sh); }, T(540));
+  }};
+}
+
+/* ================= COMANDO ================= */
+function Comando(board) {
+  const zone = document.createElement('div'); zone.className = 'c-zone';
+  const hint = document.createElement('button'); hint.type = 'button'; hint.className = 'c-hint'; hint.innerHTML = `<span class="ms">search</span>Ctrl Alt Espacio`;
+  const sh = document.createElement('div'); sh.className = 'shell glass c-shell'; sh.style.opacity = 0;
+  board.append(zone, hint, sh);
+  const m = {el:sh, w:0, h:0, sig:'', op:0};
+  let open = false, q = '', sel = 0, items = [], mode = null; // mode: {reply:sid}
+  hint.addEventListener('click', () => openPal());
+  function openPal() { open = true; q = ''; sel = 0; mode = null; render(); requestAnimationFrame(() => $('input', sh)?.focus()); }
+  function close() { open = false; mode = null; render(); }
+  function fuzzy(text, query) {
+    if (!query) return {ok:true, html:esc(text)};
+    const t = norm(text), qq = norm(query); let i = 0, out = '', hit = 0;
+    for (let k = 0; k < text.length; k++) { if (i < qq.length && t[k] === qq[i]) { out += `<u>${esc(text[k])}</u>`; i++; hit++; } else out += esc(text[k]); }
+    return {ok:i === qq.length, html:out};
+  }
+  function build() {
+    const L = [];
+    if (mode?.reply) return [{g:'', icon:'send', c:COL.working, text:`Enviar «${q || 'continúa'}» a ${S(mode.reply).name}`, meta:'↵', run:() => reply(mode.reply, q || 'continúa')}];
+    M.queue.forEach(it => { L.push({g:'Pendiente', icon:'check', c:COL.done, text:`Permitir ${it.cmd}`, meta:S(it.sid).name, run:() => resolve(true, it.sid)}); L.push({g:'Pendiente', icon:'close', c:'#ff8c84', text:`Denegar ${it.cmd}`, meta:S(it.sid).name, run:() => resolve(false, it.sid)}); });
+    SESS.filter(s => s.state === 'idlewait' || s.state === 'done').forEach(s => L.push({g:'Responder', icon:'reply', c:COL.working, text:`Responder a ${s.name}…`, meta:LBL[s.state], keep:true, run:() => { mode = {reply:s.id}; q = 'continúa'; sel = 0; render(true); }}));
+    SESS.forEach(s => L.push({g:'Sesiones', icon:'terminal', c:COL[s.state] === COL.idle ? '#9aa1ab' : COL[s.state], text:`Ir a ${s.name}`, meta:LBL[s.state], run:() => goTo(s.id)}));
+    L.push({g:'Acciones', icon:'dark_mode', c:'#b9a2ff', text:M.focus ? 'Salir del modo foco' : 'Modo foco por 1 hora', meta:'', run:() => setFocus(!M.focus)});
+    L.push({g:'Acciones', icon:'volume_off', c:'#9aa1ab', text:'Silenciar todo 30 min', meta:'', run:muteAll});
+    L.push({g:'Acciones', icon:'done_all', c:COL.done, text:'Aprobar todos los permisos', meta:M.queue.length ? String(M.queue.length) : '', run:allowAll});
+    return L;
+  }
+  function palHTML() {
+    const all = build(); items = [];
+    let g = '', rows = '';
+    all.forEach(it => { const f = mode ? {ok:true, html:esc(it.text)} : fuzzy(it.text, q); if (!f.ok) return; const n = items.length; items.push(it); if (it.g && it.g !== g) { g = it.g; rows += `<div class="pal-g">${g}</div>`; } rows += `<div class="pal-it" role="option" data-n="${n}" style="--c:${it.c}"><span class="ic"><span class="ms">${it.icon}</span></span><span>${f.html}</span><small>${esc(it.meta)}</small></div>`; });
+    sel = Math.min(sel, Math.max(0, items.length - 1));
+    return `<div class="pal"><div class="pal-in"><span class="ms">${mode ? 'reply' : 'search'}</span>${mode ? `<span class="pre">${esc(S(mode.reply).name)}</span>` : ''}<input type="text" value="${esc(q)}" placeholder="${mode ? 'Escribe el mensaje' : 'Busca una sesión, permiso o acción'}" aria-label="Buscar en Pulse"><kbd>Esc</kbd></div><div class="pal-list" role="listbox"><i class="pal-hl"></i>${rows || '<div class="pal-empty">Nada coincide.</div>'}</div><div class="pal-foot"><span><kbd>↑</kbd><kbd>↓</kbd>moverte</span><span><kbd>↵</kbd>${mode ? 'enviar' : 'ejecutar'}</span><span><kbd>Esc</kbd>${mode ? 'volver' : 'cerrar'}</span></div></div>`;
+  }
+  function moveHL(instant) {
+    const hl = $('.pal-hl', sh), row = $(`.pal-it[data-n="${sel}"]`, sh); if (!hl) return;
+    if (!row) { hl.style.opacity = 0; return; }
+    hl.style.opacity = 1;
+    if (instant) { hl.style.transition = 'none'; hl.style.transform = `translateY(${row.offsetTop}px)`; void hl.offsetWidth; hl.style.transition = ''; } else hl.style.transform = `translateY(${row.offsetTop}px)`;
+    $$('.pal-it', sh).forEach(r => r.setAttribute('aria-selected', +r.dataset.n === sel));
+    row.scrollIntoView({block:'nearest'});
+  }
+  function run(n) {
+    const it = items[n]; if (!it) return;
+    const row = $(`.pal-it[data-n="${n}"]`, sh); if (row && !reduce) row.animate([{background:'rgba(255,255,255,.18)'}, {background:'rgba(255,255,255,0)'}], {duration:T(260)});
+    if (it.keep) { it.run(); return; }
+    setTimeout(() => { open = false; mode = null; it.run(); render(); }, T(120));
+  }
+  function render(forcePal) {
+    hint.classList.toggle('show', false);
+    let html = '', sig = 'x', o = {radius:(w, h) => h > 50 ? '14px' : '12px', hidden:true, dy:-4};
+    if (open) {
+      if (m.sig.startsWith('pal') && !forcePal) { // refresh list in place to keep focus
+        const tmp = document.createElement('div'); tmp.innerHTML = palHTML(); const list = $('.pal-list', sh); if (list) { list.innerHTML = $('.pal-list', tmp).innerHTML; bindRows(); moveHL(true); } return;
+      }
+      html = palHTML(); sig = 'pal' + (mode ? mode.reply : '') + Math.random(); o.hidden = false;
+    } else if (M.queue.length) { const it = M.queue[0], danger = it.danger && TW.hold; html = `<div class="c-toast"><span class="ic" style="--c:${COL.waiting}"><span class="ms">front_hand</span></span><span class="t"><b>${esc(S(it.sid).name)}</b> <span class="muted">quiere ejecutar</span> <span class="mono" style="font-size:12px;color:#ffd590">${esc(it.cmd)}</span></span>${TW.keys ? `<span class="row muted" style="gap:5px;font-size:11.5px;margin-left:4px"><kbd data-k="y">Y</kbd>${danger ? 'mantener' : ''}<kbd data-k="n">N</kbd><kbd>↵</kbd></span>` : ''}${TW.countdown ? '<i class="cd" style="left:14px;right:14px"></i>' : ''}</div>`; sig = 'p' + it.id; o = {...o, hidden:false, item:it}; }
+    else if (M.tr) { const tr = M.tr; if (tr.k === 'release') html = releaseCard(tr.items); else { const p = trPill(tr); html = `<div class="c-toast"><span class="ic" style="--c:${p.c}"><span class="ms ${['done','ok'].includes(tr.k) ? 'draw' : ''}">${p.ic}</span></span><span class="t">${p.txt}</span><i class="tm"></i></div>`; } sig = 't' + tr.id; o = {...o, hidden:false, life:2600}; }
+    morph(m, sig, html, o);
+    if (open) {
+      const inp = $('input', sh); if (!inp) return;
+      inp.addEventListener('input', () => { q = inp.value; sel = 0; render(); });
+      inp.addEventListener('keydown', e => {
+        e.stopPropagation();
+        if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(items.length - 1, sel + 1); moveHL(); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(0, sel - 1); moveHL(); }
+        else if (e.key === 'Enter') { e.preventDefault(); run(sel); }
+        else if (e.key === 'Escape') { e.preventDefault(); if (mode) { mode = null; q = ''; render(true); setTimeout(() => $('input', sh)?.focus(), 30); } else close(); }
+      });
+      bindRows(); requestAnimationFrame(() => moveHL(true));
+      setTimeout(() => { const i = $('input', sh); if (i && document.activeElement !== i) { i.focus(); i.setSelectionRange(i.value.length, i.value.length); } }, 40);
+    }
+  }
+  function bindRows() { $$('.pal-it', sh).forEach(r => { r.onmouseenter = () => { sel = +r.dataset.n; moveHL(); }; r.onclick = () => run(+r.dataset.n); }); }
+  sh.addEventListener('focusout', e => { if (open && !sh.contains(e.relatedTarget)) setTimeout(() => { if (open && !sh.contains(document.activeElement)) close(); }, 120); });
+  return {render:() => { if (!open) render(); else render(); }, open:openPal, isOpen:() => open, light(ev) { beam(board, COLORS[ev] || '#fff', board.clientWidth / 2); setTimeout(() => ignite(sh, COLORS[ev] || '#fff'), T(540)); }};
+}
+
+/* ================= page ================= */
+const DIRS = [
+  {key:'hilo', name:'Hilo', make:Hilo,
+   desc:'Un segmento de luz por sesión en el borde de arriba. El color dice el estado, un punto de luz recorre el segmento mientras Claude trabaja y el que pide permiso se alarga y late. Lo que tengas que leer cuelga de su segmento, unido por un hilo.',
+   tryit:'Pasa el mouse por <b>cada segmento</b>. Cuando llegue un permiso, la tarjeta baja del segmento de esa sesión.'},
+  {key:'orbe', name:'Orbe', make:Orbe,
+   desc:'Solo un punto de luz, sin caja. Mientras Claude trabaja, un punto diminuto gira a su alrededor; cuando te necesita, late. Todo nace de él: al pasar el mouse se estira en una línea de texto, al hacer clic muestra sus acciones y, si hay permiso, se transforma en la tarjeta.',
+   tryit:'Pasa el mouse, <b>haz clic</b> en el orbe y <b>arrástralo</b> a otro lado del borde.'},
+  {key:'comando', name:'Comando', make:Comando,
+   desc:'No ocupa espacio. Solo baja un aviso breve cuando pasa algo y se va solo. Con Ctrl+Alt+Espacio se abre una paleta con búsqueda para aprobar, saltar a una sesión, contestarle a Claude, activar el foco o silenciar, sin soltar el teclado.',
+   tryit:'Pulsa <b>Ctrl+Alt+Espacio</b> (o acerca el mouse al borde de arriba). Escribe, usa ↑ ↓ y Enter. Prueba «Responder a…».'},
+];
+const comps = [];
+function buildPage() {
+  $('#bar').innerHTML = `<button class="cb pri" type="button" data-act="sim"><span class="ms">play_arrow</span><span id="simLbl">Simular</span><span class="prog" id="simProg" hidden><b></b></span></button><span class="sep"></span>
+    ${SESS.map(s => `<button class="cb mono" style="font-size:12px" type="button" data-act="sel" data-sid="${s.id}" aria-pressed="${TW.sel === s.id}">${s.name}</button>`).join('')}<span class="sep"></span>
+    <button class="cb" type="button" data-act="ev" data-v="start"><i style="--c:var(--work)"></i>Empieza</button>
+    <button class="cb" type="button" data-act="ev" data-v="permission"><i style="--c:var(--perm)"></i>Permiso</button>
+    <button class="cb" type="button" data-act="ev" data-v="danger"><i style="--c:var(--perm)"></i>Delicado</button>
+    <button class="cb" type="button" data-act="ev" data-v="done"><i style="--c:var(--done)"></i>Terminó</button>
+    <button class="cb" type="button" data-act="ev" data-v="error"><i style="--c:var(--err)"></i>Error</button>
+    <button class="cb" type="button" data-act="ev" data-v="idle"><i style="--c:var(--idle)"></i>Te espera</button>
+    <button class="cb" type="button" data-act="focus" aria-pressed="false"><span class="ms">dark_mode</span>Foco</button>`;
+  $('#dirs').innerHTML = DIRS.map(D => `<section aria-label="${D.name}"><div class="dh"><div><h2>${D.name}</h2><p>${D.desc}</p><p class="try">${D.tryit}</p></div><button class="pick" type="button" data-act="pick" data-v="${D.key}">Elegir</button></div><div class="board wp-${TW.wall}" data-board="${D.key}"><div class="bezel"></div><div class="beam"></div></div></section>`).join('');
+  DIRS.forEach(D => comps.push(Object.assign(D.make($(`[data-board="${D.key}"]`)), {key:D.key})));
+  $('#tweaks').innerHTML = `
+    <div class="tw"><h3>En reposo</h3><div class="seg" data-tw="rest" data-opts='[["hidden","Oculta"],["line","Visible"],["dot","Mínima"]]'></div><p style="margin:0;font-size:12px;color:var(--faint)">Cómo se ve cuando ninguna sesión trabaja.</p></div>
+    <div class="tw"><h3>Permisos</h3><label class="tg"><span>Atajos de teclado<small>Ctrl+Alt+Y / N (aquí también Y y N)</small></span><input type="checkbox" class="sw" data-tw="keys"></label><label class="tg"><span>Mantener para aprobar<small>Solo en comandos delicados</small></span><input type="checkbox" class="sw" data-tw="hold"></label><label class="tg"><span>Cuenta regresiva</span><input type="checkbox" class="sw" data-tw="countdown"></label></div>
+    <div class="tw"><h3>Vista</h3><label class="tg"><span>Luz que converge<small>Corre por el borde hasta la isla</small></span><input type="checkbox" class="sw" data-tw="beam"></label><div class="seg" data-tw="wall" data-opts='[["dark","Oscuro"],["light","Claro"],["code","Editor"]]'></div><div class="fh"><span>Velocidad</span><output id="spOut"></output></div><input type="range" min=".25" max="1.5" step=".05" data-tw="speed" aria-label="Velocidad de animación"></div>`;
+  bindTweaks();
+  renderAll(); renderChoice();
+}
+function bindTweaks() {
+  $$('[data-tw]').forEach(el => {
+    const k = el.dataset.tw;
+    if (el.classList.contains('seg')) {
+      const opts = JSON.parse(el.dataset.opts);
+      const paint = () => el.innerHTML = opts.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${TW[k] === v}">${l}</button>`).join('');
+      paint(); el.onclick = e => { const b = e.target.closest('button'); if (!b) return; TW[k] = b.dataset.v; save(); paint(); if (k === 'wall') $$('.board').forEach(bd => { bd.className = bd.className.replace(/wp-\w+/, 'wp-' + TW.wall); }); comps.forEach(c => c.reset?.()); renderAll(true); renderChoice(); };
+    } else if (el.type === 'checkbox') { el.checked = !!TW[k]; el.onchange = () => { TW[k] = el.checked; save(); renderAll(true); renderChoice(); }; }
+    else { el.value = TW[k]; $('#spOut').textContent = (+TW[k]).toFixed(2) + 'x'; el.oninput = () => { TW[k] = +el.value; save(); $('#spOut').textContent = (+TW[k]).toFixed(2) + 'x'; }; }
+  });
+}
+function renderAll(force) {
+  if (force) $$('.shell').forEach(s => { /* invalidate */ });
+  comps.forEach(c => c.render());
+  $$('[data-act="sel"]').forEach(b => b.setAttribute('aria-pressed', b.dataset.sid === TW.sel));
+}
+function renderChoice() {
+  const D = DIRS.find(d => d.key === TW.chosen);
+  $('#choiceTxt').textContent = D ? `Isla: ${D.name}. En reposo: ${({hidden:'oculta', line:'visible', dot:'mínima'})[TW.rest]}. Permisos: ${TW.keys ? 'atajos' : 'solo clic'}${TW.hold ? ', mantener en comandos delicados' : ''}${TW.countdown ? ', con cuenta regresiva' : ''}. ${TW.beam ? 'Con luz que converge.' : 'Sin luz que converge.'}` : 'Todavía no eliges isla.';
+  $$('[data-act="pick"]').forEach(b => { const on = b.dataset.v === TW.chosen; b.setAttribute('aria-pressed', on); b.textContent = on ? 'Elegida' : 'Elegir'; b.closest('section').querySelector('.board').classList.toggle('chosen', on); });
+}
+setInterval(() => comps.forEach(c => { if (c.key !== 'comando' || !c.isOpen()) c.render(); }), 1000);
+
+/* hold */
+let holdRaf = 0, holdT0 = 0;
+function holdBegin() { if (holdRaf) return; holdT0 = performance.now(); const step = t => { const p = Math.min(1, (t - holdT0) / 900); $$('.b-yes').forEach(b => b.style.setProperty('--hold', p)); if (p >= 1) { holdRaf = 0; $$('.b-yes').forEach(b => b.style.setProperty('--hold', 0)); resolve(true); return; } holdRaf = requestAnimationFrame(step); }; holdRaf = requestAnimationFrame(step); }
+function holdEnd() { if (!holdRaf) return; cancelAnimationFrame(holdRaf); holdRaf = 0; $$('.b-yes').forEach(b => b.style.setProperty('--hold', 0)); }
+const danger = () => M.queue[0]?.danger && TW.hold;
+const press = k => $$(`kbd[data-k="${k}"]`).forEach(x => { x.classList.add('on'); setTimeout(() => x.classList.remove('on'), 200); });
+
+/* simulation */
+const SEQ = [
+  [300,'start','s1','Arregla el header en móvil'],[1300,'tool','s1','Edit src/components/Header.tsx'],[2600,'start','s2','Endpoint de reservas'],[3200,'sub','s2'],[3400,'sub','s2'],
+  [4600,'tool','s1','Bash npm run lint'],[5600,'subdone','s2'],[6400,'subdone','s2'],[7200,'permission','s2',{cmd:'npx prisma migrate dev'}],[10600,'__y'],
+  [11600,'start','s3','Sube las 40 fichas técnicas'],[13000,'permission','s1',{cmd:'git push --force origin main', danger:true}],[15800,'__hold'],
+  [17600,'error','s3','tsx no encontrado'],[19400,'tool','s3','Bash npx tsx import-fichas.ts'],[21000,'done','s1'],[23600,'__focus'],[24800,'done','s2'],[25800,'idle','s3'],[28400,'__unfocus'],[33500,'__calm'],
+];
+let seqT = [], seqRaf = 0, seqStart = 0; const SEQ_END = 34500;
+function simPlay() {
+  simStop(); M.queue.splice(0).forEach(q => clearTimeout(q.timer)); SESS.forEach(s => { s.state = 'idle'; s.subs = 0; s.last = ''; s.actions = 0; }); M.tr = null; M.deferred = []; if (M.focus) setFocus(false); renderAll();
+  seqStart = performance.now();
+  SEQ.forEach(([t, ev, sid, data]) => seqT.push(setTimeout(() => {
+    if (ev === '__y') { press('y'); setTimeout(() => resolve(true), 180); }
+    else if (ev === '__hold') { if (danger()) { $$('kbd[data-k="y"]').forEach(x => x.classList.add('on')); holdBegin(); setTimeout(() => $$('kbd[data-k="y"]').forEach(x => x.classList.remove('on')), 950); } else resolve(true); }
+    else if (ev === '__focus') setFocus(true);
+    else if (ev === '__unfocus') setFocus(false);
+    else if (ev === '__calm') { SESS.forEach(s => { if (s.state !== 'waiting') { s.state = 'idle'; s.subs = 0; } }); renderAll(); }
+    else emit(ev, sid, data);
+  }, T(t))));
+  seqT.push(setTimeout(simStop, T(SEQ_END)));
+  $('#simLbl').textContent = 'Detener'; $('#simProg').hidden = false;
+  const tick = () => { const p = Math.min(1, (performance.now() - seqStart) / T(SEQ_END)); $('#simProg b').style.width = p * 100 + '%'; if (p < 1 && seqT.length) seqRaf = requestAnimationFrame(tick); }; tick();
+}
+function simStop() { seqT.forEach(clearTimeout); seqT = []; cancelAnimationFrame(seqRaf); const l = $('#simLbl'); if (l) l.textContent = 'Simular'; const p = $('#simProg'); if (p) p.hidden = true; }
+
+/* events */
+document.addEventListener('click', e => {
+  const a = e.target.closest('[data-act]'); if (!a) return;
+  const sid = a.dataset.sid, v = a.dataset.v;
+  switch (a.dataset.act) {
+    case 'sim': seqT.length ? simStop() : simPlay(); break;
+    case 'sel': TW.sel = sid; save(); renderAll(); break;
+    case 'ev': { const s = TW.sel; if (v === 'start') emit('start', s, 'Revisa el checkout'); if (v === 'permission') emit('permission', s, {cmd:'npm run build'}); if (v === 'danger') emit('permission', s, {cmd:'git push --force origin main', danger:true}); if (v === 'done') emit('done', s); if (v === 'error') emit('error', s, 'Bash: comando falló'); if (v === 'idle') emit('idle', s); break; }
+    case 'focus': setFocus(!M.focus); break;
+    case 'allow': if (a.dataset.danger !== '1') resolve(true, sid); break;
+    case 'deny': resolve(false, sid); break;
+    case 'goto': goTo(sid); break;
+    case 'mute': S(sid).muted = !S(sid).muted; renderAll(); break;
+    case 'reply': reply(sid, 'continúa'); break;
+    case 'muteall': muteAll(); break;
+    case 'allowall': allowAll(); break;
+    case 'center': transient({k:'info', icon:'tune', text:'Abriría el centro de mando'}, 1500); break;
+    case 'pick': TW.chosen = TW.chosen === v ? null : v; save(); renderChoice(); break;
+    case 'copy': { const t = $('#choiceTxt').textContent; navigator.clipboard.writeText(t).then(() => $('#copyNote').textContent = 'Copiado.').catch(() => { const r = document.createRange(); r.selectNodeContents($('#choiceTxt')); getSelection().removeAllRanges(); getSelection().addRange(r); $('#copyNote').textContent = 'Seleccionado: Ctrl+C.'; }); break; }
+  }
+});
+document.addEventListener('pointerdown', e => { if (e.target.closest('.b-yes[data-danger="1"]')) { e.preventDefault(); holdBegin(); } });
+['pointerup','pointercancel'].forEach(t => document.addEventListener(t, holdEnd));
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey && e.altKey && (e.code === 'Space' || e.key === ' ')) { e.preventDefault(); comps.find(c => c.key === 'comando')?.open(); return; }
+  if (e.target.matches('input, textarea')) return;
+  const k = e.key.toLowerCase();
+  if (M.queue.length && TW.keys && !e.repeat) {
+    if (k === 'y') { e.preventDefault(); press('y'); if (danger()) { $$('kbd[data-k="y"]').forEach(x => x.classList.add('on')); holdBegin(); } else resolve(true); }
+    if (k === 'n') { e.preventDefault(); press('n'); resolve(false); }
+    if (k === 'enter') { e.preventDefault(); comps.find(c => c.key === 'comando')?.open(); }
+  }
+});
+document.addEventListener('keyup', e => { if (e.key.toLowerCase() === 'y') { $$('kbd[data-k="y"]').forEach(x => x.classList.remove('on')); holdEnd(); } });
+window.addEventListener('resize', () => renderAll());
+
+buildPage();
+const demo = new URLSearchParams(location.search).get('demo');
+if (demo === 'perm') setTimeout(() => { emit('start', 's1', 'Edit Header.tsx'); emit('permission', 's2', {cmd:'npx prisma migrate dev'}); }, 60);
+if (demo === 'work') setTimeout(() => { emit('start', 's1', 'Edit Header.tsx'); emit('start', 's2', 'Endpoint de reservas'); }, 60);
+if (demo === 'pal') setTimeout(() => { emit('idle', 's3'); emit('permission', 's2', {cmd:'npx prisma migrate dev'}); setTimeout(() => comps[2].open(), 700); }, 60);
+})();
+</script>

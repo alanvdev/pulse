@@ -1,0 +1,12 @@
+[workspace]
+resolver = "2"
+members = ["crates/pulse-protocol", "crates/pulse-cli"]   # app/src-tauri se agrega en la Task 2
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+lto = true
+strip = true
+codegen-units = 1
