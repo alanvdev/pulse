@@ -1,0 +1,63 @@
+@import "../shared/tw.css";
+
+/* Efectos de Mosaico que Tailwind no cubre (copiados de docs/artboards/centro-de-mando.html). */
+html, body, #root { height: 100%; background: #0e1013; overflow: hidden }
+body { user-select: none }
+.grid-m{grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:112px}
+@media (max-width:900px){.grid-m{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.w{position:relative;border-radius:16px;background:#15181c;border:1px solid #1f2328;padding:12px 14px;overflow:hidden;display:flex;flex-direction:column;gap:6px;transition:border-color .3s,background .3s,box-shadow .3s}
+.w:hover{border-color:#2a2f36}
+.w h4{margin:0;font-size:11.5px;font-weight:500;color:#8f96a0;display:flex;align-items:center;gap:6px}
+.w h4 .ms{font-size:15px}
+.w.s22{grid-column:span 2;grid-row:span 3}
+.w.s21{grid-column:span 2}
+.w.s12{grid-row:span 2}
+.edit .w{cursor:grab;animation:wig .3s ease-in-out infinite alternate}
+.edit .w:nth-child(2n){animation-delay:-.15s}
+.edit .w.dragging{cursor:grabbing;animation:none;z-index:5;box-shadow:0 20px 40px -10px rgba(0,0,0,.7);border-color:#3a4049;opacity:.95}
+@keyframes wig{from{rotate:-.35deg}to{rotate:.35deg}}
+.x{position:absolute;top:8px;right:8px;width:22px;height:22px;border-radius:50%;border:0;background:#2a2e35;color:#fff;display:grid;place-items:center;transform:scale(0);transition:transform .3s cubic-bezier(.3,1.6,.5,1);z-index:2}
+.x .ms{font-size:14px}
+.edit .x{transform:scale(1)}
+.big{font-size:28px;font-weight:300;letter-spacing:-.02em;font-family:var(--f-mono)}
+.sub{font-size:12px;color:#8f96a0}
+.s{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 10px;border-radius:11px;background:#1a1d22;font-size:12.5px;transition:background .2s}
+.s:hover{background:#1f2328}
+.s .ms{font-size:16px;color:var(--c)}
+.s small{display:block;color:#8f96a0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pend{background:linear-gradient(135deg,rgba(255,176,46,.17),rgba(255,176,46,.04)),#15181c;border-color:rgba(255,176,46,.4);animation:pendIn .5s var(--e-out)}
+@keyframes pendIn{from{box-shadow:0 0 0 6px rgba(255,176,46,.15)}}
+.pend code{font-family:var(--f-mono);font-size:12px;color:#ffd590;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wb{position:relative;overflow:hidden;border:0;border-radius:8px;padding:5px 11px;font-size:12px;background:#22262c;color:#e6e8eb;transition:transform .12s var(--e-out),background .15s}
+.wb:hover{background:#2a2f36}
+.wb:active{transform:scale(.95)}
+.wb.y{background:#e6e8eb;color:#0d0f12;font-weight:500}
+.wb.y .fill{position:absolute;inset:0;background:var(--perm);transform-origin:left;transform:scaleX(var(--hold,0))}
+.wb.y > :not(.fill){position:relative}
+.moon{background:radial-gradient(120% 120% at 100% 0%,rgba(185,162,255,.2),transparent 60%),#15181c}
+.moon.on{background:radial-gradient(120% 120% at 100% 0%,rgba(185,162,255,.45),transparent 70%),#1a1630;border-color:rgba(185,162,255,.4)}
+.mini{position:relative;flex:1;min-height:0;border-radius:9px;background:#0d1015;overflow:hidden;border:1px solid #1f2328}
+.keys span{flex:1;height:32px;border-radius:7px;background:#1f2328;display:grid;place-items:center;font-family:var(--f-mono);font-size:11px;color:#8f96a0;transition:background .4s,box-shadow .4s,color .4s}
+.keys span.lit{background:var(--c);color:#111;box-shadow:0 0 16px var(--c)}
+.spark i{flex:1;background:#2d3239;border-radius:2px;transition:height .5s var(--e-out)}
+.spark i:last-child{background:#e6e8eb}
+.add{border:1.5px dashed #2a2e35;background:transparent;color:#8f96a0;align-items:center;justify-content:center;gap:6px;font-size:13px;flex-direction:row;display:none}
+.edit .add{display:flex}
+.sheet{position:absolute;right:16px;top:52px;width:280px;border-radius:14px;background:rgba(24,27,32,.96);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08),0 20px 40px -14px #000;padding:10px;display:grid;gap:4px;z-index:6;transform-origin:top right;animation:sheetIn .35s var(--e-out)}
+@keyframes sheetIn{from{opacity:0;transform:scale(.94) translateY(-4px)}}
+.sheet button{display:flex;align-items:center;gap:10px;border:0;background:transparent;border-radius:9px;padding:8px;font-size:13px;color:#e6e8eb;text-align:left;transition:background .15s}
+.sheet button:hover{background:rgba(255,255,255,.07)}
+.sheet button .ms{font-size:17px;color:#8f96a0}
+.tbtn{border:1px solid #2a2e35;background:#15181c;border-radius:7px;padding:3px 10px;font-size:12px;color:#d6d9de;display:inline-flex;gap:6px;align-items:center;transition:background .15s}
+.tbtn:hover{background:#1c2025}
+.tbtn[aria-pressed="true"]{background:#e6e8eb;color:#0d0f12;border-color:#e6e8eb}
+.tbtn .ms{font-size:15px}
+.lane{position:relative;height:8px;border-radius:4px;background:rgba(255,255,255,.04);overflow:hidden}
+.lane i{position:absolute;top:0;bottom:0;border-radius:2px}
+.lane i.w{background:rgba(232,238,252,.5)}
+.lane i.p{background:var(--perm)}
+.lane i.e{background:var(--err);width:2px!important}
+.ic-spin{animation:spin 1.4s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media (prefers-reduced-motion:reduce){.edit .w,.pend,.ic-spin{animation:none}}

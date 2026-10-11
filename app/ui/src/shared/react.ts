@@ -1,5 +1,5 @@
 // Hooks de React sobre el puente con el núcleo (solo Bolsillo y Mosaico).
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { dailySummary, getConfig, getSnapshot, onConfig, onState, setConfig, type Config, type DaySummary, type Snapshot } from './bridge';
 
 const EMPTY: Snapshot = { sessions: [], pending: [], feed: [], focus: false, focus_auto: false, deferred: [] };
@@ -33,4 +33,12 @@ export function useDaySummary(snap: Snapshot, every = 60_000): DaySummary | null
   useEffect(() => { load(); const t = setInterval(load, every); return () => clearInterval(t); }, [load, every]);
   useEffect(() => { if (Date.now() - last > 10_000) load(); }, [snap]); // eslint-disable-line react-hooks/exhaustive-deps
   return d;
+}
+
+/** Mantener 900 ms para aprobar comandos delicados (misma lógica holdBegin/holdEnd de isla.html). */
+export function useHold(onDone: () => void) {
+  const raf = useRef(0), t0 = useRef(0), [p, setP] = useState(0);
+  const begin = () => { if (raf.current) return; t0.current = performance.now(); const step = (t: number) => { const x = Math.min(1, (t - t0.current) / 900); setP(x); if (x >= 1) { raf.current = 0; setP(0); onDone(); return; } raf.current = requestAnimationFrame(step); }; raf.current = requestAnimationFrame(step); };
+  const end = () => { if (!raf.current) return; cancelAnimationFrame(raf.current); raf.current = 0; setP(0); };
+  return { p, begin, end };
 }

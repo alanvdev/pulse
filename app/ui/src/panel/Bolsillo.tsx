@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type 
 import { decide, openDashboard, setFocus, type Config, type DaySummary, type Pending, type Session, type Snapshot } from '../shared/bridge';
 import { ICON, LBL, ago, stateColor } from '../shared/format';
 import { reduceMotion } from '../shared/motion';
-import { useConfig, useDaySummary, useNow, useSnapshot } from '../shared/react';
+import { useConfig, useDaySummary, useHold, useNow, useSnapshot } from '../shared/react';
 
 type Tab = 'ahora' | 'ajustes' | 'dia';
 const TABS: [Tab, string, string][] = [['ahora', 'home', 'Inicio'], ['ajustes', 'tune', 'Ajustes'], ['dia', 'bar_chart', 'Hoy']];
@@ -14,14 +14,6 @@ function Ring({ sessions }: { sessions: Session[] }) {
   const L = 2 * Math.PI * 25, n = Math.max(3, sessions.length), seg = L / n - 5;
   return <svg viewBox="0 0 58 58" className="w-[58px] h-[58px] -rotate-90"><circle className="bg" cx="29" cy="29" r="25" />
     {sessions.map((s, i) => <circle key={s.id} cx="29" cy="29" r="25" stroke={s.state === 'Idle' ? 'transparent' : stateColor(s.state)} strokeDasharray={`${s.state === 'Idle' ? 0 : seg} ${L}`} strokeDashoffset={-i * L / n - 2.5} />)}</svg>;
-}
-
-/** Mantener 900 ms para aprobar comandos delicados (misma lógica holdBegin/holdEnd de isla.html). */
-function useHold(onDone: () => void) {
-  const raf = useRef(0), t0 = useRef(0), [p, setP] = useState(0);
-  const begin = () => { if (raf.current) return; t0.current = performance.now(); const step = (t: number) => { const x = Math.min(1, (t - t0.current) / 900); setP(x); if (x >= 1) { raf.current = 0; setP(0); onDone(); return; } raf.current = requestAnimationFrame(step); }; raf.current = requestAnimationFrame(step); };
-  const end = () => { if (!raf.current) return; cancelAnimationFrame(raf.current); raf.current = 0; setP(0); };
-  return { p, begin, end };
 }
 
 function flash(el: HTMLElement | null, ok: boolean, then: () => void) {

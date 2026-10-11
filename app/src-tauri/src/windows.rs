@@ -79,4 +79,8 @@ fn create_panel(app: &AppHandle) -> tauri::Result<tauri::WebviewWindow> {
     w.on_window_event(move |e| if let tauri::WindowEvent::Focused(false) = e { if w2.is_visible().unwrap_or(false) { PANEL_HIDDEN_AT.store(crate::now_ms(), std::sync::atomic::Ordering::SeqCst); } let _ = w2.hide(); });
     Ok(w)
 }
-pub fn open_dashboard(_: &AppHandle) {}
+pub fn open_dashboard(app: &AppHandle) {
+    if let Some(w) = app.get_webview_window("dashboard") { let _ = w.unminimize(); let _ = w.show(); let _ = w.set_focus(); return; }
+    let _ = WebviewWindowBuilder::new(app, "dashboard", WebviewUrl::App("dashboard.html".into()))
+        .title("Pulse").inner_size(1120.0, 760.0).min_inner_size(720.0, 520.0).center().build();
+}
