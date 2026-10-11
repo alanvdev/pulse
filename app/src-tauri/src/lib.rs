@@ -1,0 +1,96 @@
+pub mod chroma; pub mod commands; pub mod config; pub mod daylog; pub mod focus; pub mod logbook;
+pub mod server; pub mod shortcuts; pub mod sound; pub mod state; pub mod tray; pub mod windows;
+
+use pulse_protocol::{Decision, PulseEvent};
+use serde::Serialize;
+use state::{Cue, Store};
+use std::{collections::HashMap, sync::{atomic::{AtomicU64, Ordering}, Mutex}};
+use tauri::{AppHandle, Emitter, Manager};
+use tokio::sync::oneshot;
+
+pub struct AppState {
+    pub store: Mutex<Store>,
+    pub config: Mutex<config::Config>,
+    pub waiters: Mutex<HashMap<u64, oneshot::Sender<Decision>>>,
+    pub next_id: AtomicU64,
+    pub player: sound::Player,
+}
+
+#[derive(Clone, Serialize)]
+pub struct Fx { pub kind: String, pub session_id: String, pub project: String, pub slot: u8, pub text: String, pub visual: bool, pub sound: bool }
+
+pub fn now_ms() -> i64 { std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0) }
+
+pub fn broadcast(app: &AppHandle) {
+    let st = app.state::<AppState>();
+    let (snap, agg, tip) = { let s = st.store.lock().unwrap(); (s.snapshot(), s.aggregate(), s.summary()) };
+    let _ = app.emit("pulse://state", &snap);
+    tray::update(app, agg, &tip);
+}
+
+pub fn emit_fx(app: &AppHandle, fx: Fx) { let _ = app.emit("pulse://fx", fx); }
+
+/// Resuelve un permiso pendiente: contesta a `pulse ask`, registra y avisa a las ventanas.
+pub fn resolve(app: &AppHandle, id: u64, decision: Decision) {
+    let st = app.state::<AppState>();
+    let pending = st.store.lock().unwrap().resolve(id);
+    if let Some(tx) = st.waiters.lock().unwrap().remove(&id) { let _ = tx.send(decision); }
+    if let Some(p) = pending {
+        logbook::append_resolve(&p.session_id, &p.project, id, match decision { Decision::Allow => Some(true), Decision::Deny => Some(false), Decision::None => None }, now_ms());
+        emit_fx(app, Fx { kind: "resolved".into(), session_id: p.session_id, project: p.project, slot: 0, text: format!("{}|{}", match decision { Decision::Allow => "allow", Decision::Deny => "deny", Decision::None => "none" }, p.command), visual: false, sound: false });
+    }
+    broadcast(app);
+}
+
+fn handle(app: &AppHandle, inc: server::Incoming) {
+    let st = app.state::<AppState>();
+    let env = inc.env;
+    logbook::append(&env);
+    let cfg = st.config.lock().unwrap().clone();
+    let (cue, focus_on, muted, slot) = { let mut s = st.store.lock().unwrap(); let c = s.apply(&env); (c, s.focus(), s.is_muted(&env.session_id, now_ms()), s.slot_of(&env.session_id)) };
+    if let Some(reply) = inc.reply {
+        let id = st.next_id.fetch_add(1, Ordering::SeqCst) + 1;
+        st.store.lock().unwrap().add_pending(id, &env, cfg.island.ask_timeout_s as i64 * 1000);
+        st.waiters.lock().unwrap().insert(id, reply);
+    }
+    if let Some(cue) = cue {
+        let kind = cue.key();
+        let mut r = config::route(&cfg, focus_on, kind);
+        if muted && cue != Cue::Permission { r.sound = false; r.visual = false; }
+        if r.defer { st.store.lock().unwrap().defer(&env, kind); }
+        if r.sound { st.player.play(cue, cfg.sounds.volume as f32 / 100.0); }
+        let text = match &env.event { PulseEvent::Error { message } => message.clone(), PulseEvent::Permission { command, .. } => command.clone(), _ => String::new() };
+        emit_fx(app, Fx { kind: kind.into(), session_id: env.session_id.clone(), project: env.project.clone(), slot, text, visual: r.visual, sound: r.sound });
+        if r.visual { chroma::pulse(app, kind, slot); }
+    }
+    broadcast(app);
+}
+
+pub fn run() {
+    let first = match tauri::async_runtime::block_on(async { server::create_first(pulse_protocol::PIPE_NAME) }) { Ok(s) => s, Err(_) => return };
+    tauri::Builder::default()
+        .plugin(shortcuts::plugin())
+        .manage(AppState { store: Mutex::new(Store::default()), config: Mutex::new(config::load()), waiters: Mutex::new(HashMap::new()), next_id: AtomicU64::new(0), player: sound::Player::start() })
+        .invoke_handler(tauri::generate_handler![commands::get_snapshot, commands::get_config, commands::set_config, commands::decide, commands::allow_all, commands::set_focus, commands::mute_session, commands::daily_summary, commands::set_island_hitbox, commands::island_focus, commands::open_dashboard, commands::toggle_panel])
+        .setup(move |app| {
+            let h = app.handle().clone();
+            tray::create(&h, windows::toggle_panel)?;
+            windows::create_all(&h)?;
+            let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+            tauri::async_runtime::spawn(server::serve(first, pulse_protocol::PIPE_NAME.to_string(), tx));
+            let h1 = h.clone();
+            tauri::async_runtime::spawn(async move { while let Some(inc) = rx.recv().await { handle(&h1, inc); } });
+            let h2 = h.clone();
+            tauri::async_runtime::spawn(async move { loop {   // vencimiento de permisos y autocierre
+                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                let expired = h2.state::<AppState>().store.lock().unwrap().expire(now_ms());
+                for id in expired { resolve(&h2, id, Decision::None); }
+                if h2.state::<AppState>().store.lock().unwrap().should_exit(now_ms()) { chroma::shutdown(); h2.exit(0); }
+            } });
+            focus::start(&h);
+            chroma::start(&h);
+            Ok(())
+        })
+        .build(tauri::generate_context!()).expect("no se pudo iniciar Pulse")
+        .run(|_app, e| if let tauri::RunEvent::ExitRequested { api, code: None, .. } = e { api.prevent_exit(); });
+}

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/pulse-protocol", "crates/pulse-cli"]   # app/src-tauri se agrega en la Task 2
+members = ["crates/pulse-protocol", "crates/pulse-cli", "app/src-tauri"]
 
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }
