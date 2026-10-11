@@ -8,6 +8,9 @@ crate-type = ["rlib"]
 [[bin]]
 name = "pulse-app"
 path = "src/main.rs"
+[features]
+# Empaqueta el frontend (dist/) en el .exe. Sin ella, la app carga devUrl (localhost:5173). `tauri build` la activa sola; install.ps1 la pasa a mano.
+custom-protocol = ["tauri/custom-protocol"]
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
 [dependencies]
@@ -20,6 +23,6 @@ serde_json = { workspace = true }
 rodio = { version = "0.19", default-features = false, features = ["wav"] }
 dirs = "5"
 ureq = { version = "2", features = ["json"] }
-windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_Graphics_Gdi", "Win32_System_Registry", "Win32_System_Time"] }
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging", "Win32_Graphics_Gdi", "Win32_System_Registry", "Win32_System_Time", "Win32_System_SystemInformation"] }
 [dev-dependencies]
 tokio = { version = "1", features = ["net", "io-util", "sync", "time", "rt-multi-thread", "macros"] }

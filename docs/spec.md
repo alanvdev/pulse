@@ -41,10 +41,10 @@ Al portar una pieza, se copia su CSS y su lógica de animación desde el artboar
 ### Pulsos en los bordes
 - Ventana transparente, siempre encima, que no recibe clics, una por monitor.
 - Motor "v2" del artboard: línea nítida + resplandor + esquinas más intensas + grano fino; ajuste automático en fondos claros.
-- Por defecto aparece solo en el monitor de la sesión; opción "todos los monitores".
+- Por defecto aparece solo en el monitor activo (el de la ventana en primer plano al llegar el evento); opción "todos los monitores".
 
 ### Isla
-- **Modo por defecto: Comando.** No ocupa espacio en reposo. Baja un aviso breve cuando pasa algo. `Ctrl+Alt+Espacio` abre una paleta con búsqueda: aprobar o denegar pendientes, ir a una sesión, responder a Claude, modo foco, silenciar.
+- **Modo por defecto: Comando.** No ocupa espacio en reposo. Baja un aviso breve cuando pasa algo. `Ctrl+Alt+Espacio` abre una paleta con búsqueda: aprobar o denegar pendientes, modo foco, silenciar, abrir el tablero.
 - **Modo alternativo: Orbe.** Un punto de luz sin caja. Un punto diminuto gira a su alrededor mientras trabaja; late cuando te necesita. Al pasar el mouse se estira en una línea de texto; al hacer clic muestra cuatro acciones; con un permiso se transforma en la tarjeta. Se puede arrastrar a la izquierda, centro o derecha.
 - **Nunca los dos a la vez.** Se cambia en Ajustes ("Modo de la isla").
 - Atajos globales `Ctrl+Alt+Y` (permitir) y `Ctrl+Alt+N` (denegar). Comandos delicados (`git push --force`, `rm -rf`, `migrate`) se aprueban manteniendo presionado 900 ms.
@@ -55,7 +55,7 @@ Al portar una pieza, se copia su CSS y su lógica de animación desde el artboar
 - **Mosaico:** ventana completa con piezas reacomodables (Sesiones, Pendiente, Hoy, Acciones, Foco, Pulso, Teclas por sesión). Modo edición: arrastrar, quitar y agregar piezas. El orden se guarda.
 
 ### Modo foco
-- Se activa en llamada (micrófono en uso), con app en pantalla completa, con No molestar de Windows o en un horario.
+- Se activa en llamada (micrófono en uso), con app en pantalla completa o presentación, en un horario, o a mano.
 - Regla por evento: Normal, Sin sonido, Nada, Después. Los "Después" se muestran juntos al salir del foco.
 
 ### Teclado
@@ -66,6 +66,12 @@ Al portar una pieza, se copia su CSS y su lógica de animación desde el artboar
 
 ### Sonidos
 - Los cuatro `.wav` actuales (`start`, `permission`, `done`, `idle`) se reproducen desde la app, sincronizados con la luz. Error y subagente usan un tono corto. Créditos en `assets/sounds/CREDITS.md`.
+
+### Ajustes de implementación
+- **"Ir a la terminal" y "Responder «continúa»" no se implementan:** los hooks no dicen en qué ventana corre cada sesión ni hay API para escribirle a Claude. Se quitan de Comando y Bolsillo.
+- **Pulso "en el monitor de la sesión" → "monitor activo":** el monitor de la ventana en primer plano al llegar el evento. Opción alterna: todos los monitores.
+- **"No molestar" de Windows no se detecta** (no hay API pública). El foco se activa por llamada (micrófono en uso), pantalla completa/presentación, horario, o a mano.
+- La forma "Desde la terminal" nace en una posición fija por sesión (`slot` 0, 1, 2… → 18 %, 50 %, 82 % del ancho).
 
 ### Descartado
 - Celular (ntfy), radar flotante y barra de tareas como piezas sueltas. El radar vive dentro de Bolsillo y Mosaico.

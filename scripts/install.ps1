@@ -6,7 +6,7 @@ $dest = Join-Path $env:LOCALAPPDATA 'Pulse'
 $settingsPath = Join-Path $HOME '.claude\settings.json'
 if (-not $NoBuild) {
   Push-Location (Join-Path $root 'app'); npm run build; Pop-Location
-  Push-Location $root; cargo build --release -p pulse-cli -p pulse-app; Pop-Location
+  Push-Location $root; cargo build --release -p pulse-cli -p pulse-app --features pulse-app/custom-protocol; Pop-Location
 }
 Get-Process pulse-app -ErrorAction SilentlyContinue | Stop-Process -Force
 New-Item -ItemType Directory -Force $dest | Out-Null
