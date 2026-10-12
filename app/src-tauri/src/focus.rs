@@ -20,6 +20,24 @@ pub fn is_fullscreen(covers_monitor: bool, zoomed: bool, style: u32) -> bool {
     covers_monitor && (!zoomed || style & (WS_CAPTION | WS_THICKFRAME) == 0)
 }
 
+/// Ventanas del sistema que cubren el monitor sin ser una app en pantalla completa: escritorio, barra de tareas,
+/// Alt+Tab y las capas de Windows (Inicio, búsqueda, emojis, portapapeles, teclado táctil: TextInputHost).
+pub fn is_shell_surface(class: &str) -> bool {
+    matches!(class, "Progman" | "WorkerW" | "Shell_TrayWnd" | "Shell_SecondaryTrayWnd" | "Windows.UI.Core.CoreWindow" | "XamlExplorerHostIslandWindow" | "ForegroundStaging" | "MultitaskingViewFrame")
+}
+
+/// Detección estable: un cambio cuenta solo si se repite en `n` revisiones seguidas (una ventana de paso no enciende el foco).
+#[derive(Default)] pub struct Debounce { last: bool, seen: bool, count: u32 }
+impl Debounce {
+    /// Devuelve el valor estable después de ver `raw`.
+    pub fn feed(&mut self, raw: bool, n: u32) -> bool {
+        if raw == self.last { self.count = 0; return self.last; }
+        if raw == self.seen { self.count += 1 } else { self.seen = raw; self.count = 1 }
+        if self.count >= n { self.last = raw; self.count = 0; }
+        self.last
+    }
+}
+
 /// ¿La ventana activa es de otra app y cubre todo su monitor (video, juego, presentación)?
 /// No se usa SHQueryUserNotificationState: las ventanas de borde de Pulse cubren el monitor y Windows las toma por pantalla completa.
 pub fn other_app_fullscreen() -> bool {
@@ -30,7 +48,7 @@ pub fn other_app_fullscreen() -> bool {
         let mut pid = 0u32; GetWindowThreadProcessId(h, &mut pid);
         if pid == std::process::id() { return false; }
         let mut name = [0u16; 64]; let n = GetClassNameW(h, name.as_mut_ptr(), name.len() as i32);
-        if matches!(String::from_utf16_lossy(&name[..n.max(0) as usize]).as_str(), "Progman" | "WorkerW" | "Shell_TrayWnd") { return false; }   // escritorio y barra de tareas
+        if is_shell_surface(&String::from_utf16_lossy(&name[..n.max(0) as usize])) { return false; }
         let mut r: RECT = std::mem::zeroed();
         if GetWindowRect(h, &mut r) == 0 { return false; }
         let mut mi: MONITORINFO = std::mem::zeroed(); mi.cbSize = std::mem::size_of::<MONITORINFO>() as u32;
@@ -75,11 +93,13 @@ fn local_minutes() -> u32 {
 
 pub fn start(app: &AppHandle) {
     let a = app.clone();
-    tauri::async_runtime::spawn(async move { let mut last = false; loop {
+    tauri::async_runtime::spawn(async move { let (mut last, mut stable) = (false, Debounce::default()); loop {
         tokio::time::sleep(std::time::Duration::from_secs(3)).await;
         let st = a.state::<AppState>();
         let cfg = st.config.lock().unwrap().focus.clone();
-        let auto = detect(&cfg, local_minutes(), cfg.auto && cfg.detect_call && mic_in_use(), cfg.auto && cfg.detect_fullscreen && other_app_fullscreen());
+        // la pantalla completa tiene que durar dos revisiones (~6 s) para encender o apagar el foco
+        let fullscreen = stable.feed(cfg.auto && cfg.detect_fullscreen && other_app_fullscreen(), 2);
+        let auto = detect(&cfg, local_minutes(), cfg.auto && cfg.detect_call && mic_in_use(), fullscreen);
         if auto == last { continue; }
         last = auto;
         let released = st.store.lock().unwrap().set_focus(None, auto);
@@ -124,4 +144,19 @@ mod tests {
         assert!(!covers((0, 0, 1920, 1040), mon));     // maximizada normal: deja ver la barra de tareas
         assert!(!covers((100, 100, 900, 700), mon));
     }
+    #[test] fn system_layers_are_not_fullscreen_apps() {
+        assert!(is_shell_surface("Windows.UI.Core.CoreWindow"));   // TextInputHost, Inicio, búsqueda
+        assert!(is_shell_surface("XamlExplorerHostIslandWindow")); // Alt+Tab
+        assert!(!is_shell_surface("Chrome_WidgetWin_1"));
+    }
+    #[test] fn a_passing_window_does_not_switch_focus() {
+        let mut d = Debounce::default();
+        assert!(!d.feed(true, 2));     // un instante: no cuenta
+        assert!(!d.feed(false, 2));
+        assert!(!d.feed(true, 2));
+        assert!(d.feed(true, 2));      // dos seguidas: sí
+        assert!(d.feed(false, 2));     // para apagarlo también hacen falta dos
+        assert!(!d.feed(false, 2));
+    }
+
 }
