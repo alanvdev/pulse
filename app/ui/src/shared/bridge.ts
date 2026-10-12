@@ -32,6 +32,8 @@ export const skip = (id: number) => invoke('skip', { id });
 export const holdQuestion = (id: number, on: boolean) => invoke('hold_question', { id, on });
 export const allowAll = () => invoke('allow_all');
 export const setFocus = (on: boolean) => invoke('set_focus', { on });
+/** Quita sesiones de Pulse; vuelven solas con su siguiente evento. */
+export const forgetSessions = (ids: string[]) => invoke('forget_sessions', { ids });
 export const muteSession = (sessionId: string, minutes: number) => invoke('mute_session', { sessionId, minutes });
 export const dailySummary = () => invoke<DaySummary>('daily_summary');
 export const setIslandHitbox = (rect: { x: number; y: number; w: number; h: number } | null) => invoke('set_island_hitbox', { rect });

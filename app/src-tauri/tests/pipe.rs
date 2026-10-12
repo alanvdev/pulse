@@ -2,7 +2,7 @@ use std::io::{BufRead, BufReader, Write};
 use pulse_app_lib::server;
 use pulse_protocol::{Decision, Envelope, PulseEvent};
 
-fn env(ask: bool) -> Envelope { Envelope { v: 1, session_id: "s1".into(), project: "demo".into(), cwd: String::new(), at_ms: 5, ask, event: PulseEvent::Done } }
+fn env(ask: bool) -> Envelope { Envelope { v: 1, session_id: "s1".into(), project: "demo".into(), cwd: String::new(), at_ms: 5, ask, owner: Default::default(), event: PulseEvent::Done } }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn delivers_plain_events() {

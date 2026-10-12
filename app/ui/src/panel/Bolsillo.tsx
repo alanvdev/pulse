@@ -1,6 +1,6 @@
 // Bolsillo: panel de la bandeja (spec §7, artboard Bolsillo). Pestañas Ahora, Hoy y Ajustes rápidos.
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as RKeyboardEvent } from 'react';
-import { decide, openDashboard, setFocus, skip, togglePanel, type Config, type DaySummary, type Pending, type Snapshot } from '../shared/bridge';
+import { decide, forgetSessions, openDashboard, setFocus, skip, togglePanel, type Config, type DaySummary, type Pending, type Snapshot } from '../shared/bridge';
 import { clock, headline, hm, sessionsLabel } from '../shared/format';
 import { reduceMotion } from '../shared/motion';
 import { useConfig, useDaySummary, useFlash, useFocusEdge, useFocusHalo, useHighlight, useHold, useNow, useResolved, useSnapshot, useTheme, type Resolved } from '../shared/react';
@@ -8,7 +8,7 @@ import type { Row } from '../island/model';
 import { isUrgent } from '../shared/micro';
 import { Button, Chip, Dot, Icon, Keys, ResolvedNote, Seg, Slider, StateIcon, Switch } from '../shared/ui';
 import { Timeline, TimelineLegend } from '../shared/timeline';
-import { focusLine, sessionRows, verb } from '../island/model';
+import { focusLine, inactiveIds, sessionRows, verb } from '../island/model';
 
 type Tab = 'ahora' | 'hoy' | 'ajustes';
 const TABS: [Tab, string][] = [['ahora', 'Ahora'], ['hoy', 'Hoy'], ['ajustes', 'Ajustes']];
@@ -45,14 +45,15 @@ function SessionRow({ r, i, now }: { r: Row; i: number; now: number }) {
     <StateIcon s={st} />
     <span className="min-w-0"><span className="s-p">{r.project}</span><span className={`s-w ${r.mono ? 'mono' : ''}`}>{r.what}</span></span>
     <span className="s-t mono">{r.state === 'Done' ? '' : clock(now - r.since)}</span>
+    {!r.pendingId && <button type="button" className="s-x" aria-label={`Quitar ${r.project} de Pulse`} title="Quitar de Pulse (vuelve si Claude hace algo)" onClick={() => forgetSessions([r.id])}><Icon name="close" /></button>}
   </div>;
 }
 
 function Ahora({ snap, cfg, save, now, hold, resolved }: { snap: Snapshot; cfg: Config; save: (c: Config) => void; now: number; hold: Hold; resolved: Resolved | null }) {
-  const top = snap.pending[0], rows = sessionRows(snap, now).filter(r => !top || r.pendingId !== top.id);
+  const top = snap.pending[0], rows = sessionRows(snap, now).filter(r => !top || r.pendingId !== top.id), quiet = inactiveIds(snap);
   const flip = <K extends 'sounds' | 'pulses' | 'keyboard'>(k: K) => save({ ...cfg, [k]: { ...cfg[k], enabled: !cfg[k].enabled } });
   return <>
-    <header><div className="bp-n">{sessionsLabel(snap.sessions.length)}{snap.focus && <> · <span className="fz"><Icon name="dark_mode" />{focusLine(snap)}</span></>}</div><div className="bp-h">{headline(snap)}</div></header>
+    <header><div className="bp-n">{sessionsLabel(snap.sessions.length)}{snap.focus && <> · <span className="fz"><Icon name="dark_mode" />{focusLine(snap)}</span></>}{quiet.length > 1 && <> · <button type="button" className="bp-clean" onClick={() => forgetSessions(quiet)}>Quitar {quiet.length} inactivas</button></>}</div><div className="bp-h">{headline(snap)}</div></header>
     {resolved && <ResolvedNote key={resolved.n} {...resolved} />}
     {top && <PendingBlock key={top.id} p={top} cfg={cfg} now={now} hold={hold} />}
     {snap.sessions.length ? <div>{rows.map((r, i) => <SessionRow key={r.id} r={r} i={i} now={now} />)}</div> : <p className="empty">No hay sesiones de Claude Code abiertas.</p>}

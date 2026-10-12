@@ -90,7 +90,7 @@ pub fn update(app: &AppHandle, sessions: &[Session], tip: &str) {
 }
 #[cfg(test)]
 mod tests { use super::*; use crate::state::{Session, SessionState};
-    fn s(slot: u8, state: SessionState) -> Session { Session { id: format!("s{slot}"), project: "p".into(), cwd: String::new(), slot, state, last: String::new(), subagents: 0, since_ms: 0, last_event_ms: 0, actions: 0, muted_until_ms: 0 } }
+    fn s(slot: u8, state: SessionState) -> Session { Session { id: format!("s{slot}"), project: "p".into(), cwd: String::new(), slot, state, last: String::new(), subagents: 0, since_ms: 0, last_event_ms: 0, actions: 0, muted_until_ms: 0, owner: Default::default() } }
     fn at(px: &[u8], x: usize, y: usize) -> Vec<u8> { px[(y * 32 + x) * 4..(y * 32 + x) * 4 + 4].to_vec() }
     #[test] fn no_sessions_is_one_big_gray_ring() {
         let d = tray_dots(&[], false);

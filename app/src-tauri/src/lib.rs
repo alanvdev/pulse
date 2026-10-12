@@ -54,6 +54,21 @@ fn finish(app: &AppHandle, id: u64, reply: Reply, label: &str, text: Option<Stri
     broadcast(app);
 }
 
+/// Quita sesiones de Pulse. Sus permisos o preguntas pendientes se dejan a la terminal.
+pub fn forget(app: &AppHandle, ids: &[String]) {
+    if ids.is_empty() { return; }
+    let st = app.state::<AppState>();
+    let pending: Vec<u64> = { let mut s = st.store.lock().unwrap(); ids.iter().flat_map(|id| s.forget(id, now_ms())).collect() };
+    for id in pending { resolve_as(app, id, Decision::None, "terminal"); }
+    broadcast(app);
+}
+
+/// Sesiones cuyo Claude Code ya se cerró (cerrar la pestaña de la terminal no manda `SessionEnd`).
+fn closed_sessions(app: &AppHandle) -> Vec<String> {
+    let owners = app.state::<AppState>().store.lock().unwrap().owners();
+    owners.into_iter().filter(|(_, o)| !pulse_protocol::owner::is_alive(*o)).map(|(id, _)| id).collect()
+}
+
 fn handle(app: &AppHandle, inc: server::Incoming) {
     let st = app.state::<AppState>();
     let env = st.store.lock().unwrap().canonical(inc.env);
@@ -94,7 +109,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(shortcuts::plugin())
         .manage(AppState { store: Mutex::new(Store::new(now_ms())), config: Mutex::new(config::load()), waiters: Mutex::new(HashMap::new()), next_id: AtomicU64::new(0), player: sound::Player::start() })
-        .invoke_handler(tauri::generate_handler![commands::get_snapshot, commands::get_config, commands::set_config, commands::decide, commands::answer, commands::skip, commands::hold_question, commands::allow_all, commands::set_focus, commands::mute_session, commands::daily_summary, commands::log_today, commands::set_island_hitbox, commands::island_focus, commands::open_dashboard, commands::toggle_panel, commands::flyout_fit, commands::flyout_hide, commands::open_palette, commands::quit])
+        .invoke_handler(tauri::generate_handler![commands::get_snapshot, commands::get_config, commands::set_config, commands::decide, commands::answer, commands::skip, commands::hold_question, commands::allow_all, commands::set_focus, commands::mute_session, commands::forget_sessions, commands::daily_summary, commands::log_today, commands::set_island_hitbox, commands::island_focus, commands::open_dashboard, commands::toggle_panel, commands::flyout_fit, commands::flyout_hide, commands::open_palette, commands::quit])
         .setup(move |app| {
             let h = app.handle().clone();
             tray::create(&h, windows::toggle_panel, windows::toggle_flyout)?;
@@ -105,8 +120,9 @@ pub fn run() {
             let h1 = h.clone();
             tauri::async_runtime::spawn(async move { while let Some(inc) = rx.recv().await { handle(&h1, inc); } });
             let h2 = h.clone();
-            tauri::async_runtime::spawn(async move { loop {   // vencimiento de permisos y autocierre
+            tauri::async_runtime::spawn(async move { for tick in 0u64.. {   // vencimiento de permisos, sesiones cerradas y autocierre
                 tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                if tick % 3 == 0 { let closed = closed_sessions(&h2); forget(&h2, &closed); }
                 let expired = h2.state::<AppState>().store.lock().unwrap().expire(now_ms());
                 for id in expired { resolve(&h2, id, Decision::None); }
                 // `pulse ask` se cerró (Claude Code dejó de esperar al hook): se respondió en la terminal

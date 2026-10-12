@@ -31,6 +31,8 @@ use tauri::{AppHandle, Emitter, State};
     st.store.lock().unwrap().mute(&session_id, if minutes > 0 { now_ms() + minutes * 60_000 } else { 0 });
     broadcast(&app);
 }
+/// Quitar de Pulse a mano (sesiones que ya cerraste o que no quieres ver). Vuelven con su siguiente evento.
+#[tauri::command] pub fn forget_sessions(app: AppHandle, ids: Vec<String>) { crate::forget(&app, &ids); }
 
 /// Async: leen todo log.jsonl y no deben frenar el hilo principal (ahí también viaja la isla).
 #[tauri::command] pub async fn log_today() -> Vec<crate::logbook::LogItem> { crate::logbook::today(crate::logbook::TODAY_LIMIT) }

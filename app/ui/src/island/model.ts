@@ -64,6 +64,8 @@ export function sessionRows(s: Snapshot, now: number): Row[] {
     return { id: x.id, project: x.project, state: x.state, dot: p ? 'halo' : dotKind(x.state), what: w.text, mono: w.mono, since: x.since_ms, need: !!p, pendingId: p?.id };
   });
 }
+/** Sesiones que se pueden quitar sin perder nada: no trabajan ni esperan una respuesta tuya en Pulse. */
+export const inactiveIds = (s: Snapshot) => s.sessions.filter(x => x.state !== 'Working' && !s.pending.some(p => p.session_id === x.id)).map(x => x.id);
 /** Puntos de sesión en reposo (spec §3.1): solo con el ajuste encendido y mientras alguna trabaja o espera. */
 export const showDots = (s: Snapshot, c: Config) => c.island.dots && s.sessions.some(x => x.state === 'Working' || x.state === 'Waiting' || x.state === 'IdleWait');
 /** Pie del resumen: horas de trabajo de hoy y cuánto te esperó Claude. */

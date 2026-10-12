@@ -21,6 +21,15 @@ html, body, #root { height: 100%; background: transparent }
 .s-w { display: block; font-size: 12px; color: var(--tx3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 .s-w.mono { font-size: 11.5px }
 .s-t { font-size: 11.5px; color: var(--tx3) }
+/* Quitar la sesión: la × toma el lugar del reloj al pasar el mouse o al llegar con Tab */
+.s { position: relative }
+.s-x { position: absolute; right: 0; top: 50%; translate: 0 -50%; display: grid; place-items: center; width: 26px; height: 26px; border: 0; border-radius: 6px; background: transparent; color: var(--tx3); opacity: 0; transition: opacity .15s, color .15s, background .15s }
+.s-x .ms { font-size: 16px }
+.s:hover .s-x, .s-x:focus-visible { opacity: 1 }
+.s:has(.s-x):hover .s-t, .s:focus-within .s-t { opacity: 0 }
+.s-x:hover { color: var(--tx); background: var(--raised) }
+.bp-clean { padding: 0; border: 0; background: none; color: var(--tx2); font: inherit; text-decoration: underline; text-underline-offset: 2px; text-decoration-color: var(--line) }
+.bp-clean:hover { color: var(--tx) }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto }
 .bp-foot { display: flex; align-items: center; gap: 4px; height: 44px; padding: 0 8px; border-top: 1px solid var(--line); background: var(--barbg) }
 .tab { transition: color .15s, transform .12s var(--e-out); height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--tx3); font-size: 12px }

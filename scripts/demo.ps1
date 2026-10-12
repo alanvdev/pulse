@@ -5,7 +5,8 @@ param([string]$Escenario = '')
 $ErrorActionPreference = 'Stop'
 $pulse = Join-Path $env:LOCALAPPDATA 'Pulse\pulse.exe'
 if (-not (Test-Path $pulse)) { throw "No encuentro $pulse. Corre primero: pwsh scripts/install.ps1" }
-$sesion = 'demo-' + (Get-Date -Format 'HHmm')
+# Siempre la misma sesión: así `fin` cierra la que dejaron los escenarios anteriores, aunque los hayas corrido en otra ventana.
+$sesion = 'pulse-demo'
 
 function Hook([string]$modo, [hashtable]$datos) {
   $base = @{ session_id = $sesion; cwd = 'D:\demo\pulse-demo' }
@@ -36,8 +37,8 @@ $escenarios = [ordered]@{
   terminal   = @('Respondes en la terminal: la isla deja de esperar sola', {
       $job = Start-Job -ScriptBlock { param($p, $s) (@{ session_id = $s; cwd = 'D:\demo\pulse-demo'; hook_event_name = 'PermissionRequest'; tool_name = 'Bash'; tool_input = @{ command = 'npm test' } } | ConvertTo-Json -Compress) | & $p ask } -ArgumentList $pulse, $sesion
       Start-Sleep 3; 'Simulo que Claude siguió (ya respondiste en la terminal)…'; Hook emit @{ hook_event_name = 'Stop' }; Remove-Job $job -Force })
-  todo       = @('Recorrido sin pausas para respuestas: inicio, herramienta, error, subagente, espera, terminó', {
-      foreach ($n in 'inicio', 'herramienta', 'error', 'subagente', 'espera', 'termino') { "→ $n"; & $escenarios[$n][1]; Start-Sleep 3 } })
+  todo       = @('Todos los escenarios seguidos (los permisos y preguntas esperan tu respuesta o se vencen solos)', {
+      foreach ($n in @($escenarios.Keys | Where-Object { $_ -notin 'todo', 'fin' }) + 'fin') { "→ $n · $($escenarios[$n][0])"; & $escenarios[$n][1]; Start-Sleep 3 } })
   fin        = @('Cierra la sesión de prueba', { Hook emit @{ hook_event_name = 'SessionEnd' } })
 }
 
@@ -46,3 +47,4 @@ if (-not $escenarios.Contains($Escenario)) {
 }
 "▶ $($escenarios[$Escenario][0])"
 & $escenarios[$Escenario][1]
+if ($Escenario -notin 'todo', 'fin') { 'Cuando termines de probar: pwsh scripts/demo.ps1 fin (quita la sesión de prueba de Pulse)' }

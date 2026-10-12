@@ -1,5 +1,5 @@
 use std::collections::{BTreeMap, VecDeque};
-use pulse_protocol::{is_dangerous, project_name, Envelope, PulseEvent};
+use pulse_protocol::{is_dangerous, owner::Owner, project_name, Envelope, PulseEvent};
 use serde::Serialize;
 
 fn first_question(q: &serde_json::Value) -> String { q.get(0).and_then(|x| x.get("question")).and_then(|x| x.as_str()).unwrap_or("Claude te hace una pregunta").to_string() }
@@ -20,7 +20,7 @@ pub enum Cue { Start, Permission, Done, Idle, Error, Subagent }
 impl Cue { pub fn key(self) -> &'static str { match self { Cue::Start => "start", Cue::Permission => "permission", Cue::Done => "done", Cue::Idle => "idle", Cue::Error => "error", Cue::Subagent => "subagent" } } }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct Session { pub id: String, pub project: String, #[serde(skip)] pub cwd: String, pub slot: u8, pub state: SessionState, pub last: String, pub subagents: u32, pub since_ms: i64, pub last_event_ms: i64, pub actions: u32, pub muted_until_ms: i64 }
+pub struct Session { pub id: String, pub project: String, #[serde(skip)] pub cwd: String, pub slot: u8, pub state: SessionState, pub last: String, pub subagents: u32, pub since_ms: i64, pub last_event_ms: i64, pub actions: u32, pub muted_until_ms: i64, #[serde(skip)] pub owner: Owner }
 #[derive(Debug, Clone, Serialize)]
 /// `deadline_ms`: cuándo se va a la terminal. Las preguntas se pausan mientras las contestas (`paused`, con `left_ms` restantes).
 pub struct Pending { pub id: u64, pub kind: String, pub session_id: String, pub project: String, pub tool: String, pub command: String, pub description: String, pub danger: bool, pub at_ms: i64, pub timeout_ms: i64, pub deadline_ms: i64, pub paused: bool, pub left_ms: i64, pub questions: Option<serde_json::Value> }
@@ -57,8 +57,9 @@ impl Store {
         let slot = self.free_slot();
         let s = self.sessions.entry(e.session_id.clone()).or_insert_with(|| Session {
             id: e.session_id.clone(), project: e.project.clone(), cwd: e.cwd.clone(), slot, state: SessionState::Idle, last: String::new(),
-            subagents: 0, since_ms: e.at_ms, last_event_ms: e.at_ms, actions: 0, muted_until_ms: 0 });
+            subagents: 0, since_ms: e.at_ms, last_event_ms: e.at_ms, actions: 0, muted_until_ms: 0, owner: e.owner });
         s.last_event_ms = e.at_ms;
+        if e.owner.pid != 0 { s.owner = e.owner; }
         let set = |s: &mut Session, st: SessionState| if s.state != st { s.state = st; s.since_ms = e.at_ms; };
         let (cue, feed) = match &e.event {
             PulseEvent::SessionStart | PulseEvent::SessionEnd => (None, None),
@@ -170,6 +171,18 @@ impl Store {
         out
     }
 
+    /// Sesiones con un Claude Code conocido, para revisar si sigue abierto.
+    pub fn owners(&self) -> Vec<(String, Owner)> { self.sessions.values().filter(|s| s.owner.pid != 0).map(|s| (s.id.clone(), s.owner)).collect() }
+
+    /// Quita la sesión (vuelve sola con su siguiente evento). Devuelve sus pendientes, que quedan para que alguien los resuelva.
+    /// El autocierre cuenta desde `now_ms`: quitar la última sesión no cierra Pulse en tu cara.
+    pub fn forget(&mut self, session_id: &str, now_ms: i64) -> Vec<u64> {
+        if self.sessions.remove(session_id).is_none() { return Vec::new(); }
+        self.last_event_ms = self.last_event_ms.max(now_ms);
+        self.turn_start.remove(session_id);
+        self.pending.iter().filter(|p| p.session_id == session_id).map(|p| p.id).collect()
+    }
+
     pub fn should_exit(&mut self, now_ms: i64) -> bool {
         let mut freed_at = self.last_event_ms;
         self.sessions.retain(|_, s| { let alive = now_ms - s.last_event_ms < STALE_SESSION_MS; if !alive { freed_at = freed_at.max(s.last_event_ms + STALE_SESSION_MS); } alive });
@@ -187,7 +200,7 @@ impl Store {
 mod tests {
     use super::*;
     use pulse_protocol::{Envelope, PulseEvent};
-    fn env(sid: &str, at: i64, event: PulseEvent) -> Envelope { Envelope { v: 1, session_id: sid.into(), project: format!("p-{sid}"), cwd: String::new(), at_ms: at, ask: false, event } }
+    fn env(sid: &str, at: i64, event: PulseEvent) -> Envelope { Envelope { v: 1, session_id: sid.into(), project: format!("p-{sid}"), cwd: String::new(), at_ms: at, ask: false, owner: Default::default(), event } }
     fn perm(sid: &str, at: i64, cmd: &str) -> Envelope { env(sid, at, PulseEvent::Permission { tool: "Bash".into(), command: cmd.into(), description: String::new() }) }
 
     #[test] fn lifecycle_of_a_session() {
@@ -339,6 +352,26 @@ mod tests {
         let mut fresh = Store::new(50_000);
         assert!(!fresh.should_exit(50_000 + 1_000));
         assert!(fresh.should_exit(50_000 + IDLE_EXIT_MS));
+    }
+    #[test] fn forget_drops_the_session_until_its_next_event() {
+        let mut s = Store::default();
+        let mut e = perm("a", 1, "ls");
+        e.owner = Owner { pid: 42, started: 7 };
+        s.apply(&e); s.add_pending(1, &e, 30_000);
+        s.apply(&env("b", 2, PulseEvent::Done));
+        assert_eq!(s.owners(), vec![("a".to_string(), Owner { pid: 42, started: 7 })]);
+        // un evento sin dueño conocido no borra el que ya tenía
+        s.apply(&env("a", 3, PulseEvent::Tool { tool: "Bash".into(), target: "ls".into() }));
+        assert_eq!(s.owners().len(), 1);
+        assert_eq!(s.forget("a", 10_000), vec![1]);
+        assert_eq!(s.forget("a", 10_000), Vec::<u64>::new());
+        assert_eq!(s.snapshot().sessions.len(), 1);
+        assert_eq!(s.resolve(1).map(|p| p.id), Some(1));
+        s.forget("b", 10_000);
+        assert!(!s.should_exit(10_000 + IDLE_EXIT_MS - 1));
+        assert!(s.should_exit(10_000 + IDLE_EXIT_MS));
+        s.apply(&env("a", 20_000, PulseEvent::Done));
+        assert_eq!(s.snapshot().sessions.len(), 1);
     }
     #[test] fn summary_in_spanish() {
         let mut s = Store::default();

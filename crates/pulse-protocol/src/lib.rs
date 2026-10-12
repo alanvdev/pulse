@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
+pub mod owner;
+
 pub const PIPE_NAME: &str = r"\\.\pipe\pulse";
 pub const PROTOCOL_VERSION: u32 = 1;
 pub const ASK_TIMEOUT_S: u64 = 30;
@@ -48,6 +50,8 @@ pub struct Envelope {
     pub cwd: String,
     pub at_ms: i64,
     #[serde(default)] pub ask: bool,
+    /// El Claude Code que mandó el evento, para quitar la sesión si se cierra sin avisar.
+    #[serde(default)] pub owner: owner::Owner,
     pub event: PulseEvent,
 }
 
@@ -117,7 +121,7 @@ pub fn question_hook(i: &HookInput) -> Option<PulseEvent> {
 }
 
 pub fn envelope_from_hook(i: &HookInput, at_ms: i64, ask: bool) -> Option<Envelope> {
-    Some(Envelope { v: PROTOCOL_VERSION, session_id: i.session_id.clone(), project: project_name(&i.cwd), cwd: i.cwd.clone(), at_ms, ask, event: map_hook(i)? })
+    Some(Envelope { v: PROTOCOL_VERSION, session_id: i.session_id.clone(), project: project_name(&i.cwd), cwd: i.cwd.clone(), at_ms, ask, owner: owner::Owner::default(), event: map_hook(i)? })
 }
 
 pub fn is_dangerous(cmd: &str) -> bool {

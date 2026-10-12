@@ -2,14 +2,14 @@
 import type { Config, DaySummary, Snapshot } from '../shared/bridge';
 import { clock, COLORS, esc, LBL } from '../shared/format';
 import { morph, reduceMotion, SP_OPEN, T, type Morph, type MorphOpts } from '../shared/motion';
-import { dayLine, PAL_EMPTY, sessionRows, showDots, type Notice, type Row } from './model';
+import { dayLine, inactiveIds, PAL_EMPTY, sessionRows, showDots, type Notice, type Row } from './model';
 import { questionCard } from './questions';
 import { beam, fitCommand, fuzzy, ignite, keys, noticeHTML, permCard } from './shared';
 
 export interface Ctx {
   snap(): Snapshot; cfg(): Config; notice(): Notice | null; day(): DaySummary | null; refreshDay(): void;
   decide(id: number, allow: boolean): void; answer(id: number, answers: Record<string, string>): void; skip(id: number): void; hold(id: number, on: boolean): void;
-  allowAll(): void; setFocus(on: boolean): void; muteSession(id: string, minutes: number): void; openDashboard(view?: string): void;
+  allowAll(): void; setFocus(on: boolean): void; muteSession(id: string, minutes: number): void; forgetSessions(ids: string[]): void; openDashboard(view?: string): void;
   islandFocus(on: boolean): void; hitbox(el: HTMLElement | null): void;
 }
 type Item = { g: string; icon: string; text: string; meta: string; run: () => void };
@@ -40,6 +40,8 @@ export function mountComando(board: HTMLElement, ctx: Ctx) {
     L.push({ g: 'Acciones', icon: 'dark_mode', text: s.focus ? 'Salir del modo foco' : 'Activar modo foco', meta: '', run: () => ctx.setFocus(!s.focus) });
     const allMuted = s.sessions.length > 0 && s.sessions.every(x => x.muted_until_ms > now);
     if (s.sessions.length) L.push({ g: 'Acciones', icon: allMuted ? 'notifications_active' : 'notifications_paused', text: allMuted ? 'Quitar silencio' : 'Silenciar 30 min', meta: '', run: () => s.sessions.forEach(x => ctx.muteSession(x.id, allMuted ? 0 : 30)) });
+    const quiet = inactiveIds(s);
+    if (quiet.length) L.push({ g: 'Acciones', icon: 'clear_all', text: quiet.length === 1 ? 'Quitar la sesión inactiva' : `Quitar ${quiet.length} sesiones inactivas`, meta: '', run: () => ctx.forgetSessions(quiet) });
     L.push({ g: 'Acciones', icon: 'done_all', text: 'Aprobar todos los permisos', meta: s.pending.length ? String(s.pending.length) : '', run: ctx.allowAll });
     L.push({ g: 'Acciones', icon: 'open_in_new', text: 'Abrir Pulse', meta: '', run: () => ctx.openDashboard() });
     s.sessions.forEach(x => L.push({ g: 'Sesiones', icon: 'stacks', text: x.project, meta: LBL[x.state], run: () => ctx.openDashboard(`sesiones/${x.id}`) }));

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Config, Fx, Pending, Session, SessionState, Snapshot } from '../shared/bridge';
 import { COLORS } from '../shared/format';
-import { dayLine, digitIndex, focusLine, nearestZone, orbDot, qHint, queueInfo, releaseRow, sessionRows, showDots, toNotice, verb } from './model';
+import { dayLine, digitIndex, focusLine, inactiveIds, nearestZone, orbDot, qHint, queueInfo, releaseRow, sessionRows, showDots, toNotice, verb } from './model';
 
 const fx = (kind: Fx['kind'], text = '', visual = true): Fx => ({ kind, session_id: 's', project: 'pulse', slot: 0, text, visual, sound: false, monitor: 0 });
 const pend = (id: number, project: string, command: string, tool = 'Bash', kind: Pending['kind'] = 'permission'): Pending =>
@@ -103,5 +103,13 @@ describe('Orbe', () => {
     const d = (n: number) => Array.from({ length: n }, () => ({ session_id: 's', project: 'p', kind: 'done', at_ms: 0 }));
     expect(focusLine({ ...snap([]), focus: true, deferred: d(3) })).toBe('En foco · 3 guardados');
     expect(focusLine({ ...snap([]), focus: true, deferred: d(1) })).toBe('En foco · 1 guardado');
+  });
+});
+
+describe('quitar sesiones', () => {
+  it('inactivas: ni trabajando ni con un pendiente', () => {
+    const s = snap([ses('a', 'Working'), ses('b', 'Done'), ses('c', 'Idle'), ses('d', 'IdleWait'), ses('s1', 'Waiting')], [pend(1, 's1', 'ls')]);
+    expect(inactiveIds(s)).toEqual(['b', 'c', 'd']);
+    expect(inactiveIds(snap([]))).toEqual([]);
   });
 });
