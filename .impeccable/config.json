@@ -14,6 +14,15 @@
         "value": "geist mono",
         "createdAt": "2026-10-11T22:02:53.596Z",
         "reason": "Spec source of truth: docs/artboards/*.html and plan Task 3 Step 2 mandate Geist Mono"
+      },
+      {
+        "rule": "layout-transition",
+        "value": "*",
+        "files": [
+          "app/ui/src/shared/ui.css"
+        ],
+        "createdAt": "2026-10-12T04:49:24.324Z",
+        "reason": "Claude: solo anima width/height de pseudo-elementos absolutos y pequeños (resaltado deslizante entre elementos de distinto tamaño, perilla del interruptor que se estira); no reacomodan nada alrededor"
       }
     ]
   }
