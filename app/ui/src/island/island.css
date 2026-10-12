@@ -1,46 +1,38 @@
-/* Copiado de docs/artboards/isla.html (piezas compartidas, Orbe y Comando). */
+/* Isla (spec §3; artboards Comando, Puntos, Orbe, Casos, Avisos). Siempre en la versión oscura: no lleva data-theme. */
 .board { position: fixed; inset: 0; isolation: isolate }
 .beam { position: absolute; z-index: 4; left: 0; right: 0; top: 0; height: 60px; pointer-events: none; opacity: 0 }
 
-/* ---------- shared island pieces ---------- */
-.glass{background:var(--glass);-webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%);box-shadow:inset 0 1px 0 rgba(255,255,255,.07),inset 0 0 0 1px rgba(255,255,255,.06),0 18px 40px -18px rgba(0,0,0,.75)}
-.shell{position:absolute;z-index:6;overflow:hidden;color:#eceef1;font-size:13px;line-height:1.35}
-.layer{position:absolute;left:0;top:0;width:max-content;max-width:520px}
-.row{display:flex;align-items:center;gap:10px;white-space:nowrap}
-.muted{color:#9aa1ab}
-.t b{font-weight:500}
-.card{padding:13px 15px 14px;display:grid;gap:10px;min-width:310px}
-.ch{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12.5px}
-.ch .nm{font-family:var(--f-mono);font-size:12px;color:#c7ccd3}
-.st{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--c)}
-.st::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c)}
-.cmd{font-family:var(--f-mono);font-size:12.5px;color:#ffd590;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.05);border-radius:8px;padding:8px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:380px}
-.cmd.full{white-space:pre-wrap;word-break:break-all;max-height:112px;overflow:auto;scrollbar-width:none}
-.why{margin-top:3px;font-size:12.5px;font-weight:400;color:#c7ccd3;white-space:normal;max-width:380px}
-.warn{display:flex;align-items:center;gap:6px;font-size:12px;color:#ffc56a}
-.warn .ms{font-size:15px}
-.acts{display:flex;gap:8px}
-.acts button{position:relative;flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:9px;padding:7px 10px;font-size:12.5px;font-weight:500;overflow:hidden;transition:transform .12s var(--e-out),background .15s}
-.acts button:active{transform:scale(.96)}
-.b-no{background:rgba(255,255,255,.07);color:#e3e6ea}
-.b-no:hover{background:rgba(255,255,255,.12)}
-.b-yes{background:#eef0f3;color:#0b0d10}
-.b-yes:hover{background:#fff}
-.b-yes .fill{position:absolute;inset:0;background:var(--perm);transform-origin:left;transform:scaleX(var(--hold,0))}
-.b-yes span,.b-yes kbd{position:relative}
-kbd{font-family:var(--f-mono);font-size:10.5px;font-weight:400;padding:0 5px;min-width:18px;text-align:center;border-radius:4px;border:1px solid currentColor;opacity:.5;transition:opacity .12s,transform .12s,background .12s;display:inline-block;line-height:16px}
-kbd.on{opacity:1;background:rgba(255,255,255,.22);transform:translateY(1px)}
-.cd{position:absolute;left:15px;right:15px;bottom:0;height:1.5px;border-radius:2px;background:linear-gradient(90deg,var(--perm),rgba(255,176,46,.4));transform-origin:left}
-.meta{display:flex;gap:14px;font-family:var(--f-mono);font-size:11.5px;color:#8a919b}
-.mini{display:flex;gap:6px}
-.mini button{border:0;background:rgba(255,255,255,.07);border-radius:7px;padding:4px 9px;font-size:12px;color:#dde1e6;display:inline-flex;gap:5px;align-items:center;transition:background .15s,transform .1s}
-.mini button:hover{background:rgba(255,255,255,.13)}
-.mini button:active{transform:scale(.96)}
-.mini .ms{font-size:14px}
-.ok{color:var(--done)}.bad{color:#ff8c84}
-.draw{clip-path:inset(0 100% 0 0);animation:draw .5s var(--e-out) .08s forwards}
-@keyframes draw{to{clip-path:inset(0 0 0 0)}}
-@keyframes liIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+/* ---------- piezas compartidas ---------- */
+.glass { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line), inset 0 1px 0 var(--hi), 0 28px 56px -16px var(--shadow) }
+.shell { position: absolute; z-index: 6; overflow: hidden; color: var(--tx); font-size: 13px; line-height: 1.4 }
+/* varios permisos: dos tarjetas apiladas asoman por debajo (spec §3.3) */
+.shell.stacked { box-shadow: inset 0 0 0 1px var(--line), inset 0 1px 0 var(--hi), 0 6px 0 -3px var(--raised), 0 6px 0 -2px var(--line), 0 12px 0 -6px color-mix(in srgb, var(--raised) 70%, transparent), 0 28px 56px -16px var(--shadow) }
+.layer { position: absolute; left: 0; top: 0; width: max-content; max-width: 520px }
+.card { position: relative; display: flex; flex-direction: column }
+.card-b { display: flex; flex-direction: column; gap: 12px; padding: 18px 20px 16px }
+.head { display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--tx2); white-space: nowrap }
+.head b { color: var(--tx); font-weight: 500 }
+.head .ms { font-size: 16px; color: var(--tx2) }
+.head-r { margin-left: auto; font-size: 12px; color: var(--perm) }
+.cmd { font-family: var(--f-mono); font-size: 13.5px; line-height: 1.55; padding: 12px 14px; border-radius: 8px; background: var(--raised); white-space: pre-wrap; word-break: break-all; max-height: calc(3 * 1.55em + 24px); overflow: auto; scrollbar-width: none; user-select: text }
+.cmd.more { -webkit-mask-image: linear-gradient(#000 calc(100% - 22px), transparent); mask-image: linear-gradient(#000 calc(100% - 22px), transparent) }
+.desc { font-size: 13px; color: var(--tx2); white-space: normal }
+.next { font-size: 12px; color: var(--tx3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.next .mono { font-size: 11.5px }
+.bar { display: flex; align-items: center; gap: 6px; height: 50px; padding: 0 10px 0 18px; border-top: 1px solid var(--line); background: var(--barbg); font-size: 12px; color: var(--tx3); white-space: nowrap }
+.nt { position: relative; display: flex; align-items: center; gap: 10px; height: 40px; max-width: 520px; padding: 0 16px 0 14px; font-size: 13px; white-space: nowrap }
+.nt .ms { font-size: 17px }
+.nt .t { overflow: hidden; text-overflow: ellipsis }
+.nt b { font-weight: 500 }
+.nt .mono { font-size: 12px; color: var(--tx2) }
+.tm { position: absolute; left: 12px; right: 12px; bottom: 0; height: 1px; background: var(--tx3); transform-origin: left }
+.rel-b { gap: 9px }
+.rel { display: grid; grid-template-columns: 18px minmax(0,1fr) auto; gap: 10px; align-items: center; font-size: 13px; animation: liIn .4s var(--e-out) calc(140ms + var(--i) * 70ms) backwards }
+.rel small { font-size: 12px; color: var(--tx3) }
+.rel .ms { font-size: 17px }
+@keyframes liIn { from { opacity: 0; transform: translateY(-4px) } }
+.draw { clip-path: inset(0 100% 0 0); animation: draw .5s var(--e-out) .08s forwards }
+@keyframes draw { to { clip-path: inset(0 0 0 0) } }
 
 /* ---------- Orbe ---------- */
 .o-shell{top:13px;border-radius:99px;cursor:pointer;touch-action:none}
@@ -102,30 +94,29 @@ kbd.on{opacity:1;background:rgba(255,255,255,.22);transform:translateY(1px)}
   .draw{animation:none;clip-path:none}
 }
 
-/* ---------- Preguntas de Claude ---------- */
-.qcard{width:440px;white-space:normal}
-.q{display:grid;gap:8px}
-.qh{display:grid;gap:4px;font-size:13.5px;line-height:1.35}
-.qh b{font-weight:500}
-.qh small{font-size:11.5px;color:#8a919b}
-.qtag{justify-self:start;font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:#ffd590;background:rgba(255,176,46,.12);border-radius:5px;padding:1px 6px}
-.qopts{display:grid;gap:6px}
-.qopt{display:grid;gap:2px;text-align:left;border:0;border-radius:9px;padding:7px 10px;background:rgba(255,255,255,.06);color:#e3e6ea;font-size:12.5px;transition:background .15s,box-shadow .15s,transform .12s var(--e-out)}
-.qopt:hover{background:rgba(255,255,255,.1)}
-.qopt:active{transform:scale(.98)}
-.qopt small{font-size:11.5px;color:#9aa1ab}
-.qopt[aria-pressed="true"]{background:rgba(255,176,46,.14);box-shadow:inset 0 0 0 1px rgba(255,176,46,.55)}
-.qother span{color:#c7ccd3}
-.qin{background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:7px 10px;color:#f2f4f6;font-size:12.5px;outline:0;user-select:text}
-.qin:focus{border-color:rgba(255,176,46,.55)}
-.acts button:disabled{opacity:.45;cursor:default}
-.qtime{display:grid;gap:5px;font-size:11.5px;color:#9aa1ab}
-.qbar{display:block;height:2px;border-radius:2px;background:rgba(255,255,255,.08);overflow:hidden}
-.qbar b{display:block;height:100%;background:linear-gradient(90deg,var(--perm),rgba(255,176,46,.5));transform-origin:left;transition:transform .25s linear}
-.qcard.paused .qleft{color:#ffd590}
-.qcard.paused .qbar b{background:rgba(255,176,46,.35)}
-.qmeta{display:flex;align-items:center;gap:8px}
-.qmeta:empty{display:none}
-.qstep{margin-left:auto;font-size:11px;color:#8a919b;font-family:var(--f-mono)}
-.qopts{max-height:min(46vh,340px);overflow:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent}
-.qback{flex:0 0 auto!important}
+/* ---------- Preguntas de Claude (artboard Casos) ---------- */
+.qcard { white-space: normal }
+.q { display: flex; flex-direction: column; gap: 10px }
+.qh { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--tx3) }
+.qh:empty { display: none }
+.qstep { margin-left: auto; font-size: 11px }
+.tag { font-size: 11px; padding: 1px 6px; border-radius: 4px; background: var(--raised); color: var(--tx2) }
+.qq { font-size: 14.5px; font-weight: 500; line-height: 1.35 }
+.qopts { display: flex; flex-direction: column; gap: 6px; max-height: min(46vh, 340px); overflow: auto; scrollbar-width: thin; scrollbar-color: var(--line2) transparent }
+.qopt { display: grid; grid-template-columns: 18px minmax(0,1fr); gap: 10px; align-items: start; width: 100%; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--tx); font-size: 13px; text-align: left; transition: background .15s, border-color .15s }
+.qopt:hover { background: var(--sel) }
+.qopt small { display: block; margin-top: 1px; font-size: 12px; color: var(--tx3) }
+.qopt[aria-pressed="true"] { background: var(--sel); border-color: var(--line2) }
+.rad { width: 14px; height: 14px; margin-top: 2px; border-radius: 50%; border: 1.5px solid var(--tx3); transition: border .15s }
+.qopt[aria-pressed="true"] .rad { border: 4px solid var(--tx) }
+.chk { position: relative; width: 14px; height: 14px; margin-top: 2px; border-radius: 4px; border: 1.5px solid var(--tx3) }
+.qopt[aria-pressed="true"] .chk { background: var(--tx); border-color: var(--tx) }
+.qopt[aria-pressed="true"] .chk::after { content: "check"; position: absolute; inset: 0; display: grid; place-items: center; font: 600 11px/1 "Material Symbols Rounded"; font-feature-settings: "liga"; color: var(--surface) }
+.qin { background: var(--raised); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; color: var(--tx); font-size: 13px; outline: 0; user-select: text }
+.qin:focus { border-color: var(--line2) }
+.qtime { display: grid; gap: 5px; font-size: 12px; color: var(--tx3) }
+.qbar { display: block; height: 2px; border-radius: 2px; background: var(--line); overflow: hidden }
+.qbar b { display: block; height: 100%; background: var(--perm); transform-origin: left; transition: transform .25s linear }
+.qcard.paused .qleft { color: var(--tx2) }
+.qcard.paused .qbar b { opacity: .45 }
+@media (prefers-reduced-motion: reduce) { .rel { animation: none } .draw { animation: none; clip-path: none } .qbar b { transition: none } }

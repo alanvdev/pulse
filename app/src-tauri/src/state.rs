@@ -27,7 +27,7 @@ pub struct Pending { pub id: u64, pub kind: String, pub session_id: String, pub 
 #[derive(Debug, Clone, Serialize)]
 pub struct FeedItem { pub session_id: String, pub project: String, pub text: String, pub at_ms: i64 }
 #[derive(Debug, Clone, Serialize)]
-pub struct Deferred { pub session_id: String, pub project: String, pub kind: String }
+pub struct Deferred { pub session_id: String, pub project: String, pub kind: String, pub at_ms: i64 }
 #[derive(Debug, Clone, Serialize)]
 pub struct Snapshot { pub sessions: Vec<Session>, pub pending: Vec<Pending>, pub feed: Vec<FeedItem>, pub focus: bool, pub focus_auto: bool, pub deferred: Vec<Deferred> }
 
@@ -37,6 +37,7 @@ pub struct Store {
     pending: Vec<Pending>,
     feed: VecDeque<FeedItem>,
     deferred: Vec<Deferred>,
+    turn_start: BTreeMap<String, i64>,
     focus_manual: Option<bool>,
     focus_auto: bool,
     last_event_ms: i64,
@@ -52,7 +53,7 @@ impl Store {
 
     pub fn apply(&mut self, e: &Envelope) -> Option<Cue> {
         self.last_event_ms = self.last_event_ms.max(e.at_ms);
-        if e.event == PulseEvent::SessionEnd { self.sessions.remove(&e.session_id); self.pending.retain(|p| p.session_id != e.session_id); return None; }
+        if e.event == PulseEvent::SessionEnd { self.sessions.remove(&e.session_id); self.turn_start.remove(&e.session_id); self.pending.retain(|p| p.session_id != e.session_id); return None; }
         let slot = self.free_slot();
         let s = self.sessions.entry(e.session_id.clone()).or_insert_with(|| Session {
             id: e.session_id.clone(), project: e.project.clone(), cwd: e.cwd.clone(), slot, state: SessionState::Idle, last: String::new(),
@@ -61,7 +62,7 @@ impl Store {
         let set = |s: &mut Session, st: SessionState| if s.state != st { s.state = st; s.since_ms = e.at_ms; };
         let (cue, feed) = match &e.event {
             PulseEvent::SessionStart | PulseEvent::SessionEnd => (None, None),
-            PulseEvent::Start { prompt } => { set(s, SessionState::Working); s.last = prompt.clone(); s.actions += 1; (Some(Cue::Start), Some(format!("Prompt {prompt}"))) }
+            PulseEvent::Start { prompt } => { set(s, SessionState::Working); s.last = prompt.clone(); s.actions += 1; self.turn_start.insert(e.session_id.clone(), e.at_ms); (Some(Cue::Start), Some(format!("Prompt {prompt}"))) }
             PulseEvent::Tool { tool, target } => {
                 if s.state != SessionState::Waiting { set(s, SessionState::Working); }
                 s.last = if target.is_empty() { tool.clone() } else { format!("{tool} {target}") };
@@ -145,7 +146,10 @@ impl Store {
         if was && !self.focus() { std::mem::take(&mut self.deferred) } else { Vec::new() }
     }
 
-    pub fn defer(&mut self, e: &Envelope, kind: &str) { self.deferred.push(Deferred { session_id: e.session_id.clone(), project: e.project.clone(), kind: kind.into() }); }
+    pub fn defer(&mut self, e: &Envelope, kind: &str) { self.deferred.push(Deferred { session_id: e.session_id.clone(), project: e.project.clone(), kind: kind.into(), at_ms: e.at_ms }); }
+
+    /// Cuánto lleva el turno de la sesión (desde su último prompt) en `at_ms`, para el aviso "terminó 6m 12s".
+    pub fn turn_ms(&self, session_id: &str, at_ms: i64) -> Option<i64> { self.turn_start.get(session_id).map(|t| at_ms - t) }
 
     pub fn mute(&mut self, session_id: &str, until_ms: i64) { if let Some(s) = self.sessions.get_mut(session_id) { s.muted_until_ms = until_ms; } }
 
@@ -294,7 +298,18 @@ mod tests {
         assert_eq!(s.snapshot().deferred.len(), 1);
         let released = s.set_focus(Some(false), false);
         assert_eq!(released.len(), 1);
+        assert_eq!(released[0].at_ms, 1);
         assert!(s.snapshot().deferred.is_empty() && !s.snapshot().focus);
+    }
+    #[test] fn done_knows_how_long_the_turn_took() {
+        let mut s = Store::default();
+        s.apply(&env("a", 1_000, PulseEvent::Start { prompt: "x".into() }));
+        s.apply(&env("a", 5_000, PulseEvent::Tool { tool: "Bash".into(), target: "ls".into() }));
+        s.apply(&env("a", 373_000, PulseEvent::Done));
+        assert_eq!(s.turn_ms("a", 373_000), Some(372_000));
+        assert_eq!(s.turn_ms("b", 1), None);
+        s.apply(&env("a", 400_000, PulseEvent::SessionEnd));
+        assert_eq!(s.turn_ms("a", 400_000), None);
     }
     #[test] fn auto_focus_counts_unless_manual_off() {
         let mut s = Store::default();

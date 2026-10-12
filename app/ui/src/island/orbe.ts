@@ -4,7 +4,7 @@ import { COLORS, stateColor } from '../shared/format';
 import { morph, reduceMotion, SP_MOVE, T, type Morph, type MorphOpts } from '../shared/motion';
 import type { Ctx } from './comando';
 import { questionCard } from './questions';
-import { beam, beat, ignite, permCard, releaseCard, shake, trPill } from './shared';
+import { beam, beat, ignite, noticeHTML, permCard, shake } from './shared';
 
 export interface OrbeCtx extends Ctx { setSide(side: 'left' | 'center' | 'right'): void }
 
@@ -54,13 +54,13 @@ export function mountOrbe(board: HTMLElement, ctx: OrbeCtx) {
   });
   const core = (st: SessionState, focus: boolean) => `<div class="o-core ${st === 'Working' ? 'work' : ''} ${st === 'Waiting' ? 'wait' : ''}" style="--c:${focus ? COLORS.focus : st === 'Idle' ? '#9aa1ab' : stateColor(st)}"><span class="o-orbit"><i></i></span><i class="o-dot"></i></div>`;
   function render() {
-    const s = ctx.snap(), cfg = ctx.cfg(), tr = ctx.transient(), now = Date.now();
+    const s = ctx.snap(), cfg = ctx.cfg(), n = ctx.notice(), now = Date.now();
     const st = agg(s.sessions.map(x => x.state));
     const allMuted = s.sessions.length > 0 && s.sessions.every(x => x.muted_until_ms > now);
     let html: string, sig: string; const o: MorphOpts = { radius: (_w, h) => h > 40 ? '16px' : '99px' };
-    if (s.pending.length && !menu) { const it = s.pending[0]; html = it.kind === 'question' ? questionCard(it, cfg.island.countdown) : permCard(it, cfg, s.pending.length, s.sessions.find(x => x.id === it.session_id)); sig = 'p' + it.id + s.pending.length; if (it.kind !== 'question') o.item = it; }
+    if (s.pending.length && !menu) { const it = s.pending[0]; html = it.kind === 'question' ? questionCard(it, cfg.island.countdown) : permCard(it, cfg, s.pending, 390); sig = 'p' + it.id + s.pending.length; }
     else if (menu) { html = `<div class="o-menu">${core(st, s.focus)}${([['dark_mode', 'Modo foco', 'focus', s.focus], ['volume_off', 'Silenciar 30 min', 'muteall', allMuted], ['done_all', 'Aprobar todo', 'allowall', false], ['dashboard', 'Abrir tablero', 'center', false]] as const).map(([ic, l, a, on]) => `<button type="button" data-act="${a}" data-tip="${l}" aria-label="${l}" aria-pressed="${on}"><span class="ms">${ic}</span></button>`).join('')}</div>`; sig = 'm' + s.focus + allMuted; }
-    else if (tr) { if (tr.k === 'release') { html = releaseCard(tr.items ?? []); } else { const p = trPill(tr); html = `<div class="o-pill">${core(st, s.focus)}<span class="ms ${['done', 'ok'].includes(tr.k) ? 'draw' : ''}" style="font-size:16px;color:${p.c}">${p.ic}</span><span class="t">${p.txt}</span></div>`; } sig = 't' + tr.id; }
+    else if (n) { html = noticeHTML(n); sig = 't' + n.id; o.life = n.life; }
     else if (hover) { const w = s.sessions.filter(x => x.state === 'Working').length, need = s.sessions.filter(x => x.state === 'IdleWait').length; html = `<div class="o-peek">${core(st, s.focus)}<span class="t">${s.focus ? `<b>En foco</b> <span class="muted">${s.deferred.length} guardados</span>` : w ? `<b>${w}</b> trabajando${need ? ` <span class="muted">· ${need} te espera</span>` : ''}` : need ? `<b>${need}</b> te espera` : '<span class="muted">Todo en calma</span>'}</span></div>`; sig = 'h' + s.sessions.map(x => x.state).join('') + s.focus + s.deferred.length; }
     else { html = core(st, s.focus); sig = 'c' + st + s.focus; }
     sh.dataset.k = sig.startsWith('c') ? 'dot' : 'open';

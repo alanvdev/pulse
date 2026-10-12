@@ -5,7 +5,7 @@ export interface Session { id: string; project: string; slot: number; state: Ses
 export interface Question { question: string; header?: string; options: { label: string; description?: string }[]; multiSelect?: boolean }
 export interface Pending { id: number; kind: 'permission' | 'question'; questions?: Question[] | null; session_id: string; project: string; tool: string; command: string; description: string; danger: boolean; at_ms: number; timeout_ms: number; deadline_ms: number; paused: boolean; left_ms: number }
 export interface FeedItem { session_id: string; project: string; text: string; at_ms: number }
-export interface Deferred { session_id: string; project: string; kind: string }
+export interface Deferred { session_id: string; project: string; kind: string; at_ms: number }
 export interface Snapshot { sessions: Session[]; pending: Pending[]; feed: FeedItem[]; focus: boolean; focus_auto: boolean; deferred: Deferred[] }
 export type FxKind = 'start' | 'permission' | 'done' | 'idle' | 'error' | 'subagent' | 'release' | 'resolved' | 'notice';
 export interface Fx { kind: FxKind; session_id: string; project: string; slot: number; text: string; visual: boolean; sound: boolean; monitor: number }

@@ -1,4 +1,4 @@
-import type { SessionState, Snapshot } from './bridge';
+import type { Pending, Session, SessionState, Snapshot } from './bridge';
 // Colores de los eventos en la versión oscura (spec §2.2). La isla siempre es oscura; los pulsos toman los suyos de config.
 export const COLORS = { start: '#eaedea', permission: '#e3b05c', done: '#8fc3a0', idle: '#9ea39e', error: '#e08a7e', subagent: '#8fb0d6', focus: '#9ea39e', calm: '#7d827d' } as const;
 export const LBL: Record<SessionState, string> = { Idle: 'en calma', Done: 'terminó', Working: 'trabajando', IdleWait: 'te espera', Waiting: 'pide permiso' };
@@ -44,3 +44,10 @@ export function statusLine(s: Snapshot): string {
 }
 /** Punto que resume a todas: te necesita > trabaja > en calma. */
 export function topDot(s: Snapshot): DotKind { const c = counts(s); return c.need ? 'halo' : c.working ? 'fill' : 'calm'; }
+/** Qué hace la sesión, para filas de la isla, Bolsillo y Mosaico. `mono`: es un comando o un archivo. */
+export function sessionWhat(s: Session, p: Pending | undefined, now: number): { text: string; mono: boolean } {
+  if (p) return { text: `${p.kind === 'question' ? 'Pregunta' : 'Permiso'} · ${p.command}`, mono: true };
+  if (s.state === 'Done') return { text: `Terminó hace ${since(now - s.since_ms)}`, mono: false };
+  if (!s.last) return { text: LBL[s.state], mono: false };
+  return { text: s.last + (s.subagents ? ` · ${s.subagents} subagente${s.subagents > 1 ? 's' : ''}` : ''), mono: true };
+}

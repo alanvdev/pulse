@@ -1,7 +1,9 @@
 // Preguntas de Claude (AskUserQuestion) en la isla: una pregunta a la vez, opciones, selección múltiple, "Otra…" y respuesta.
 import type { Pending, Question } from '../shared/bridge';
-import { COLORS, esc } from '../shared/format';
+import { esc } from '../shared/format';
 import { reduceMotion, SP_OPEN } from '../shared/motion';
+import { digitIndex, qHint } from './model';
+import { keys } from './shared';
 
 /** Lo elegido en una pregunta: opciones marcadas, si "Otra…" está marcada y lo escrito. */
 export type Pick = { labels: string[]; other: boolean; text: string };
@@ -36,15 +38,23 @@ export function flow(qs: Question[], step: number, picks: Pick[], action: Action
 
 export function questionCard(p: Pending, countdown: boolean) {
   const qs = p.questions ?? [], n = qs.length, instant = n === 1 && !qs[0].multiSelect;
-  return `<div class="card qcard" data-qid="${p.id}" data-step="0">
-    <div class="ch"><span class="nm">${esc(p.project)}</span><span class="st" style="--c:${COLORS.permission}">te pregunta</span></div>
-    ${qs.map((q, i) => `<div class="q" data-q="${i}"${i ? ' hidden' : ''}>
-      <div class="qh"><span class="qmeta">${q.header ? `<span class="qtag">${esc(q.header)}</span>` : ''}${n > 1 ? `<small class="qstep">Pregunta ${i + 1} de ${n}</small>` : ''}</span><b>${esc(q.question)}</b>${q.multiSelect ? '<small>Puedes elegir varias</small>' : ''}</div>
-      <div class="qopts">${q.options.map(o => `<button type="button" class="qopt" data-q="${i}" data-label="${esc(o.label)}" aria-pressed="false"><span>${esc(o.label)}</span>${o.description ? `<small>${esc(o.description)}</small>` : ''}</button>`).join('')}<button type="button" class="qopt qother" data-q="${i}" data-other="1" aria-pressed="false"><span>Otra…</span></button></div>
-      <input class="qin" data-q="${i}" type="text" placeholder="Escribe tu respuesta" hidden>
-    </div>`).join('')}
-    <div class="acts"><button class="b-no" type="button" data-act="skip"><span>Responder en la terminal</span></button><button class="b-no qback" type="button" data-act="back" hidden><span>Atrás</span></button><button class="b-yes" type="button" data-act="next" disabled${instant ? ' hidden' : ''}><span>${n > 1 ? 'Siguiente' : 'Enviar'}</span></button></div>
-    <div class="qtime"${countdown ? '' : ' hidden'}><span class="qleft"></span><i class="qbar"><b></b></i></div></div>`;
+  const mark = (multi?: boolean) => `<span class="${multi ? 'chk' : 'rad'}"></span>`;
+  return `<div class="card qcard" style="width:480px" data-qid="${p.id}" data-step="0">
+    <div class="card-b">
+      <div class="head"><span class="dot halo"></span><b>${esc(p.project)}</b>te pregunta</div>
+      ${qs.map((q, i) => `<div class="q" data-q="${i}"${i ? ' hidden' : ''}>
+        <div class="qh">${q.header ? `<span class="tag">${esc(q.header)}</span>` : ''}${q.multiSelect ? '<small>Puedes elegir varias</small>' : ''}${n > 1 ? `<small class="qstep mono">${i + 1} de ${n}</small>` : ''}</div>
+        <b class="qq">${esc(q.question)}</b>
+        <div class="qopts">${q.options.map(o => `<button type="button" class="qopt" data-q="${i}" data-label="${esc(o.label)}" aria-pressed="false">${mark(q.multiSelect)}<span>${esc(o.label)}${o.description ? `<small>${esc(o.description)}</small>` : ''}</span></button>`).join('')}<button type="button" class="qopt qother" data-q="${i}" data-other="1" aria-pressed="false">${mark(q.multiSelect)}<span>Otra…</span></button></div>
+        <input class="qin" data-q="${i}" type="text" placeholder="Escribe tu respuesta" aria-label="Tu respuesta" hidden>
+      </div>`).join('')}
+      <div class="qtime"${countdown ? '' : ' hidden'}><span class="qleft"></span><i class="qbar"><b></b></i></div>
+    </div>
+    <div class="bar"><span class="qhint"></span>
+      <button class="btn" type="button" data-act="skip" style="margin-left:auto"><span>En la terminal</span>${keys(['Esc'])}</button>
+      <button class="btn" type="button" data-act="back" hidden><span>Atrás</span></button>
+      <button class="btn pri" type="button" data-act="next" disabled${instant ? ' hidden' : ''}><span>Siguiente</span>${keys(['Ctrl', '↵'])}</button>
+    </div></div>`;
 }
 
 type Ctx = { answer(id: number, a: Record<string, string>): void; skip(id: number): void; hold(id: number, on: boolean): void; islandFocus(on: boolean): void; hitbox(el: HTMLElement | null): void };
@@ -73,6 +83,8 @@ export function bindQuestions(root: HTMLElement, find: (id: number) => Pending |
     next.querySelector('span')!.textContent = last ? 'Enviar' : 'Siguiente';
     next.disabled = last ? buildAnswers(qs, picks) === null : !answered(picks[step]);
     card.querySelector<HTMLElement>('[data-act="back"]')!.hidden = step === 0;
+    const q = qs[step], chosen = picks[step].labels.length + (picks[step].other ? 1 : 0);
+    card.querySelector<HTMLElement>('.qhint')!.textContent = qHint(!!q?.multiSelect, (q?.options.length ?? 0) + 1, chosen);
   };
   const go = (card: HTMLElement, p: Pending, step: number) => {
     if (step === stepOf(card)) { refresh(card, p); return; }
@@ -118,10 +130,16 @@ export function bindQuestions(root: HTMLElement, find: (id: number) => Pending |
   });
   root.addEventListener('input', e => { const card = cardOf(e.target as Element); const p = card && find(Number(card.dataset.qid)); if (card && p) refresh(card, p); });
   root.addEventListener('keydown', e => {
-    const t = e.target as HTMLElement; if (!t.matches('.qin')) return;
-    const card = cardOf(t), p = card && find(Number(card.dataset.qid)); if (!card || !p) return;
-    if (e.key === 'Enter') { e.preventDefault(); act(card, p, 'next'); }
-    if (e.key === 'Escape') { t.blur(); ctx.islandFocus(false); }
+    const t = e.target as HTMLElement, card = cardOf(t), p = card && find(Number(card.dataset.qid)); if (!card || !p) return;
+    if (t.matches('.qin')) {
+      if (e.key === 'Enter') { e.preventDefault(); act(card, p, 'next'); }
+      if (e.key === 'Escape') { e.preventDefault(); t.blur(); ctx.islandFocus(false); }
+      return;
+    }
+    if (e.key === 'Escape') { e.preventDefault(); ctx.islandFocus(false); ctx.skip(p.id); return; }
+    if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); act(card, p, 'next'); return; }
+    const opts = [...card.querySelectorAll<HTMLElement>(`.qopt[data-q="${stepOf(card)}"]`)], i = digitIndex(e.key, opts.length);
+    if (i >= 0) { e.preventDefault(); opts[i].click(); }
   });
   // La cuenta regresiva se pausa mientras tienes el mouse sobre la tarjeta o escribes en ella.
   // Se sigue el mouse con mouseover/mouseout (el estado :hover llega tarde respecto a estos eventos).
@@ -142,6 +160,7 @@ export function bindQuestions(root: HTMLElement, find: (id: number) => Pending |
   // Texto y barra de la cuenta regresiva.
   setInterval(() => root.querySelectorAll<HTMLElement>('.qcard').forEach(card => {
     const p = find(Number(card.dataset.qid)); if (!p) return;
+    if (!card.dataset.ready) { card.dataset.ready = '1'; refresh(card, p); }
     const left = Math.max(0, p.paused ? p.left_ms : p.deadline_ms - Date.now());
     card.querySelector('.qleft')!.textContent = p.paused ? 'En pausa mientras respondes' : `Pasa a la terminal en ${Math.ceil(left / 1000)} s`;
     card.querySelector<HTMLElement>('.qbar b')!.style.transform = `scaleX(${Math.min(1, left / p.timeout_ms)})`;

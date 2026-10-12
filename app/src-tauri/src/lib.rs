@@ -74,7 +74,12 @@ fn handle(app: &AppHandle, inc: server::Incoming) {
         if muted && cue != Cue::Permission { r.sound = false; r.visual = false; }
         if r.defer { st.store.lock().unwrap().defer(&env, kind); }
         if r.sound { st.player.play(cue, cfg.sounds.volume as f32 / 100.0); }
-        let text = match &env.event { PulseEvent::Error { message } => message.clone(), PulseEvent::Permission { command, .. } => command.clone(), _ => String::new() };
+        let text = match &env.event {
+            PulseEvent::Error { message } => message.clone(),
+            PulseEvent::Permission { command, .. } => command.clone(),
+            PulseEvent::Done => st.store.lock().unwrap().turn_ms(&env.session_id, env.at_ms).map(|m| m.to_string()).unwrap_or_default(),
+            _ => String::new(),
+        };
         // preguntas y planes que se contestan en la terminal: aviso para la isla
         let notice = match &env.event { PulseEvent::Plan => Some("plan|".to_string()), PulseEvent::Question { questions } if !env.ask => Some(format!("question|{}", questions.get(0).and_then(|q| q.get("question")).and_then(|q| q.as_str()).unwrap_or(""))), _ => None };
         if let Some(t) = notice { emit_fx(app, Fx { kind: "notice".into(), session_id: env.session_id.clone(), project: env.project.clone(), slot, text: t, visual: false, sound: false, monitor: windows::active_monitor_index(app) }); }

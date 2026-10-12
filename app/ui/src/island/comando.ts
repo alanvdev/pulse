@@ -3,11 +3,12 @@ import type { Config, Snapshot } from '../shared/bridge';
 import { COLORS, esc } from '../shared/format';
 import { morph, reduceMotion, T, type Morph, type MorphOpts } from '../shared/motion';
 import { questionCard } from './questions';
-import { beam, fuzzy, ignite, permCard, releaseCard, trPill, verb, type Tr } from './shared';
+import { verb, type Notice } from './model';
+import { beam, fuzzy, ignite, noticeHTML, permCard } from './shared';
 
 export interface Ctx {
-  snap(): Snapshot; cfg(): Config; transient(): Tr | null;
-  decide(id: number, allow: boolean): void; answer(id: number, answers: Record<string, string>): void; skip(id: number): void; hold(id: number, on: boolean): void; allowAll(): void; setFocus(on: boolean): void; muteSession(id: string, minutes: number): void; openDashboard(): void;
+  snap(): Snapshot; cfg(): Config; notice(): Notice | null;
+  decide(id: number, allow: boolean): void; answer(id: number, answers: Record<string, string>): void; skip(id: number): void; hold(id: number, on: boolean): void; allowAll(): void; setFocus(on: boolean): void; muteSession(id: string, minutes: number): void; openDashboard(view?: string): void;
   islandFocus(on: boolean): void; hitbox(el: HTMLElement | null): void;
 }
 type Item = { g: string; icon: string; c: string; text: string; meta: string; run: () => void };
@@ -29,7 +30,7 @@ export function mountComando(board: HTMLElement, ctx: Ctx) {
     const allMuted = s.sessions.length > 0 && s.sessions.every(x => x.muted_until_ms > now);
     L.push({ g: 'Acciones', icon: allMuted ? 'volume_up' : 'volume_off', c: '#9aa1ab', text: allMuted ? 'Quitar silencio' : 'Silenciar todo 30 min', meta: '', run: () => s.sessions.forEach(x => ctx.muteSession(x.id, allMuted ? 0 : 30)) });
     L.push({ g: 'Acciones', icon: 'done_all', c: COLORS.done, text: 'Aprobar todos los permisos', meta: s.pending.length ? String(s.pending.length) : '', run: ctx.allowAll });
-    L.push({ g: 'Acciones', icon: 'dashboard', c: '#cfd4db', text: 'Abrir tablero', meta: '', run: ctx.openDashboard });
+    L.push({ g: 'Acciones', icon: 'dashboard', c: '#cfd4db', text: 'Abrir tablero', meta: '', run: () => ctx.openDashboard() });
     return L;
   }
   function palHTML() {
@@ -54,7 +55,7 @@ export function mountComando(board: HTMLElement, ctx: Ctx) {
   }
   function bindRows() { $$('.pal-it').forEach(r => { r.onmouseenter = () => { sel = +r.dataset.n!; moveHL(); }; r.onclick = () => run(+r.dataset.n!); }); }
   function render(forcePal?: boolean) {
-    const s = ctx.snap(), cfg = ctx.cfg().island, tr = ctx.transient();
+    const s = ctx.snap(), cfg = ctx.cfg().island, n = ctx.notice();
     let html = '', sig = 'x', o: MorphOpts = { radius: (_w, h) => h > 50 ? '14px' : '12px', hidden: true, dy: -4 };
     if (open) {
       if (m.sig.startsWith('pal') && !forcePal) { // refresca la lista sin perder el foco
@@ -62,9 +63,9 @@ export function mountComando(board: HTMLElement, ctx: Ctx) {
       }
       html = palHTML(); sig = 'pal' + Math.random(); o.hidden = false;
     } else if (s.pending[0]?.kind === 'question') { const it = s.pending[0]; html = questionCard(it, cfg.countdown); sig = 'Q' + it.id; o = { ...o, radius: () => '14px', hidden: false }; }
-    else if (s.pending.length && hover) { const it = s.pending[0]; html = permCard(it, ctx.cfg(), s.pending.length, s.sessions.find(x => x.id === it.session_id)); sig = 'P' + it.id + s.pending.length; o = { ...o, radius: () => '14px', hidden: false, item: it }; }
-    else if (s.pending.length) { const it = s.pending[0], danger = it.danger && cfg.hold; html = `<div class="c-toast" data-act="palette"><span class="ic" style="--c:${COLORS.permission}"><span class="ms">front_hand</span></span><span class="t"><b>${esc(it.project)}</b> <span class="muted">${verb(it.tool, true)}</span> <span class="mono c-cmd">${esc(it.command)}</span></span>${cfg.keys ? `<span class="row muted" style="gap:5px;font-size:11.5px;margin-left:4px">Ctrl Alt<kbd data-k="y">Y</kbd>${danger ? 'mantener' : ''}<kbd data-k="n">N</kbd><kbd title="Abre la paleta">↵</kbd></span>` : ''}${cfg.countdown ? '<i class="cd" style="left:14px;right:14px"></i>' : ''}${danger ? '<i class="hold"></i>' : ''}</div>`; sig = 'p' + it.id; o = { ...o, hidden: false, item: it }; }
-    else if (tr) { if (tr.k === 'release') html = releaseCard(tr.items ?? []); else { const p = trPill(tr); html = `<div class="c-toast"><span class="ic" style="--c:${p.c}"><span class="ms ${['done', 'ok'].includes(tr.k) ? 'draw' : ''}">${p.ic}</span></span><span class="t">${p.txt}</span><i class="tm"></i></div>`; } sig = 't' + tr.id; o = { ...o, hidden: false, life: 2600 }; }
+    else if (s.pending.length && hover) { const it = s.pending[0]; html = permCard(it, ctx.cfg(), s.pending); sig = 'P' + it.id + s.pending.length; o = { ...o, radius: () => '14px', hidden: false }; }
+    else if (s.pending.length) { const it = s.pending[0], danger = it.danger && cfg.hold; html = `<div class="c-toast" data-act="palette"><span class="ic" style="--c:${COLORS.permission}"><span class="ms">front_hand</span></span><span class="t"><b>${esc(it.project)}</b> <span class="muted">${verb(it.tool, true)}</span> <span class="mono c-cmd">${esc(it.command)}</span></span>${cfg.keys ? `<span class="row muted" style="gap:5px;font-size:11.5px;margin-left:4px">Ctrl Alt<kbd data-k="y">Y</kbd>${danger ? 'mantener' : ''}<kbd data-k="n">N</kbd><kbd title="Abre la paleta">↵</kbd></span>` : ''}${cfg.countdown ? '<i class="cd" style="left:14px;right:14px"></i>' : ''}${danger ? '<i class="hold"></i>' : ''}</div>`; sig = 'p' + it.id; o = { ...o, hidden: false }; }
+    else if (n) { html = noticeHTML(n); sig = 't' + n.id; o = { ...o, hidden: false, life: n.life }; }
     const r = morph(m, sig, html, o);
     if (r.changed) ctx.hitbox(html ? sh : null);
     if (open) {

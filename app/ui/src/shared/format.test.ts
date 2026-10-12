@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { ago, clock, counts, dotKind, dur, hhmm, hm, since, statusLine, topDot } from './format';
-import type { Session, SessionState, Snapshot } from './bridge';
+import { ago, clock, counts, dotKind, dur, hhmm, hm, sessionWhat, since, statusLine, topDot } from './format';
+import type { Pending, Session, SessionState, Snapshot } from './bridge';
 describe('formatos', () => {
   it('tiempo transcurrido en español', () => { expect(ago(4_000)).toBe('4 s'); expect(ago(125_000)).toBe('2 min 05 s'); expect(ago(3_900_000)).toBe('1 h 05 min'); });
   it('reloj corto para filas', () => { expect(clock(400_000)).toBe('6:40'); expect(clock(5_000)).toBe('0:05'); expect(clock(3_725_000)).toBe('1:02:05'); });
@@ -27,4 +27,15 @@ describe('estado en una línea', () => {
   it('el punto del resumen es el más urgente', () => {
     expect(topDot(snap('Working', 'Waiting'))).toBe('halo'); expect(topDot(snap('Done', 'Working'))).toBe('fill'); expect(topDot(snap('Done'))).toBe('calm');
   });
+});
+describe('qué hace una sesión', () => {
+  const s = (over: Partial<Session>): Session => ({ ...ses('a', 'Working'), ...over });
+  it('permiso o pregunta pendiente', () => {
+    const p = { id: 1, kind: 'permission', command: 'npm run migrate' } as Pending;
+    expect(sessionWhat(s({}), p, 0)).toEqual({ text: 'Permiso · npm run migrate', mono: true });
+    expect(sessionWhat(s({}), { ...p, kind: 'question', command: '¿Qué base?' } as Pending, 0).text).toBe('Pregunta · ¿Qué base?');
+  });
+  it('trabajando, con subagentes', () => expect(sessionWhat(s({ last: 'Edit orbe.ts', subagents: 2 }), undefined, 0)).toEqual({ text: 'Edit orbe.ts · 2 subagentes', mono: true }));
+  it('terminó', () => expect(sessionWhat(s({ state: 'Done', since_ms: 0 }), undefined, 190_000)).toEqual({ text: 'Terminó hace 3 min', mono: false }));
+  it('sin última acción', () => expect(sessionWhat(s({ state: 'IdleWait' }), undefined, 0)).toEqual({ text: 'te espera', mono: false }));
 });
