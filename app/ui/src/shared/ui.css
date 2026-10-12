@@ -78,7 +78,8 @@
 .chip.rip::before { animation: rip .55s var(--e-out) }
 @keyframes rip { 0% { opacity: .22; transform: scale(0) } 100% { opacity: 0; transform: scale(16) } }
 /* el icono que cambia (volumen ↔ silencio) entra con un giro corto */
-.chip .ms, .mi .ms.swap { animation: iconIn .24s var(--e-out) }
+.chip .ms.swap, .mi .ms.swap { animation: iconIn .24s var(--e-out) }
+.chip > * { position: relative }
 @keyframes iconIn { from { opacity: 0; transform: scale(.6) rotate(-20deg) } }
 /* interruptor: la perilla se estira mientras lo presionas */
 .sw::after { transition: transform .22s var(--e-out), background .2s, width .15s var(--e-out) }
@@ -93,8 +94,9 @@
 .sl input:active + output { transform: scale(1.15); color: var(--tx) }
 @media (prefers-reduced-motion: reduce) {
   .btn:active:not(:disabled), .chip:active, .seg button:active, .sl input:active + output, .sl input:active::-webkit-slider-thumb { transform: none }
-  .chip.rip::before, .chip .ms, .mi .ms.swap { animation: none }
+  .chip.rip::before, .chip .ms.swap, .mi .ms.swap { animation: none }
   .sw:active::after { width: 16px } .sw.sm:active::after { width: 12px }
+  .sw:checked:active::after, .sw.on:active::after { transform: translateX(16px) } .sw.sm:checked:active::after, .sw.sm.on:active::after { transform: translateX(12px) }
 }
 
 /* ---------- decidir un permiso ---------- */
@@ -123,5 +125,6 @@
 /* cambio de pantalla con fundido */
 .screen-in { animation: screenIn .28s var(--e-out) }
 @keyframes screenIn { from { opacity: 0; transform: translateY(6px) } }
-@media (prefers-reduced-motion: reduce) { .row-in { animation: none } .screen-in { animation: fadeOnly .12s } }
+.row-in.flash { animation: rowIn .32s var(--e-out) calc(var(--i, 0) * 30ms) backwards, flash .9s ease-out }
+@media (prefers-reduced-motion: reduce) { .row-in { animation: none } .row-in.flash { animation: flash .9s ease-out } .screen-in { animation: fadeOnly .12s } }
 @keyframes fadeOnly { from { opacity: 0 } }

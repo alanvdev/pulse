@@ -132,3 +132,5 @@
 .o-bead .ms { color: var(--focus); animation: moonIn .55s var(--e-out) }
 @keyframes moonIn { from { opacity: 0; transform: rotate(-120deg) scale(.4) } }
 @media (prefers-reduced-motion: reduce) { .c-moon, .o-bead .ms { animation: none } }
+.qleft.urgent { justify-self: start; transform-origin: left center }
+@media (prefers-reduced-motion: reduce) { .o-btn:active, .qopt:active { transform: none } }

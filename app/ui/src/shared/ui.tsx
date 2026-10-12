@@ -1,5 +1,5 @@
 // Envoltorios React de los controles de shared/ui.css.
-import type { ButtonHTMLAttributes, CSSProperties, MouseEvent, ReactNode } from 'react';
+import { useEffect, useRef, type ButtonHTMLAttributes, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import type { SessionState } from './bridge';
 import { ICON, STATE_VAR, type DotKind } from './format';
 import { resolvedLook } from './micro';
@@ -41,17 +41,18 @@ function ripple(e: MouseEvent<HTMLElement>) {
   el.classList.remove('rip'); void el.offsetWidth; el.classList.add('rip');
 }
 /** `iconOff`: icono cuando está apagado (volumen ↔ silencio); cambia con un giro corto. */
-export const Chip = ({ on, icon, iconOff, children, onClick, tone }: { on: boolean; icon?: string; iconOff?: string; children: ReactNode; onClick: () => void; tone?: 'focus' }) => {
-  const ic = on || !iconOff ? icon : iconOff;
-  return <button type="button" className={cx('chip', tone)} aria-pressed={on} onClick={e => { ripple(e); onClick(); }}>{ic && <Icon key={ic} name={ic} />}{children}</button>;
-};
+export function Chip({ on, icon, iconOff, children, onClick, tone }: { on: boolean; icon?: string; iconOff?: string; children: ReactNode; onClick: () => void; tone?: 'focus' }) {
+  const ic = on || !iconOff ? icon : iconOff, shown = useRef(ic), swapped = shown.current !== ic;
+  useEffect(() => { shown.current = ic; }, [ic]);
+  return <button type="button" className={cx('chip', tone)} aria-pressed={on} onClick={e => { ripple(e); onClick(); }}>{ic && <Icon key={ic} name={ic} className={swapped ? 'swap' : undefined} />}{children}</button>;
+}
 export const Dot = ({ kind }: { kind: DotKind }) => <span className={`dot ${kind}`} aria-hidden="true" />;
 export const StateIcon = ({ s, size = 16 }: { s: SessionState; size?: number }) =>
   <Icon name={ICON[s]} className={s === 'Working' ? 'spin' : undefined} style={{ color: STATE_VAR[s], fontSize: size }} />;
 /** Pendiente recién resuelto: ✓ que se dibuja o ✗, y el bloque se pliega solo (ui.css .fold). */
-export function ResolvedNote({ label, text, project }: { label: string; text: string; project: string }) {
+export function ResolvedNote({ label, text, project, fold = true }: { label: string; text: string; project: string; fold?: boolean }) {
   const l = resolvedLook(label);
-  return <div className="fold" role="status"><div><div className={cx('resolved', l.tone)}>
+  return <div className={fold ? 'fold' : undefined} role="status"><div><div className={cx('resolved', l.tone)}>
     <Icon name={l.icon} className={l.tone === 'ok' ? 'draw-in' : undefined} /><b>{l.text}</b>
     <span className="resolved-t"><span className="tx3">{project}</span>{text && label !== 'answer' && <span className="mono"> {text}</span>}</span>
   </div></div></div>;

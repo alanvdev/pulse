@@ -87,7 +87,7 @@ export function mountComando(board: HTMLElement, ctx: Ctx) {
 
   /* ---------- puntos y resumen ---------- */
   const slot = (r: Row) => `<i class="slot" data-sid="${esc(r.id)}" data-dot="${r.dot}"></i>`;
-  const dotsHTML = (rows: Row[], focus: boolean) => `<div class="c-dots">${rows.map(slot).join('')}${focus ? '<span class="ms c-moon" aria-label="En foco">dark_mode</span>' : ''}</div>`;
+  const dotsHTML = (rows: Row[], focus: boolean) => `<div class="c-dots">${rows.map(slot).join('')}${focus ? '<span class="ms c-moon" role="img" aria-label="En foco">dark_mode</span>' : ''}</div>`;
   const summaryHTML = (rows: Row[], now: number) => `<div class="sum"><div class="sum-rows">${rows.map((r, i) =>
     `<div class="srow${r.need ? ' need' : ''}" data-sid="${esc(r.id)}"${r.pendingId ? ` data-pid="${r.pendingId}"` : ''} style="--i:${i}">${slot(r)}<span class="sp">${esc(r.project)}</span><span class="what${r.mono ? ' mono' : ''}">${esc(r.what)}</span>${r.need ? '<kbd class="kbd">↵</kbd>' : `<span class="mono st"${r.state === 'Done' ? '' : ` data-since="${r.since}"`}>${r.state === 'Done' ? '' : clock(now - r.since)}</span>`}</div>`).join('')}</div>
     <div class="sum-foot"><span>${esc(dayLine(ctx.day()))}</span><span class="sum-k">Paleta ${keys(['Ctrl', 'Alt', 'Espacio'])}</span></div></div>`;

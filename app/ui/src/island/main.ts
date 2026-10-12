@@ -70,11 +70,11 @@ document.addEventListener('pointerdown', e => { const b = (e.target as HTMLEleme
   mount();
   bindQuestions(board, id => snap.pending.find(p => p.id === id), ctx);
   onState(s => {
-    const edge = focusEdge(snap.focus, s.focus);
+    const edge = focusEdge(snap.focus, s.focus), hadSaved = snap.deferred.length > 0;
     snap = s; render();
     // el foco se nota también aquí: haz de luz lavanda y una línea que dice qué pasa con los avisos
     if (edge === 'enter') { mode?.light('focus'); show({ id: Date.now(), icon: 'dark_mode', color: COLORS.focus, what: 'En foco · los avisos esperan', life: 2500 }); }
-    if (edge === 'exit' && !notice?.items) show({ id: Date.now(), icon: 'light_mode', color: COLORS.focus, what: 'Saliste del foco', life: 1600 });
+    if (edge === 'exit' && !hadSaved && !notice?.items) show({ id: Date.now(), icon: 'light_mode', color: COLORS.focus, what: 'Saliste del foco', life: 1600 });
   });
   onConfig(c => { cfg = c; if (c.island.mode !== modeName) mount(); else render(); });
   onFx(onEffect);

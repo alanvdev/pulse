@@ -22,3 +22,4 @@ html, body, #root { background: transparent }
 .mi { transition: background .15s, transform .12s var(--e-out) }
 .mi:active:not([aria-disabled="true"]) { transform: scale(.98) }
 @media (prefers-reduced-motion: reduce) { .mi:active { transform: none } }
+.fly.surf.in-focus { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--focus) 40%, transparent), inset 0 1px 0 var(--hi), 0 6px 12px -4px var(--shadow) }

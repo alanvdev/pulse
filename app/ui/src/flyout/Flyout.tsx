@@ -12,7 +12,7 @@ export function Flyout() {
   const snap = useSnapshot(), [cfg, save] = useConfig();
   useTheme(cfg);
   const [open, setOpen] = useState(0);   // cambia en cada apertura: reinicia la animación y la selección
-  const box = useRef<HTMLDivElement>(null);
+  const box = useRef<HTMLDivElement>(null), icons = useRef<Record<string, string>>({});
   const focusEv = useFocusEdge(snap);
   useFocusHalo(box, focusEv);
   useEffect(() => { let off: (() => void) | undefined; onFlyoutOpen(() => setOpen(n => n + 1)).then(f => (off = f)); return () => off?.(); }, []);
@@ -41,6 +41,7 @@ export function Flyout() {
     ],
   ];
   const items = groups.flat();
+  useEffect(() => { items.forEach(it => { icons.current[it.id] = it.icon; }); });   // el icono gira solo cuando cambia
 
   // el núcleo ajusta la ventana a lo que mide el menú (más el margen de 12 px para la sombra)
   useLayoutEffect(() => { if (box.current) flyoutFit(box.current.offsetHeight + 24); }, [items.length]);
@@ -71,7 +72,7 @@ export function Flyout() {
         {g.map(it => { i++; const toggleRow = it.on !== undefined;
           return <button key={it.id} type="button" className="mi" data-i={i} role={toggleRow ? 'menuitemcheckbox' : 'menuitem'} aria-checked={toggleRow ? it.on : undefined}
             data-focus={it.id === 'focus' && it.on ? 'on' : undefined} aria-disabled={it.disabled || undefined} onClick={() => { if (!it.disabled) it.run(); }}>
-            <Icon key={it.icon} name={it.icon} className="swap" /><span>{it.label}</span>
+            <Icon key={it.icon} name={it.icon} className={icons.current[it.id] && icons.current[it.id] !== it.icon ? 'swap' : undefined} /><span>{it.label}</span>
             {toggleRow ? <span className={`sw sm ${it.on ? 'on' : ''}`} aria-hidden="true" /> : it.keys ? <Keys k={it.keys} /> : <span />}
           </button>; })}
       </div>)}
