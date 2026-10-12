@@ -1,0 +1,10 @@
+// Rutas de Mosaico en el hash: "inicio", "sesiones/<id>", "hoy", "bitacora", "ajustes/<sección>".
+export type Screen = 'inicio' | 'sesiones' | 'hoy' | 'bitacora' | 'ajustes';
+export interface Route { screen: Screen; arg?: string }
+const SCREENS: Screen[] = ['inicio', 'sesiones', 'hoy', 'bitacora', 'ajustes'];
+export function parseRoute(h: string | null | undefined): Route {
+  const [s, ...rest] = (h ?? '').replace(/^#/, '').split('/');
+  const screen = (SCREENS as string[]).includes(s) ? s as Screen : 'inicio', arg = rest.join('/');
+  return screen !== 'inicio' && arg ? { screen, arg } : { screen };
+}
+export const formatRoute = (r: Route) => r.arg ? `${r.screen}/${r.arg}` : r.screen;
