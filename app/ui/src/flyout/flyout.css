@@ -19,3 +19,6 @@ html, body, #root { background: transparent }
 .fly { position: relative }
 .mi[data-focus="on"] .ms { color: var(--focus) }
 .mi[data-focus="on"] .sw.on { background: var(--focus) }
+.mi { transition: background .15s, transform .12s var(--e-out) }
+.mi:active:not([aria-disabled="true"]) { transform: scale(.98) }
+@media (prefers-reduced-motion: reduce) { .mi:active { transform: none } }

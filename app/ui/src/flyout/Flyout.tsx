@@ -31,8 +31,8 @@ export function Flyout() {
     ],
     [
       { id: 'focus', icon: 'dark_mode', label: 'Modo foco', on: snap.focus, run: () => setFocus(!snap.focus) },
-      { id: 'sounds', icon: 'volume_up', label: 'Sonidos', on: cfg.sounds.enabled, run: () => toggle(cfg, 'sounds') },
-      { id: 'pulses', icon: 'blur_on', label: 'Pulsos en los bordes', on: cfg.pulses.enabled, run: () => toggle(cfg, 'pulses') },
+      { id: 'sounds', icon: cfg.sounds.enabled ? 'volume_up' : 'volume_off', label: 'Sonidos', on: cfg.sounds.enabled, run: () => toggle(cfg, 'sounds') },
+      { id: 'pulses', icon: cfg.pulses.enabled ? 'blur_on' : 'blur_off', label: 'Pulsos en los bordes', on: cfg.pulses.enabled, run: () => toggle(cfg, 'pulses') },
       { id: 'keyboard', icon: 'keyboard', label: 'Teclado', on: cfg.keyboard.enabled, run: () => toggle(cfg, 'keyboard') },
     ],
     [
@@ -71,7 +71,7 @@ export function Flyout() {
         {g.map(it => { i++; const toggleRow = it.on !== undefined;
           return <button key={it.id} type="button" className="mi" data-i={i} role={toggleRow ? 'menuitemcheckbox' : 'menuitem'} aria-checked={toggleRow ? it.on : undefined}
             data-focus={it.id === 'focus' && it.on ? 'on' : undefined} aria-disabled={it.disabled || undefined} onClick={() => { if (!it.disabled) it.run(); }}>
-            <Icon name={it.icon} /><span>{it.label}</span>
+            <Icon key={it.icon} name={it.icon} className="swap" /><span>{it.label}</span>
             {toggleRow ? <span className={`sw sm ${it.on ? 'on' : ''}`} aria-hidden="true" /> : it.keys ? <Keys k={it.keys} /> : <span />}
           </button>; })}
       </div>)}

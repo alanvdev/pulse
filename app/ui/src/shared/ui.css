@@ -67,3 +67,32 @@
 .chip.focus[aria-pressed="true"] { color: var(--focus); border-color: color-mix(in srgb, var(--focus) 45%, transparent); background: color-mix(in srgb, var(--focus) 12%, transparent) }
 .fz { display: inline-flex; align-items: center; gap: 5px; color: var(--focus) }
 .fz .ms { font-size: 14px }
+
+/* ---------- controles que responden ---------- */
+/* se hunden al presionar */
+.btn, .chip, .seg button { transition-property: background, color, border-color, transform; transition-duration: .15s, .15s, .15s, .12s; transition-timing-function: ease, ease, ease, var(--e-out) }
+.btn:active:not(:disabled), .chip:active, .seg button:active { transform: scale(.96) }
+/* el chip se rellena desde donde lo tocaste (Chip pone --rx/--ry y la clase .rip) */
+.chip { position: relative; overflow: hidden }
+.chip::before { content: ""; position: absolute; left: var(--rx, 50%); top: var(--ry, 50%); width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: currentColor; opacity: 0; transform: scale(0); pointer-events: none }
+.chip.rip::before { animation: rip .55s var(--e-out) }
+@keyframes rip { 0% { opacity: .22; transform: scale(0) } 100% { opacity: 0; transform: scale(16) } }
+/* el icono que cambia (volumen ↔ silencio) entra con un giro corto */
+.chip .ms, .mi .ms.swap { animation: iconIn .24s var(--e-out) }
+@keyframes iconIn { from { opacity: 0; transform: scale(.6) rotate(-20deg) } }
+/* interruptor: la perilla se estira mientras lo presionas */
+.sw::after { transition: transform .22s var(--e-out), background .2s, width .15s var(--e-out) }
+.sw:active::after { width: 20px }
+.sw:checked:active::after, .sw.on:active::after { transform: translateX(12px) }
+.sw.sm:active::after { width: 15px }
+.sw.sm:checked:active::after, .sw.sm.on:active::after { transform: translateX(9px) }
+/* deslizador: la perilla y la cifra crecen mientras arrastras */
+.sl input::-webkit-slider-thumb { transition: transform .15s var(--e-out) }
+.sl input:active::-webkit-slider-thumb { transform: scale(1.2) }
+.sl output { transition: transform .15s var(--e-out), color .15s; transform-origin: right center }
+.sl input:active + output { transform: scale(1.15); color: var(--tx) }
+@media (prefers-reduced-motion: reduce) {
+  .btn:active:not(:disabled), .chip:active, .seg button:active, .sl input:active + output, .sl input:active::-webkit-slider-thumb { transform: none }
+  .chip.rip::before, .chip .ms, .mi .ms.swap { animation: none }
+  .sw:active::after { width: 16px } .sw.sm:active::after { width: 12px }
+}

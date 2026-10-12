@@ -46,7 +46,8 @@
 .o-line { display: flex; gap: 4px; margin-left: 5px }
 .o-peek .kbd { margin-left: 6px }
 .o-menu { display: flex; align-items: center; gap: 2px; height: 42px; padding: 0 5px }
-.o-btn { width: 32px; height: 32px; border-radius: 7px; border: 0; display: grid; place-items: center; background: transparent; color: var(--tx2); transition: background .15s, color .15s }
+.o-btn { width: 32px; height: 32px; border-radius: 7px; border: 0; display: grid; place-items: center; background: transparent; color: var(--tx2); transition: background .15s, color .15s, transform .12s var(--e-out) }
+.o-btn:active { transform: scale(.9) }
 .o-btn:hover, .o-btn:focus-visible { background: var(--raised); color: var(--tx) }
 .o-btn[aria-pressed="true"] { background: var(--sel); color: var(--tx) }
 .o-btn .ms { font-size: 16px }
@@ -107,8 +108,9 @@
 .tag { font-size: 11px; padding: 1px 6px; border-radius: 4px; background: var(--raised); color: var(--tx2) }
 .qq { font-size: 14.5px; font-weight: 500; line-height: 1.35 }
 .qopts { display: flex; flex-direction: column; gap: 6px; max-height: min(46vh, 340px); overflow: auto; scrollbar-width: thin; scrollbar-color: var(--line2) transparent }
-.qopt { display: grid; grid-template-columns: 18px minmax(0,1fr); gap: 10px; align-items: start; width: 100%; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--tx); font-size: 13px; text-align: left; transition: background .15s, border-color .15s }
+.qopt { display: grid; grid-template-columns: 18px minmax(0,1fr); gap: 10px; align-items: start; width: 100%; padding: 9px 10px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--tx); font-size: 13px; text-align: left; transition: background .15s, border-color .15s, transform .12s var(--e-out) }
 .qopt:hover { background: var(--sel) }
+.qopt:active { transform: scale(.985) }
 .qopt small { display: block; margin-top: 1px; font-size: 12px; color: var(--tx3) }
 .qopt[aria-pressed="true"] { background: var(--sel); border-color: var(--line2) }
 .rad { width: 14px; height: 14px; margin-top: 2px; border-radius: 50%; border: 1.5px solid var(--tx3); transition: border .15s }

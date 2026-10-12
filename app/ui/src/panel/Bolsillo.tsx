@@ -49,8 +49,8 @@ function Ahora({ snap, cfg, save, now, hold }: { snap: Snapshot; cfg: Config; sa
     </div>)}</div> : <p className="empty">No hay sesiones de Claude Code abiertas.</p>}
     <div className="chips">
       <Chip icon="dark_mode" tone="focus" on={snap.focus} onClick={() => setFocus(!snap.focus)}>Foco</Chip>
-      <Chip icon="volume_up" on={cfg.sounds.enabled} onClick={() => flip('sounds')}>Sonidos</Chip>
-      <Chip icon="blur_on" on={cfg.pulses.enabled} onClick={() => flip('pulses')}>Pulsos</Chip>
+      <Chip icon="volume_up" iconOff="volume_off" on={cfg.sounds.enabled} onClick={() => flip('sounds')}>Sonidos</Chip>
+      <Chip icon="blur_on" iconOff="blur_off" on={cfg.pulses.enabled} onClick={() => flip('pulses')}>Pulsos</Chip>
       <Chip icon="keyboard" on={cfg.keyboard.enabled} onClick={() => flip('keyboard')}>Teclado</Chip>
     </div>
   </>;
