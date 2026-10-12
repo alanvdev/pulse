@@ -5,25 +5,26 @@ use std::{collections::BTreeMap, path::PathBuf};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "lowercase")] pub enum Side { Left, Center, Right }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "lowercase")] pub enum Placement { Active, All }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "lowercase")] pub enum Rule { Normal, Mudo, Nada, Despues }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "lowercase")] pub enum Theme { Dark, Light, System }
 
 #[derive(Debug, Clone, Serialize, Deserialize)] #[serde(default)]
-pub struct IslandCfg { pub mode: IslandMode, pub orb_side: Side, pub keys: bool, pub hold: bool, pub countdown: bool, pub beam: bool, pub ask_timeout_s: u32 }
-impl Default for IslandCfg { fn default() -> Self { Self { mode: IslandMode::Comando, orb_side: Side::Right, keys: true, hold: true, countdown: true, beam: true, ask_timeout_s: 30 } } }
+pub struct IslandCfg { pub mode: IslandMode, pub orb_side: Side, pub dots: bool, pub keys: bool, pub hold: bool, pub countdown: bool, pub beam: bool, pub ask_timeout_s: u32 }
+impl Default for IslandCfg { fn default() -> Self { Self { mode: IslandMode::Comando, orb_side: Side::Right, dots: true, keys: true, hold: true, countdown: true, beam: true, ask_timeout_s: 30 } } }
 
 #[derive(Debug, Clone, Serialize, Deserialize)] #[serde(default)]
 pub struct PulseCfg { pub color: String, pub shape: String, pub duration_ms: u32, pub intensity: u32, pub thickness: u32, pub persistent: bool }
-impl Default for PulseCfg { fn default() -> Self { Self { color: "#e6eeff".into(), shape: "respira".into(), duration_ms: 1400, intensity: 55, thickness: 110, persistent: false } } }
+impl Default for PulseCfg { fn default() -> Self { Self { color: "#b3bab5".into(), shape: "respira".into(), duration_ms: 1400, intensity: 55, thickness: 110, persistent: false } } }
 fn pc(color: &str, shape: &str, duration_ms: u32, intensity: u32, thickness: u32, persistent: bool) -> PulseCfg { PulseCfg { color: color.into(), shape: shape.into(), duration_ms, intensity, thickness, persistent } }
 
 #[derive(Debug, Clone, Serialize, Deserialize)] #[serde(default)]
 pub struct PulsesCfg { pub enabled: bool, pub placement: Placement, pub crisp: bool, pub corners: bool, pub adapt: bool, pub dither: bool, pub events: BTreeMap<String, PulseCfg> }
 impl Default for PulsesCfg { fn default() -> Self { Self { enabled: true, placement: Placement::Active, crisp: true, corners: true, adapt: true, dither: true, events: BTreeMap::from([
-    ("start".into(), pc("#e6eeff", "respira", 1400, 55, 110, false)),
-    ("permission".into(), pc("#ffb02e", "latido", 1100, 90, 150, true)),
-    ("done".into(), pc("#4fe0a0", "ola", 1900, 85, 130, false)),
-    ("idle".into(), pc("#b6c0d4", "respira", 2600, 40, 100, true)),
-    ("error".into(), pc("#ff5a52", "lateral", 650, 90, 120, false)),
-    ("subagent".into(), pc("#5cc8ff", "origen", 950, 55, 80, false)),
+    ("start".into(), pc("#b3bab5", "respira", 1400, 55, 110, false)),
+    ("permission".into(), pc("#e3b05c", "latido", 1100, 90, 150, true)),
+    ("done".into(), pc("#8fc3a0", "ola", 1900, 85, 130, false)),
+    ("idle".into(), pc("#b3bab5", "respira", 2600, 40, 100, true)),
+    ("error".into(), pc("#e08a7e", "lateral", 650, 90, 120, false)),
+    ("subagent".into(), pc("#8fb0d6", "origen", 950, 55, 80, false)),
 ]) } } }
 
 #[derive(Debug, Clone, Serialize, Deserialize)] #[serde(default)]
@@ -44,8 +45,13 @@ impl Default for KeyboardCfg { fn default() -> Self { Self { enabled: true, sess
 pub struct MosaicoCfg { pub order: Vec<String>, pub hidden: Vec<String> }
 impl Default for MosaicoCfg { fn default() -> Self { Self { order: ["sess", "pend", "hoy", "acc", "foco", "pulso", "keys", "bitacora"].map(String::from).to_vec(), hidden: vec![] } } }
 
+/// Versión de Grafito en Bolsillo, el flyout y Mosaico. La isla siempre es oscura.
+#[derive(Debug, Clone, Serialize, Deserialize)] #[serde(default)]
+pub struct AppearanceCfg { pub theme: Theme }
+impl Default for AppearanceCfg { fn default() -> Self { Self { theme: Theme::Dark } } }
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)] #[serde(default)]
-pub struct Config { pub island: IslandCfg, pub pulses: PulsesCfg, pub sounds: SoundsCfg, pub focus: FocusCfg, pub keyboard: KeyboardCfg, pub mosaico: MosaicoCfg }
+pub struct Config { pub island: IslandCfg, pub pulses: PulsesCfg, pub sounds: SoundsCfg, pub focus: FocusCfg, pub keyboard: KeyboardCfg, pub mosaico: MosaicoCfg, pub appearance: AppearanceCfg }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Route { pub visual: bool, pub sound: bool, pub defer: bool }
@@ -77,7 +83,7 @@ mod tests {
         let c = Config::default();
         assert_eq!(c.island.mode, IslandMode::Comando);
         assert_eq!(c.island.ask_timeout_s, 30);
-        assert_eq!(c.pulses.events["permission"].color, "#ffb02e");
+        assert_eq!(c.pulses.events["permission"].color, "#e3b05c");
         assert!(c.pulses.events["permission"].persistent);
         assert!(!c.sounds.per_event["subagent"]);
         assert_eq!(c.focus.rules["permission"], Rule::Normal);
@@ -102,5 +108,26 @@ mod tests {
         assert!(!route(&c, false, "subagent").sound);
         c.sounds.enabled = false;
         assert!(!route(&c, false, "done").sound);
+    }
+    #[test] fn redesign_defaults() {
+        let c = Config::default();
+        assert!(c.island.dots);
+        assert_eq!(c.appearance.theme, Theme::Dark);
+        let col = |k: &str| c.pulses.events[k].color.clone();
+        assert_eq!([col("start"), col("permission"), col("done"), col("idle"), col("error"), col("subagent")],
+            ["#b3bab5", "#e3b05c", "#8fc3a0", "#b3bab5", "#e08a7e", "#8fb0d6"].map(String::from));
+        // las formas, duraciones e intensidades no cambian
+        assert_eq!((c.pulses.events["permission"].shape.as_str(), c.pulses.events["permission"].duration_ms), ("latido", 1100));
+    }
+    #[test] fn old_config_without_new_keys_still_loads() {
+        let c: Config = serde_json::from_str(r##"{"island":{"mode":"orbe","keys":false},"pulses":{"events":{"done":{"color":"#4fe0a0"}}}}"##).unwrap();
+        assert!(c.island.dots && !c.island.keys);
+        assert_eq!(c.appearance.theme, Theme::Dark);
+        assert_eq!(c.pulses.events["done"].color, "#4fe0a0");   // quien ya tenía config.json conserva sus colores
+    }
+    #[test] fn theme_is_lowercase_in_json() {
+        assert_eq!(serde_json::to_string(&Theme::System).unwrap(), "\"system\"");
+        let c: Config = serde_json::from_str(r#"{"appearance":{"theme":"light"}}"#).unwrap();
+        assert_eq!(c.appearance.theme, Theme::Light);
     }
 }

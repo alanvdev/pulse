@@ -11,12 +11,13 @@ export type FxKind = 'start' | 'permission' | 'done' | 'idle' | 'error' | 'subag
 export interface Fx { kind: FxKind; session_id: string; project: string; slot: number; text: string; visual: boolean; sound: boolean; monitor: number }
 export interface PulseCfg { color: string; shape: string; duration_ms: number; intensity: number; thickness: number; persistent: boolean }
 export interface Config {
-  island: { mode: 'comando' | 'orbe'; orb_side: 'left' | 'center' | 'right'; keys: boolean; hold: boolean; countdown: boolean; beam: boolean; ask_timeout_s: number };
+  island: { mode: 'comando' | 'orbe'; orb_side: 'left' | 'center' | 'right'; dots: boolean; keys: boolean; hold: boolean; countdown: boolean; beam: boolean; ask_timeout_s: number };
   pulses: { enabled: boolean; placement: 'active' | 'all'; crisp: boolean; corners: boolean; adapt: boolean; dither: boolean; events: Record<string, PulseCfg> };
   sounds: { enabled: boolean; volume: number; per_event: Record<string, boolean> };
   focus: { auto: boolean; detect_call: boolean; detect_fullscreen: boolean; schedule: boolean; from: string; to: string; rules: Record<string, 'normal' | 'mudo' | 'nada' | 'despues'> };
   keyboard: { enabled: boolean; session_keys: boolean; base: number };
   mosaico: { order: string[]; hidden: string[] };
+  appearance: { theme: 'dark' | 'light' | 'system' };
 }
 export interface DaySummary { sessions: { project: string; work_ms: number; waited_ms: number; max_wait_ms: number; perms: number; errors: number; subagents: number; actions: number; lanes: [number, number, 'w' | 'p' | 'e'][] }[]; total_work_ms: number; total_waited_ms: number; actions_by_hour: number[] }
 export const onState = (f: (s: Snapshot) => void) => listen<Snapshot>('pulse://state', e => f(e.payload));
