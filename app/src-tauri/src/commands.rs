@@ -1,6 +1,6 @@
 use crate::{broadcast, config::{self, Config}, now_ms, resolve, AppState};
 use pulse_protocol::Decision;
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, State};
 
 #[tauri::command] pub fn get_snapshot(st: State<AppState>) -> crate::state::Snapshot { st.store.lock().unwrap().snapshot() }
 #[tauri::command] pub fn get_config(st: State<AppState>) -> Config { st.config.lock().unwrap().clone() }
@@ -35,9 +35,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 #[tauri::command] pub fn daily_summary() -> crate::daylog::DaySummary { crate::daylog::today() }
 #[derive(serde::Deserialize)] pub struct Rect { x: f64, y: f64, w: f64, h: f64 }
 #[tauri::command] pub fn set_island_hitbox(hb: State<crate::windows::Hitbox>, rect: Option<Rect>) { *hb.0.lock().unwrap() = rect.map(|r| (r.x - 6.0, r.y - 6.0, r.w + 12.0, r.h + 12.0)); }
-#[tauri::command] pub fn island_focus(app: AppHandle, on: bool) {
-    if let Some(w) = app.get_webview_window("island") { let _ = w.set_ignore_cursor_events(!on); if on { let _ = w.set_focus(); } }
-}
+#[tauri::command] pub fn island_focus(app: AppHandle, on: bool) { crate::windows::island_keyboard(&app, on); }
 // Async: en Windows, crear una ventana desde un comando síncrono bloquea el hilo principal.
 #[tauri::command] pub async fn toggle_panel(app: AppHandle) { crate::windows::toggle_panel(&app) }
 #[tauri::command] pub async fn open_dashboard(app: AppHandle) { crate::windows::open_dashboard(&app) }

@@ -105,7 +105,6 @@ kbd.on{opacity:1;background:rgba(255,255,255,.22);transform:translateY(1px)}
 /* ---------- Preguntas de Claude ---------- */
 .qcard{width:440px;white-space:normal}
 .q{display:grid;gap:8px}
-.q + .q{padding-top:10px;border-top:1px solid rgba(255,255,255,.06)}
 .qh{display:grid;gap:4px;font-size:13.5px;line-height:1.35}
 .qh b{font-weight:500}
 .qh small{font-size:11.5px;color:#8a919b}
@@ -125,3 +124,8 @@ kbd.on{opacity:1;background:rgba(255,255,255,.22);transform:translateY(1px)}
 .qbar b{display:block;height:100%;background:linear-gradient(90deg,var(--perm),rgba(255,176,46,.5));transform-origin:left;transition:transform .25s linear}
 .qcard.paused .qleft{color:#ffd590}
 .qcard.paused .qbar b{background:rgba(255,176,46,.35)}
+.qmeta{display:flex;align-items:center;gap:8px}
+.qmeta:empty{display:none}
+.qstep{margin-left:auto;font-size:11px;color:#8a919b;font-family:var(--f-mono)}
+.qopts{max-height:min(46vh,340px);overflow:auto;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.18) transparent}
+.qback{flex:0 0 auto!important}

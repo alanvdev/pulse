@@ -45,7 +45,8 @@ pub fn active_monitor_index(app: &AppHandle) -> usize {
 pub fn create_island(app: &AppHandle) -> tauri::Result<()> {
     let m = app.primary_monitor()?.ok_or(tauri::Error::WindowNotFound)?;
     let (scale, pos, size) = (m.scale_factor(), m.position(), m.size());
-    let (w, h) = (size.width as f64 / scale, 480.0);
+    // Alto de sobra para tarjetas de preguntas largas: la zona sin contenido es transparente y no recibe clics.
+    let (w, h) = (size.width as f64 / scale, (size.height as f64 / scale * 0.8).min(860.0));
     let win = WebviewWindowBuilder::new(app, "island", WebviewUrl::App("island.html".into()))
         .transparent(true).decorations(false).always_on_top(true).skip_taskbar(true).focused(false)
         .resizable(false).shadow(false).position(pos.x as f64 / scale, pos.y as f64 / scale).inner_size(w, h).build()?;
@@ -61,6 +62,9 @@ pub fn create_island(app: &AppHandle) -> tauri::Result<()> {
             _ => true,
         };
         if ignore != last { let _ = win.set_ignore_cursor_events(ignore); last = ignore; }
+        // recuerda la última ventana activa que no es de Pulse, para devolverle el teclado
+        let fg = unsafe { windows_sys::Win32::UI::WindowsAndMessaging::GetForegroundWindow() } as isize;
+        if fg != 0 && !is_ours(fg) { PREV_FOREGROUND.store(fg, std::sync::atomic::Ordering::SeqCst); }
     } });
     Ok(())
 }
@@ -72,6 +76,32 @@ fn work_area_right_bottom() -> (f64, f64) {
 }
 /// Momento en que el panel se ocultó por perder el foco: el clic en la bandeja que lo provocó no debe volver a abrirlo.
 static PANEL_HIDDEN_AT: std::sync::atomic::AtomicI64 = std::sync::atomic::AtomicI64::new(0);
+/// Ventana que tenía el teclado antes de que la isla lo tomara (paleta, "Otra…").
+static PREV_FOREGROUND: std::sync::atomic::AtomicIsize = std::sync::atomic::AtomicIsize::new(0);
+fn is_ours(h: isize) -> bool {
+    let mut pid = 0u32;
+    unsafe { windows_sys::Win32::UI::WindowsAndMessaging::GetWindowThreadProcessId(h as _, &mut pid) };
+    pid == std::process::id()
+}
+/// La isla toma el teclado (`on`) o se lo devuelve a la ventana donde estabas.
+pub fn island_keyboard(app: &AppHandle, on: bool) {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, IsWindow, SetForegroundWindow};
+    use std::sync::atomic::Ordering;
+    let Some(w) = app.get_webview_window("island") else { return };
+    let island = w.hwnd().map(|h| h.0 as isize).unwrap_or(0);
+    let _ = w.set_ignore_cursor_events(!on);
+    unsafe {
+        let fg = GetForegroundWindow() as isize;
+        if on {
+            if fg != 0 && !is_ours(fg) { PREV_FOREGROUND.store(fg, Ordering::SeqCst); }
+            let _ = w.set_focus();
+        } else if fg == island {
+            let prev = PREV_FOREGROUND.load(Ordering::SeqCst);
+            if prev != 0 && IsWindow(prev as _) != 0 { SetForegroundWindow(prev as _); }
+        }
+    }
+}
+
 pub fn toggle_panel(app: &AppHandle) {
     let win = match app.get_webview_window("panel") { Some(w) => w, None => match create_panel(app) { Ok(w) => w, Err(_) => return } };
     if win.is_visible().unwrap_or(false) { let _ = win.hide(); return; }

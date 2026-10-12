@@ -33,7 +33,9 @@ function mount() {
   mode = modeName === 'orbe' ? mountOrbe(board, ctx) : mountComando(board, ctx);
   mode.render();
 }
-const render = () => mode?.render();
+// Si la isla tiene el teclado pero ya no hay nada donde escribir (la pregunta se respondió en otro lado, se acabó el
+// tiempo, se cerró la paleta), se le devuelve a la ventana donde estabas.
+const render = () => { mode?.render(); if (document.hasFocus() && !board.querySelector('.qcard, .pal')) islandFocus(false); };
 
 function transient(t: Omit<Tr, 'id'>, ms: number) { tr = { ...t, id: Math.random() } as Tr; clearTimeout(trT); trT = window.setTimeout(() => { tr = null; render(); }, T(ms)); render(); }
 
