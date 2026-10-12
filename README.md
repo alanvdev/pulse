@@ -66,7 +66,7 @@ Además, sonidos por evento y, si tienes un teclado Razer, F1 a F3 encendidas po
 Por ahora se instala desde el código. Necesitas Windows 11, [Rust](https://rustup.rs), [Node 20+](https://nodejs.org) y [PowerShell 7](https://aka.ms/powershell).
 
 ```powershell
-git clone https://github.com/<usuario>/pulse
+git clone https://github.com/alanvdev/pulse
 cd pulse
 npm install --prefix app
 pwsh scripts/install.ps1
