@@ -23,9 +23,9 @@ pub fn now_ms() -> i64 { std::time::SystemTime::now().duration_since(std::time::
 
 pub fn broadcast(app: &AppHandle) {
     let st = app.state::<AppState>();
-    let (snap, agg, tip) = { let s = st.store.lock().unwrap(); (s.snapshot(), s.aggregate(), s.summary()) };
+    let (snap, tip) = { let s = st.store.lock().unwrap(); (s.snapshot(), s.summary()) };
     let _ = app.emit("pulse://state", &snap);
-    tray::update(app, agg, &tip);
+    tray::update(app, &snap.sessions, &tip);
 }
 
 pub fn emit_fx(app: &AppHandle, fx: Fx) { let _ = app.emit("pulse://fx", fx); }

@@ -1,32 +1,91 @@
-use crate::state::SessionState;
 use tauri::{image::Image, menu::{MenuBuilder, MenuItemBuilder}, tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}, AppHandle};
+use crate::state::{Session, SessionState};
+use std::sync::Mutex;
 pub const TRAY_ID: &str = "pulse";
-pub fn state_color(s: SessionState) -> [u8; 3] { match s { SessionState::Idle => [105,113,124], SessionState::Done => [79,224,160], SessionState::Working => [230,238,255], SessionState::IdleWait => [182,192,212], SessionState::Waiting => [255,176,46] } }
-pub fn ring_rgba(size: u32, rgb: [u8; 3]) -> Vec<u8> {
-    let s = size as f32; let (ro, ri) = (s * 0.41, s * 0.25);
+
+#[derive(Debug, Clone, Copy, PartialEq)] pub enum DotShape { Fill, Halo, Ring }
+pub type TrayDot = (DotShape, [u8; 3]);
+const TX: [u8; 3] = [234, 237, 234];
+const PERM: [u8; 3] = [227, 176, 92];
+const DONE: [u8; 3] = [143, 195, 160];
+const CALM: [u8; 3] = [158, 163, 158];
+
+/// Un punto por sesión (hasta tres, en orden de llegada) con las formas de la isla (spec §5). Sin sesiones: un anillo gris.
+pub fn tray_dots(sessions: &[Session]) -> Vec<TrayDot> {
+    if sessions.is_empty() { return vec![(DotShape::Ring, CALM)]; }
+    let mut v: Vec<&Session> = sessions.iter().collect();
+    v.sort_by_key(|s| s.slot);
+    v.iter().take(3).map(|s| match s.state {
+        SessionState::Working => (DotShape::Fill, TX),
+        SessionState::Waiting => (DotShape::Halo, PERM),
+        SessionState::Done => (DotShape::Ring, DONE),
+        SessionState::IdleWait | SessionState::Idle => (DotShape::Ring, CALM),
+    }).collect()
+}
+
+/// Dibuja los puntos centrados en un ícono cuadrado de `size` px (RGBA, con borde suavizado).
+pub fn dots_rgba(size: u32, dots: &[TrayDot]) -> Vec<u8> {
+    let s = size as f32; let n = dots.len().max(1) as f32;
+    let (r, gap, ring) = (s * 0.15, s * 0.33, s * 0.06);   // en 32 px: radio 4.8, centros a 10.6, anillo de 1.9
+    let x0 = s / 2.0 - gap * (n - 1.0) / 2.0;
     let mut px = vec![0u8; (size * size * 4) as usize];
-    for y in 0..size { for x in 0..size {
-        let (dx, dy) = (x as f32 + 0.5 - s / 2.0, y as f32 + 0.5 - s / 2.0); let r = (dx * dx + dy * dy).sqrt();
-        let a = ((r - ri).min(ro - r) + 0.5).clamp(0.0, 1.0); let o = ((y * size + x) * 4) as usize;
-        px[o..o + 3].copy_from_slice(&rgb); px[o + 3] = (a * 255.0) as u8; } }
+    for (i, (shape, rgb)) in dots.iter().enumerate() {
+        let (cx, cy) = (x0 + gap * i as f32, s / 2.0);
+        for y in 0..size { for x in 0..size {
+            let d = ((x as f32 + 0.5 - cx).powi(2) + (y as f32 + 0.5 - cy).powi(2)).sqrt();
+            let a = match shape {
+                DotShape::Fill => (r - d + 0.5).clamp(0.0, 1.0),
+                DotShape::Halo => (r - d + 0.5).clamp(0.0, 1.0).max(0.35 * (r * 1.45 - d + 0.5).clamp(0.0, 1.0)),
+                DotShape::Ring => ((d - (r - ring)).min(r - d) + 0.5).clamp(0.0, 1.0),
+            };
+            let o = ((y * size + x) * 4) as usize;
+            if a > 0.0 && a * 255.0 > px[o + 3] as f32 { px[o..o + 3].copy_from_slice(rgb); px[o + 3] = (a * 255.0) as u8; }
+        } }
+    }
     px
 }
-fn icon(s: SessionState) -> Image<'static> { Image::new_owned(ring_rgba(32, state_color(s)), 32, 32) }
+fn icon(dots: &[TrayDot]) -> Image<'static> { Image::new_owned(dots_rgba(32, dots), 32, 32) }
+/// Último ícono puesto: no se redibuja si no cambió (broadcast llega con cada evento).
+static LAST: Mutex<Vec<TrayDot>> = Mutex::new(Vec::new());
 /// `on_left_click` abre/cierra Bolsillo (se conecta en la Task 5).
 pub fn create(app: &AppHandle, on_left_click: fn(&AppHandle)) -> tauri::Result<()> {
     let open = MenuItemBuilder::with_id("dashboard", "Abrir tablero").build(app)?;
     let quit = MenuItemBuilder::with_id("quit", "Salir de Pulse").build(app)?;
     let menu = MenuBuilder::new(app).items(&[&open, &quit]).build()?;
-    TrayIconBuilder::with_id(TRAY_ID).icon(icon(SessionState::Idle)).tooltip("Pulse · sin sesiones").menu(&menu).show_menu_on_left_click(false)
+    TrayIconBuilder::with_id(TRAY_ID).icon(icon(&tray_dots(&[]))).tooltip("Pulse · sin sesiones").menu(&menu).show_menu_on_left_click(false)
         .on_menu_event(|app, e| match e.id().as_ref() { "quit" => app.exit(0), "dashboard" => crate::windows::open_dashboard(app), _ => {} })
         .on_tray_icon_event(move |t, e| if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = e { on_left_click(t.app_handle()) })
         .build(app)?;
     Ok(())
 }
-pub fn update(app: &AppHandle, s: SessionState, tip: &str) { if let Some(t) = app.tray_by_id(TRAY_ID) { let _ = t.set_icon(Some(icon(s))); let _ = t.set_tooltip(Some(tip)); } }
+pub fn update(app: &AppHandle, sessions: &[Session], tip: &str) {
+    let Some(t) = app.tray_by_id(TRAY_ID) else { return };
+    let dots = tray_dots(sessions);
+    let changed = { let mut last = LAST.lock().unwrap(); if *last != dots { *last = dots.clone(); true } else { false } };
+    if changed { let _ = t.set_icon(Some(icon(&dots))); }
+    let _ = t.set_tooltip(Some(tip));
+}
 #[cfg(test)]
-mod tests { use super::*;
-    #[test] fn ring_has_hole_and_colored_edge() {
-        let px = ring_rgba(32, [255, 176, 46]); let at = |x: usize, y: usize| &px[(y * 32 + x) * 4..(y * 32 + x) * 4 + 4];
-        assert_eq!(at(16, 16)[3], 0); assert_eq!(&at(16, 4)[..3], &[255, 176, 46]); assert!(at(16, 4)[3] > 200);
-    } }
+mod tests { use super::*; use crate::state::{Session, SessionState};
+    fn s(slot: u8, state: SessionState) -> Session { Session { id: format!("s{slot}"), project: "p".into(), cwd: String::new(), slot, state, last: String::new(), subagents: 0, since_ms: 0, last_event_ms: 0, actions: 0, muted_until_ms: 0 } }
+    #[test] fn no_sessions_is_one_gray_ring() {
+        let d = tray_dots(&[]);
+        assert_eq!(d, vec![(DotShape::Ring, CALM)]);
+        let px = dots_rgba(32, &d); let a = |x: usize, y: usize| px[(y * 32 + x) * 4 + 3];
+        assert_eq!(a(16, 16), 0);          // hueco al centro
+        assert_eq!(a(19, 16), 255);        // borde del anillo
+    }
+    #[test] fn one_dot_per_session_in_slot_order_up_to_three() {
+        let d = tray_dots(&[s(1, SessionState::Done), s(0, SessionState::Waiting), s(2, SessionState::Working), s(3, SessionState::Idle)]);
+        assert_eq!(d, vec![(DotShape::Halo, PERM), (DotShape::Ring, DONE), (DotShape::Fill, TX)]);
+        let px = dots_rgba(32, &d); let at = |x: usize, y: usize| px[(y * 32 + x) * 4..(y * 32 + x) * 4 + 4].to_vec();
+        // centros en x ≈ 5.4, 16 y 26.6
+        assert_eq!(at(5, 16), vec![227, 176, 92, 255]);
+        assert_eq!(at(16, 16)[3], 0);
+        assert_eq!(at(26, 16), vec![234, 237, 234, 255]);
+    }
+    #[test] fn calm_states_are_gray_rings() {
+        assert_eq!(tray_dots(&[s(0, SessionState::IdleWait)]), vec![(DotShape::Ring, CALM)]);
+        assert_eq!(tray_dots(&[s(0, SessionState::Idle)]), vec![(DotShape::Ring, CALM)]);
+    }
+}
