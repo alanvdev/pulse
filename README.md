@@ -14,6 +14,7 @@
   <img src="https://img.shields.io/badge/Rust-111311?style=flat-square&logo=rust&logoColor=eaedea" alt="Rust">
   <img src="https://img.shields.io/badge/React-18-111311?style=flat-square&logo=react&logoColor=eaedea" alt="React 18">
   <img src="https://img.shields.io/badge/para-Claude%20Code-111311?style=flat-square" alt="Para Claude Code">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/licencia-MIT-111311?style=flat-square" alt="Licencia MIT"></a>
 </p>
 
 <p>
@@ -104,4 +105,4 @@ Todo se queda en tu equipo: la configuración en `~/.claude/pulse/config.json` y
 
 ---
 
-<div align="center"><sub>Pulse no es un producto de Anthropic.</sub></div>
+<div align="center"><sub>Licencia <a href="LICENSE">MIT</a> · Pulse no es un producto de Anthropic.</sub></div>
