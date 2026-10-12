@@ -1,6 +1,7 @@
 import { getConfig, getSnapshot, onConfig, onFx, onState, type Config, type Snapshot } from '../shared/bridge';
 import { pulse, residualOn, residualOff, residualKeys, slotX } from '../shared/pulse-engine';
 import { reduceMotion } from '../shared/motion';
+import { wantedResiduals } from '../shared/residuals';
 
 const me = Number(new URLSearchParams(location.search).get('m') ?? 0);
 const layer = document.getElementById('fx')!;
@@ -11,10 +12,10 @@ const light = () => matchMedia('(prefers-color-scheme: light)').matches;
 const opts = () => ({ crisp: cfg.pulses.crisp, corners: cfg.pulses.corners, adapt: cfg.pulses.adapt, dither: cfg.pulses.dither, lightBackground: light(), reduce: reduceMotion() });
 const mine = (monitor: number) => cfg.pulses.placement === 'all' || monitor === me;
 
+let lastSnap: Snapshot | null = null;
 function syncResiduals(s: Snapshot) {
-  const want = new Set<string>();
-  for (const p of s.pending) want.add(`${p.session_id}:permission`);
-  for (const x of s.sessions) if (x.state === 'IdleWait') want.add(`${x.id}:idle`);
+  lastSnap = s;
+  const want = wantedResiduals(s, Date.now());
   for (const k of residualKeys()) if (!want.has(k)) residualOff(k);
   for (const k of want) {
     const kind = k.split(':')[1]; const pc = cfg.pulses.events[kind];
@@ -32,5 +33,6 @@ function syncResiduals(s: Snapshot) {
     pulse(layer, fx.kind === 'release' ? { ...pc, shape: 'ola', intensity: 70, duration_ms: 2200 } : pc, { x, y: 140, side: x < 50 ? 'left' : 'right' }, opts());
   });
   onState(s => { if (cfg) syncResiduals(s); });
+  setInterval(() => { if (cfg && lastSnap) syncResiduals(lastSnap); }, 2000);   // apaga el brillo de "te espera" al cumplir su minuto
   syncResiduals(await getSnapshot());
 })();
