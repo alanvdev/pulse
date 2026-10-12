@@ -26,12 +26,12 @@ export function MultiSeg({ values, options, onChange, label }: { values: Record<
   return <span className="seg" role="group" aria-label={label}>{options.map(([k, l]) => <button key={k} type="button" aria-pressed={!!values[k]} onClick={() => onChange(k, !values[k])}>{l}</button>)}</span>;
 }
 export function Slider({ value, min, max, step = 1, label, format = String, onChange }: { value: number; min: number; max: number; step?: number; label: string; format?: (v: number) => string; onChange: (v: number) => void }) {
-  const v = ((value - min) / (max - min)) * 100;
+  const v = max > min ? ((value - min) / (max - min)) * 100 : 0;
   return <span className="sl"><input type="range" min={min} max={max} step={step} value={value} aria-label={label} style={vars({ '--v': `${v}%` })} onChange={e => onChange(Number(e.target.value))} /><output>{format(value)}</output></span>;
 }
 export const Swatches = ({ value, options, onChange, label }: { value: string; options: [string, string][]; onChange: (c: string) => void; label: string }) =>
   <span role="radiogroup" aria-label={label} style={{ display: 'flex', gap: 9 }}>
-    {options.map(([name, c]) => <button key={c} type="button" role="radio" className="swc" aria-checked={value.toLowerCase() === c} aria-label={name} style={{ background: c }} onClick={() => onChange(c)} />)}
+    {options.map(([name, c]) => <button key={c} type="button" role="radio" className="swc" aria-checked={value.toLowerCase() === c.toLowerCase()} aria-label={name} style={{ background: c }} onClick={() => onChange(c)} />)}
   </span>;
 export const Chip = ({ on, icon, children, onClick }: { on: boolean; icon?: string; children: ReactNode; onClick: () => void }) =>
   <button type="button" className="chip" aria-pressed={on} onClick={onClick}>{icon && <Icon name={icon} />}{children}</button>;
