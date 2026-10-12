@@ -2,7 +2,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { flyoutFit, flyoutHide, muteSession, onFlyoutOpen, openDashboard, openPalette, quit, setFocus, type Config } from '../shared/bridge';
 import { statusLine, topDot } from '../shared/format';
-import { useConfig, useSnapshot, useTheme } from '../shared/react';
+import { useConfig, useFocusEdge, useFocusHalo, useSnapshot, useTheme } from '../shared/react';
 import { Dot, Icon, Keys } from '../shared/ui';
 import { step } from './menu';
 
@@ -13,6 +13,8 @@ export function Flyout() {
   useTheme(cfg);
   const [open, setOpen] = useState(0);   // cambia en cada apertura: reinicia la animación y la selección
   const box = useRef<HTMLDivElement>(null);
+  const focusEv = useFocusEdge(snap);
+  useFocusHalo(box, focusEv);
   useEffect(() => { let off: (() => void) | undefined; onFlyoutOpen(() => setOpen(n => n + 1)).then(f => (off = f)); return () => off?.(); }, []);
 
   const now = Date.now();
@@ -62,13 +64,13 @@ export function Flyout() {
   if (!cfg) return null;
   let i = -1;
   return <div className="fly-wrap">
-    <div key={open} ref={box} role="menu" aria-label="Pulse" aria-describedby="fly-status" tabIndex={-1} className="fly surf">
+    <div key={open} ref={box} role="menu" aria-label="Pulse" aria-describedby="fly-status" tabIndex={-1} className={`fly surf f-host ${snap.focus ? 'in-focus' : ''}`}>
       <div className="fly-head" role="presentation"><b>Pulse</b><span id="fly-status"><Dot kind={topDot(snap)} />{statusLine(snap)}</span></div>
       {groups.map((g, gi) => <div key={gi} role="group">
         <div className="sep" role="separator" />
         {g.map(it => { i++; const toggleRow = it.on !== undefined;
           return <button key={it.id} type="button" className="mi" data-i={i} role={toggleRow ? 'menuitemcheckbox' : 'menuitem'} aria-checked={toggleRow ? it.on : undefined}
-            aria-disabled={it.disabled || undefined} onClick={() => { if (!it.disabled) it.run(); }}>
+            data-focus={it.id === 'focus' && it.on ? 'on' : undefined} aria-disabled={it.disabled || undefined} onClick={() => { if (!it.disabled) it.run(); }}>
             <Icon name={it.icon} /><span>{it.label}</span>
             {toggleRow ? <span className={`sw sm ${it.on ? 'on' : ''}`} aria-hidden="true" /> : it.keys ? <Keys k={it.keys} /> : <span />}
           </button>; })}

@@ -33,8 +33,8 @@ export const Swatches = ({ value, options, onChange, label }: { value: string; o
   <span role="radiogroup" aria-label={label} style={{ display: 'flex', gap: 9 }}>
     {options.map(([name, c]) => <button key={c} type="button" role="radio" className="swc" aria-checked={value.toLowerCase() === c.toLowerCase()} aria-label={name} style={{ background: c }} onClick={() => onChange(c)} />)}
   </span>;
-export const Chip = ({ on, icon, children, onClick }: { on: boolean; icon?: string; children: ReactNode; onClick: () => void }) =>
-  <button type="button" className="chip" aria-pressed={on} onClick={onClick}>{icon && <Icon name={icon} />}{children}</button>;
+export const Chip = ({ on, icon, children, onClick, tone }: { on: boolean; icon?: string; children: ReactNode; onClick: () => void; tone?: 'focus' }) =>
+  <button type="button" className={cx('chip', tone)} aria-pressed={on} onClick={onClick}>{icon && <Icon name={icon} />}{children}</button>;
 export const Dot = ({ kind }: { kind: DotKind }) => <span className={`dot ${kind}`} aria-hidden="true" />;
 export const StateIcon = ({ s, size = 16 }: { s: SessionState; size?: number }) =>
   <Icon name={ICON[s]} className={s === 'Working' ? 'spin' : undefined} style={{ color: STATE_VAR[s], fontSize: size }} />;

@@ -2,6 +2,8 @@ import { getConfig, getSnapshot, onConfig, onFx, onState, type Config, type Snap
 import { pulse, residualOn, residualOff, residualKeys, slotX } from '../shared/pulse-engine';
 import { reduceMotion } from '../shared/motion';
 import { wantedResiduals } from '../shared/residuals';
+import { focusEdge } from '../shared/micro';
+import { COLORS } from '../shared/format';
 
 const me = Number(new URLSearchParams(location.search).get('m') ?? 0);
 const layer = document.getElementById('fx')!;
@@ -32,7 +34,12 @@ function syncResiduals(s: Snapshot) {
     const x = slotX(fx.slot);
     pulse(layer, fx.kind === 'release' ? { ...pc, shape: 'ola', intensity: 70, duration_ms: 2200 } : pc, { x, y: 140, side: x < 50 ? 'left' : 'right' }, opts());
   });
-  onState(s => { if (cfg) syncResiduals(s); });
+  onState(s => {
+    // al entrar al foco, un barrido lavanda suave, una sola vez (los pulsos que esperan se apagan en syncResiduals)
+    if (cfg?.pulses.enabled && focusEdge(lastSnap?.focus, s.focus) === 'enter')
+      pulse(layer, { color: COLORS.focus, shape: 'barrido', intensity: 45, thickness: 100, duration_ms: 1600, persistent: false }, { x: 50, y: 50, side: 'left' }, opts());
+    if (cfg) syncResiduals(s);
+  });
   setInterval(() => { if (cfg && lastSnap) syncResiduals(lastSnap); }, 2000);   // apaga el brillo de "te espera" al cumplir su minuto
   syncResiduals(await getSnapshot());
 })();

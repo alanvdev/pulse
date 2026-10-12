@@ -16,3 +16,6 @@ html, body, #root { background: transparent }
 .mi .ms { font-size: 16px; color: var(--tx2) }
 @media (prefers-reduced-motion: no-preference) { .fly { animation: flyIn .18s var(--e-out) } }
 @keyframes flyIn { from { opacity: 0; transform: translateY(6px) } }
+.fly { position: relative }
+.mi[data-focus="on"] .ms { color: var(--focus) }
+.mi[data-focus="on"] .sw.on { background: var(--focus) }

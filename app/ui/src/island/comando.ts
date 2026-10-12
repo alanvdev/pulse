@@ -87,7 +87,7 @@ export function mountComando(board: HTMLElement, ctx: Ctx) {
 
   /* ---------- puntos y resumen ---------- */
   const slot = (r: Row) => `<i class="slot" data-sid="${esc(r.id)}" data-dot="${r.dot}"></i>`;
-  const dotsHTML = (rows: Row[]) => `<div class="c-dots">${rows.map(slot).join('')}</div>`;
+  const dotsHTML = (rows: Row[], focus: boolean) => `<div class="c-dots">${rows.map(slot).join('')}${focus ? '<span class="ms c-moon" aria-label="En foco">dark_mode</span>' : ''}</div>`;
   const summaryHTML = (rows: Row[], now: number) => `<div class="sum"><div class="sum-rows">${rows.map((r, i) =>
     `<div class="srow${r.need ? ' need' : ''}" data-sid="${esc(r.id)}"${r.pendingId ? ` data-pid="${r.pendingId}"` : ''} style="--i:${i}">${slot(r)}<span class="sp">${esc(r.project)}</span><span class="what${r.mono ? ' mono' : ''}">${esc(r.what)}</span>${r.need ? '<kbd class="kbd">↵</kbd>' : `<span class="mono st"${r.state === 'Done' ? '' : ` data-since="${r.since}"`}>${r.state === 'Done' ? '' : clock(now - r.since)}</span>`}</div>`).join('')}</div>
     <div class="sum-foot"><span>${esc(dayLine(ctx.day()))}</span><span class="sum-k">Paleta ${keys(['Ctrl', 'Alt', 'Espacio'])}</span></div></div>`;
@@ -134,7 +134,7 @@ export function mountComando(board: HTMLElement, ctx: Ctx) {
     else if (top) { html = permCard(top, cfg, live); sig = `P${top.id}:${live.length}`; o.hidden = false; stacked = live.length > 1; }
     else if (n) { html = noticeHTML(n); sig = 'n' + n.id; o.hidden = false; o.life = n.life; }
     else if (hover && rows.length) { html = summaryHTML(rows, now); sig = 'S' + rows.map(r => r.id + r.dot + r.what).join('|') + dayLine(ctx.day()); o.hidden = false; }
-    else if (rows.length && (showDots(s, cfg) || collapsed.size)) { html = dotsHTML(rows); sig = 'D' + rows.map(r => r.id + r.dot).join('|'); o.hidden = false; }
+    else if (rows.length && (showDots(s, cfg) || collapsed.size)) { html = dotsHTML(rows, s.focus); sig = 'D' + rows.map(r => r.id + r.dot).join('|') + s.focus; o.hidden = false; }
     sh.classList.toggle('stacked', stacked);
     const r = morph(m, sig, html, o);
     if (r.changed) { ctx.hitbox(html ? sh : null); fitCommand(sh); }

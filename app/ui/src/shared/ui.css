@@ -55,3 +55,15 @@
 .hl::before { content: ""; position: absolute; left: 0; top: 0; z-index: 0; width: var(--hl-w, 0); height: var(--hl-h, 0); transform: translate(var(--hl-x, 0), var(--hl-y, 0)); border-radius: 7px; background: var(--sel); opacity: 0; pointer-events: none }
 .hl[data-hl]::before { opacity: 1; transition: transform .34s var(--e-out), width .34s var(--e-out), height .34s var(--e-out), opacity .2s }
 @media (prefers-reduced-motion: reduce) { .hl[data-hl]::before { transition: opacity .12s } }
+
+/* modo foco: halo lavanda que respira una vez al entrar (y se disuelve al salir) */
+.f-host::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; box-shadow: inset 0 0 0 1.5px var(--focus), inset 0 0 56px -12px var(--focus) }
+.f-host.f-enter::after { animation: focusIn 1.6s ease-out }
+.f-host.f-exit::after { animation: focusOut .7s ease-out }
+@keyframes focusIn { 0% { opacity: 0 } 22% { opacity: 1 } 100% { opacity: 0 } }
+@keyframes focusOut { 0% { opacity: .6 } 100% { opacity: 0 } }
+/* en foco: borde lavanda tenue mientras dure, para que se sepa sin mirar el chip */
+.f-host.in-focus { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--focus) 40%, transparent), inset 0 1px 0 var(--hi), 0 24px 48px -12px var(--shadow) }
+.chip.focus[aria-pressed="true"] { color: var(--focus); border-color: color-mix(in srgb, var(--focus) 45%, transparent); background: color-mix(in srgb, var(--focus) 12%, transparent) }
+.fz { display: inline-flex; align-items: center; gap: 5px; color: var(--focus) }
+.fz .ms { font-size: 14px }

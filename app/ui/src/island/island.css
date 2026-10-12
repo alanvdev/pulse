@@ -124,3 +124,9 @@
 .qcard.paused .qleft { color: var(--tx2) }
 .qcard.paused .qbar b { opacity: .45 }
 @media (prefers-reduced-motion: reduce) { .rel { animation: none } .draw { animation: none; clip-path: none } .qbar b { transition: none } }
+
+/* ---------- modo foco ---------- */
+.c-moon { font-size: 13px; color: var(--focus); margin-left: 2px; animation: moonIn .5s var(--e-out) }
+.o-bead .ms { color: var(--focus); animation: moonIn .55s var(--e-out) }
+@keyframes moonIn { from { opacity: 0; transform: rotate(-120deg) scale(.4) } }
+@media (prefers-reduced-motion: reduce) { .c-moon, .o-bead .ms { animation: none } }

@@ -3,10 +3,10 @@ import { useEffect, useRef, useState, type KeyboardEvent as RKeyboardEvent } fro
 import { decide, openDashboard, setFocus, skip, togglePanel, type Config, type DaySummary, type Pending, type Snapshot } from '../shared/bridge';
 import { clock, headline, hm, sessionsLabel } from '../shared/format';
 import { reduceMotion } from '../shared/motion';
-import { useConfig, useDaySummary, useHold, useNow, useSnapshot, useTheme } from '../shared/react';
-import { Button, Chip, Dot, Keys, Seg, Slider, StateIcon, Switch } from '../shared/ui';
+import { useConfig, useDaySummary, useFocusEdge, useFocusHalo, useHold, useNow, useSnapshot, useTheme } from '../shared/react';
+import { Button, Chip, Dot, Icon, Keys, Seg, Slider, StateIcon, Switch } from '../shared/ui';
 import { Timeline, TimelineLegend } from '../shared/timeline';
-import { sessionRows, verb } from '../island/model';
+import { focusLine, sessionRows, verb } from '../island/model';
 
 type Tab = 'ahora' | 'hoy' | 'ajustes';
 const TABS: [Tab, string][] = [['ahora', 'Ahora'], ['hoy', 'Hoy'], ['ajustes', 'Ajustes']];
@@ -40,7 +40,7 @@ function Ahora({ snap, cfg, save, now, hold }: { snap: Snapshot; cfg: Config; sa
   const top = snap.pending[0], rows = sessionRows(snap, now).filter(r => !top || r.pendingId !== top.id);
   const flip = <K extends 'sounds' | 'pulses' | 'keyboard'>(k: K) => save({ ...cfg, [k]: { ...cfg[k], enabled: !cfg[k].enabled } });
   return <>
-    <header><div className="bp-n">{sessionsLabel(snap.sessions.length)}</div><div className="bp-h">{headline(snap)}</div></header>
+    <header><div className="bp-n">{sessionsLabel(snap.sessions.length)}{snap.focus && <> · <span className="fz"><Icon name="dark_mode" />{focusLine(snap)}</span></>}</div><div className="bp-h">{headline(snap)}</div></header>
     {top && <PendingBlock key={top.id} p={top} cfg={cfg} now={now} hold={hold} />}
     {snap.sessions.length ? <div>{rows.map(r => <div key={r.id} className="s">
       <StateIcon s={r.pendingId ? 'Waiting' : r.state} />
@@ -48,7 +48,7 @@ function Ahora({ snap, cfg, save, now, hold }: { snap: Snapshot; cfg: Config; sa
       <span className="s-t mono">{r.state === 'Done' ? '' : clock(now - r.since)}</span>
     </div>)}</div> : <p className="empty">No hay sesiones de Claude Code abiertas.</p>}
     <div className="chips">
-      <Chip icon="dark_mode" on={snap.focus} onClick={() => setFocus(!snap.focus)}>Foco</Chip>
+      <Chip icon="dark_mode" tone="focus" on={snap.focus} onClick={() => setFocus(!snap.focus)}>Foco</Chip>
       <Chip icon="volume_up" on={cfg.sounds.enabled} onClick={() => flip('sounds')}>Sonidos</Chip>
       <Chip icon="blur_on" on={cfg.pulses.enabled} onClick={() => flip('pulses')}>Pulsos</Chip>
       <Chip icon="keyboard" on={cfg.keyboard.enabled} onClick={() => flip('keyboard')}>Teclado</Chip>
@@ -89,6 +89,7 @@ export function Bolsillo() {
   useEffect(() => { hold.end(); }, [top?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const beginHold = () => { if (top) { holdId.current = top.id; hold.begin(); } };
   const bp = useRef<HTMLElement>(null), view = useRef<HTMLDivElement>(null);
+  useFocusHalo(bp, useFocusEdge(snap));
 
   // aparece desde la bandeja al mostrarse
   useEffect(() => {
@@ -116,7 +117,7 @@ export function Bolsillo() {
 
   const pick = (t: Tab) => { setTab(t); if (view.current && !reduceMotion()) view.current.animate([{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 240, easing: 'cubic-bezier(.16,1,.3,1)' }); };
   if (!cfg) return null;
-  return <section ref={bp} aria-label="Bolsillo" className="bp surf">
+  return <section ref={bp} aria-label="Bolsillo" className={`bp surf f-host ${snap.focus ? 'in-focus' : ''}`}>
     <div ref={view} className="bp-view" role="tabpanel">
       {tab === 'ahora' && <Ahora snap={snap} cfg={cfg} save={save} now={now} hold={{ ...hold, begin: beginHold }} />}
       {tab === 'hoy' && <Hoy day={day} now={now} />}

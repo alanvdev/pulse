@@ -5,6 +5,8 @@ import { mountComando } from './comando';
 import { mountOrbe, type OrbeCtx } from './orbe';
 import { bindQuestions } from './questions';
 import { toNotice, type Notice } from './model';
+import { focusEdge } from '../shared/micro';
+import { COLORS } from '../shared/format';
 import { tickSecs } from './shared';
 
 const board = document.getElementById('board')!;
@@ -67,7 +69,13 @@ document.addEventListener('pointerdown', e => { const b = (e.target as HTMLEleme
   [cfg, snap] = await Promise.all([getConfig(), getSnapshot()]);
   mount();
   bindQuestions(board, id => snap.pending.find(p => p.id === id), ctx);
-  onState(s => { snap = s; render(); });
+  onState(s => {
+    const edge = focusEdge(snap.focus, s.focus);
+    snap = s; render();
+    // el foco se nota también aquí: haz de luz lavanda y una línea que dice qué pasa con los avisos
+    if (edge === 'enter') { mode?.light('focus'); show({ id: Date.now(), icon: 'dark_mode', color: COLORS.focus, what: 'En foco · los avisos esperan', life: 2500 }); }
+    if (edge === 'exit' && !notice?.items) show({ id: Date.now(), icon: 'light_mode', color: COLORS.focus, what: 'Saliste del foco', life: 1600 });
+  });
   onConfig(c => { cfg = c; if (c.island.mode !== modeName) mount(); else render(); });
   onFx(onEffect);
   listen('pulse://palette', () => { if (modeName === 'comando') mode?.open?.(); else mode?.openMenu?.(); });

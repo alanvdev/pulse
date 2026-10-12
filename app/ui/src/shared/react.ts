@@ -120,3 +120,11 @@ export function useCountUp(to: number, ms = 700): number {
   }, [to, ms]);
   return v;
 }
+
+/** Halo lavanda al entrar o salir del foco (clases .f-enter / .f-exit de ui.css sobre `ref`). */
+export function useFocusHalo(ref: RefObject<HTMLElement>, ev: { edge: 'enter' | 'exit'; n: number } | null) {
+  useEffect(() => {
+    const el = ref.current; if (!el || !ev) return;
+    el.classList.remove('f-enter', 'f-exit'); void el.offsetWidth; el.classList.add(`f-${ev.edge}`);
+  }, [ev?.n]); // eslint-disable-line react-hooks/exhaustive-deps
+}
