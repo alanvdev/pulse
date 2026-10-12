@@ -76,3 +76,25 @@ body { user-select: none }
 .mz-log-p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--tx2) }
 .mz-log-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .mz-log-t.mono { font-size: 12px }
+/* Ajustes (artboard Ajustes) */
+.aj { padding: 0; gap: 0 }
+.aj-col { width: 100%; max-width: 720px; margin: 0 auto; padding: 48px 32px 64px; display: flex; flex-direction: column; gap: 36px }
+.aj-col h1 { margin: 0; font-size: 26px; font-weight: 500; letter-spacing: -.03em }
+.aj-col h2 { margin: 0 0 10px 4px; font-size: 14px; font-weight: 500; letter-spacing: -.01em }
+.aj-col section { scroll-margin-top: 24px }
+.aj-box { border: 1px solid var(--line); border-radius: 20px; background: var(--raised); overflow: hidden }
+.aj-r { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 24px; align-items: center; min-height: 58px; padding: 10px 20px }
+.aj-box > * + * { border-top: 1px solid var(--line) }
+.aj-r b { display: block; font-size: 13.5px; font-weight: 400 }
+.aj-r small { display: block; margin-top: 2px; font-size: 12.5px; color: var(--tx3) }
+.aj-evs { display: flex; flex-wrap: wrap; gap: 6px; padding: 14px 20px }
+.aj-evs .chip { height: 30px; font-size: 12.5px; color: var(--tx2) }
+.aj-evs .chip[aria-pressed="true"] { background: var(--surface) }
+.aj-evs .dot { width: 8px; height: 8px }
+.aj-fin { display: inline-flex; align-items: center; gap: 6px }
+.aj-detail { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px 24px; padding: 14px 20px }
+.aj-chk { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--tx2) }
+.aj-chk input { width: 16px; height: 16px; margin: 0; accent-color: var(--tx) }
+.aj-time { height: 30px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--well); color: var(--tx); font-size: 12.5px }
+.mz-nav .aj-back { margin-bottom: 12px; color: var(--tx3) }
+@media (max-width: 900px) { .aj-r { grid-template-columns: 1fr; gap: 10px } }

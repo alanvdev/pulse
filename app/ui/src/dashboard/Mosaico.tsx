@@ -4,6 +4,7 @@ import { onRoute, openPalette } from '../shared/bridge';
 import { useConfig, useDaySummary, useNow, useSnapshot, useTheme } from '../shared/react';
 import { Icon } from '../shared/ui';
 import { formatRoute, parseRoute, type Route, type Screen } from './route';
+import { Ajustes } from './screens/Ajustes';
 import { Bitacora } from './screens/Bitacora';
 import { Hoy } from './screens/Hoy';
 import { Inicio } from './screens/Inicio';
@@ -22,7 +23,7 @@ function useRoute(): [Route, (r: Route) => void] {
 const NAV: [Screen, string, string][] = [['inicio', 'home', 'Inicio'], ['sesiones', 'stacks', 'Sesiones'], ['hoy', 'schedule', 'Hoy'], ['bitacora', 'history', 'Bitácora']];
 
 export function Mosaico() {
-  const snap = useSnapshot(), [cfg] = useConfig(), now = useNow(), day = useDaySummary(snap);
+  const snap = useSnapshot(), [cfg, save] = useConfig(), now = useNow(), day = useDaySummary(snap);
   useTheme(cfg);
   const [route, go] = useRoute();
   useEffect(() => {
@@ -30,7 +31,8 @@ export function Mosaico() {
     window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k);
   }, []);
   if (!cfg) return null;
-  const screen = route.screen === 'ajustes' ? 'inicio' : route.screen;   // Ajustes llega en la Task 5.3
+  if (route.screen === 'ajustes') return <Ajustes cfg={cfg} save={save} section={route.arg} back={() => go({ screen: 'inicio' })} />;
+  const screen = route.screen;
   const link = (s: Screen, ic: string, l: string, count?: number) => <a key={s} href={`#${s}`} aria-current={screen === s ? 'page' : undefined} onClick={e => { e.preventDefault(); go({ screen: s }); }}><Icon name={ic} />{l}<small>{count || ''}</small></a>;
   return <div className="mz">
     <nav className="mz-nav" aria-label="Secciones">

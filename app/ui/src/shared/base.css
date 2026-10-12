@@ -19,9 +19,6 @@
   --f-ui: "Hanken Grotesk", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
   --f-mono: "Geist Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
   --e-out: cubic-bezier(.16,1,.3,1); --e-in: cubic-bezier(.7,0,.84,0);
-  /* legado: nombres viejos que aún usan piezas sin rediseñar; se borran en la Task 5.3 */
-  --fg: var(--tx); --muted: var(--tx2); --faint: var(--tx3); --focus: var(--tx2); --ink: var(--bg);
-  --idle: var(--tx2); --moon: var(--tx2); --acc: var(--tx); --glass: var(--surface);
 }
 :root[data-theme="light"] {
   color-scheme: light;

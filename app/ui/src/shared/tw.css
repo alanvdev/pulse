@@ -8,8 +8,5 @@
   --color-barbg: var(--barbg); --color-well: var(--well); --color-line: var(--line); --color-line2: var(--line2);
   --color-sel: var(--sel); --color-tx: var(--tx); --color-tx2: var(--tx2); --color-tx3: var(--tx3);
   --color-perm: var(--perm); --color-done: var(--done); --color-err: var(--err); --color-sub: var(--sub);
-  /* legado (Bolsillo y Mosaico viejos); se borran en la Task 5.3 */
-  --color-work: var(--tx); --color-idle: var(--tx2); --color-moon: var(--tx2); --color-acc: var(--tx);
-  --color-muted: var(--tx2); --color-faint: var(--tx3);
   --ease-out: cubic-bezier(.16,1,.3,1);
 }
