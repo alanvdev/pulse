@@ -1,7 +1,10 @@
 // Hooks de React sobre el puente con el núcleo (solo Bolsillo y Mosaico).
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { dailySummary, getConfig, logToday, getSnapshot, onConfig, onState, setConfig, type Config, type DaySummary, type LogItem, type Snapshot } from './bridge';
+import { countAt, flashColor, focusEdge } from './micro';
+import { reduceMotion } from './motion';
 import { followTheme } from './theme';
+import type { SessionState } from './bridge';
 
 const EMPTY: Snapshot = { sessions: [], pending: [], feed: [], focus: false, focus_auto: false, deferred: [] };
 
@@ -60,4 +63,60 @@ export function useLogToday(snap: Snapshot, every = 15_000): LogItem[] | null {
   useEffect(() => { load(); const t = setInterval(load, every); return () => clearInterval(t); }, [load, every]);
   useEffect(() => { if (Date.now() - last.current > 5_000) load(); }, [snap]); // eslint-disable-line react-hooks/exhaustive-deps
   return d;
+}
+
+/* ---------- microinteracciones ---------- */
+
+/** Cada vez que el modo foco entra o sale (no al abrir la ventana): `n` cambia para volver a disparar la animación. */
+export function useFocusEdge(snap: Snapshot): { edge: 'enter' | 'exit'; n: number } | null {
+  const prev = useRef<boolean | undefined>(undefined), [ev, setEv] = useState<{ edge: 'enter' | 'exit'; n: number } | null>(null);
+  useEffect(() => {
+    if (snap === EMPTY) return;   // todavía no llega el estado real
+    const e = focusEdge(prev.current, snap.focus); prev.current = snap.focus;
+    if (e) setEv(x => ({ edge: e, n: (x?.n ?? 0) + 1 }));
+  }, [snap]);
+  return ev;
+}
+
+/** Destello suave de una fila cuando su sesión termina o pide permiso (clase .flash de ui.css). */
+export function useFlash<T extends HTMLElement>(state: SessionState) {
+  const ref = useRef<T>(null), prev = useRef<SessionState | undefined>(undefined);
+  useEffect(() => {
+    const c = flashColor(prev.current, state), el = ref.current; prev.current = state;
+    if (!c || !el) return;
+    el.style.setProperty('--flash', c); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+  }, [state]);
+  return ref;
+}
+
+/** Resaltado que se desliza al elemento activo (`selector`) dentro de un contenedor `.hl` (ui.css). */
+export function useHighlight(ref: RefObject<HTMLElement>, selector: string, deps: unknown[]) {
+  useLayoutEffect(() => {
+    const box = ref.current; if (!box) return;
+    const place = () => {
+      const el = box.querySelector<HTMLElement>(selector);
+      if (!el) { box.removeAttribute('data-hl'); return; }
+      box.style.setProperty('--hl-x', `${el.offsetLeft}px`); box.style.setProperty('--hl-y', `${el.offsetTop}px`);
+      box.style.setProperty('--hl-w', `${el.offsetWidth}px`); box.style.setProperty('--hl-h', `${el.offsetHeight}px`);
+      requestAnimationFrame(() => box.setAttribute('data-hl', ''));   // la primera vez aparece en su lugar, sin viajar
+    };
+    place();
+    window.addEventListener('resize', place);
+    return () => window.removeEventListener('resize', place);
+  }, deps); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
+/** Cifra que cuenta desde 0 la primera vez que aparece; después sigue al valor sin animar. */
+export function useCountUp(to: number, ms = 700): number {
+  const done = useRef(false), [v, set] = useState(() => reduceMotion() ? to : 0);
+  useEffect(() => {
+    if (done.current || reduceMotion()) { set(to); return; }
+    if (!to) return;   // espera a que llegue el dato real
+    done.current = true;
+    const t0 = performance.now(); let raf = 0;
+    const step = (t: number) => { const k = (t - t0) / ms; set(countAt(k, to)); if (k < 1) raf = requestAnimationFrame(step); };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [to, ms]);
+  return v;
 }

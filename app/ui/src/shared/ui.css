@@ -44,3 +44,14 @@
 .spin { animation: spin 1.4s linear infinite }
 @keyframes spin { to { transform: rotate(360deg) } }
 @media (prefers-reduced-motion: reduce) { .spin { animation: none } .sw, .sw::after { transition: none } }
+
+/* ---------- microinteracciones ---------- */
+/* destello de una fila que cambia de estado (useFlash) */
+.flash { animation: flash .9s ease-out }
+@keyframes flash { from { background-color: color-mix(in srgb, var(--flash) 16%, transparent) } }
+/* resaltado que se desliza al elemento activo (useHighlight); los hijos van encima */
+.hl { position: relative }
+.hl > * { position: relative; z-index: 1 }
+.hl::before { content: ""; position: absolute; left: 0; top: 0; z-index: 0; width: var(--hl-w, 0); height: var(--hl-h, 0); transform: translate(var(--hl-x, 0), var(--hl-y, 0)); border-radius: 7px; background: var(--sel); opacity: 0; pointer-events: none }
+.hl[data-hl]::before { opacity: 1; transition: transform .34s var(--e-out), width .34s var(--e-out), height .34s var(--e-out), opacity .2s }
+@media (prefers-reduced-motion: reduce) { .hl[data-hl]::before { transition: opacity .12s } }

@@ -1,6 +1,6 @@
 import type { Pending, Session, SessionState, Snapshot } from './bridge';
 // Colores de los eventos en la versión oscura (spec §2.2). La isla siempre es oscura; los pulsos toman los suyos de config.
-export const COLORS = { start: '#eaedea', permission: '#e3b05c', done: '#8fc3a0', idle: '#9ea39e', error: '#e08a7e', subagent: '#8fb0d6', focus: '#9ea39e', calm: '#7d827d' } as const;
+export const COLORS = { start: '#eaedea', permission: '#e3b05c', done: '#8fc3a0', idle: '#9ea39e', error: '#e08a7e', subagent: '#8fb0d6', focus: '#b4a6d9', calm: '#7d827d' } as const;
 export const LBL: Record<SessionState, string> = { Idle: 'en calma', Done: 'terminó', Working: 'trabajando', IdleWait: 'te espera', Waiting: 'pide permiso' };
 export const ICON: Record<SessionState, string> = { Idle: 'hourglass', Done: 'check', Working: 'progress_activity', IdleWait: 'hourglass', Waiting: 'front_hand' };
 export const stateColor = (s: SessionState) => ({ Idle: '#9ea39e', Done: COLORS.done, Working: '#eaedea', IdleWait: '#9ea39e', Waiting: COLORS.permission })[s];

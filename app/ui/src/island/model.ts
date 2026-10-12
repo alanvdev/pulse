@@ -15,7 +15,7 @@ export function toNotice(fx: Fx): Notice | null {
     case 'notice': return head === 'plan'
       ? N({ icon: 'assignment', color: COLORS.idle, who: fx.project, what: 'terminó un plan, revísalo en la terminal', life: 4500 })
       : N({ icon: 'help', color: COLORS.idle, who: fx.project, what: `te pregunta en la terminal: ${tail}`, life: 4500 });
-    case 'release': return N({ icon: 'dark_mode', color: COLORS.idle, what: 'Mientras estabas en foco', items: JSON.parse(fx.text) as Deferred[], life: 4000 });
+    case 'release': return N({ icon: 'dark_mode', color: COLORS.focus, what: 'Mientras estabas en foco', items: JSON.parse(fx.text) as Deferred[], life: 4000 });
     case 'resolved':
       switch (head) {
         case 'allow': return N({ icon: 'check', color: COLORS.done, what: 'Permitido', extra: tail, life: 1300 });
