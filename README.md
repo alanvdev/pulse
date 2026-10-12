@@ -1,19 +1,32 @@
 <div align="center">
 
-<img src="assets/icon.png" width="72" alt="">
+<img src="assets/icon.png" width="128" alt="Logo de Pulse">
 
-# Pulse
+<h1>Pulse</h1>
 
-**Lo que hace Claude Code, fuera de la terminal.**
+<p><b>Lo que hace Claude Code, fuera de la terminal.</b></p>
 
-Te avisa cuando una sesión termina o se detiene a pedir permiso,
-y te deja responder desde donde estés.
+<p>Te avisa cuando una sesión termina o se detiene a pedir permiso,<br>y te deja responder desde donde estés.</p>
 
-Windows · Tauri 2 · Rust · TypeScript
+<p>
+  <img src="https://img.shields.io/badge/Windows-11-111311?style=flat-square&logo=windows11&logoColor=eaedea" alt="Windows 11">
+  <img src="https://img.shields.io/badge/Tauri-2-111311?style=flat-square&logo=tauri&logoColor=eaedea" alt="Tauri 2">
+  <img src="https://img.shields.io/badge/Rust-111311?style=flat-square&logo=rust&logoColor=eaedea" alt="Rust">
+  <img src="https://img.shields.io/badge/React-18-111311?style=flat-square&logo=react&logoColor=eaedea" alt="React 18">
+  <img src="https://img.shields.io/badge/para-Claude%20Code-111311?style=flat-square" alt="Para Claude Code">
+</p>
+
+<p>
+  <a href="#por-qué-existe">Por qué existe</a> ·
+  <a href="#cómo-funciona">Cómo funciona</a> ·
+  <a href="#lo-que-cumple">Lo que cumple</a> ·
+  <a href="#instalar">Instalar</a> ·
+  <a href="#desarrollo">Desarrollo</a>
+</p>
 
 </div>
 
----
+<br>
 
 ## Por qué existe
 
