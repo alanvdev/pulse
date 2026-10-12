@@ -1,0 +1,46 @@
+/* Controles compartidos de Grafito (spec §2.5 y §9). Los usan la isla y las ventanas React. */
+/* Botones "solo texto": secundario sin fondo en una barra, con línea si va suelto; principal con fondo sel. */
+.btn { position: relative; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 28px; padding: 0 9px; border-radius: 6px; border: 0; background: transparent; color: var(--tx2); font-size: 12.5px; white-space: nowrap; transition: background .15s, color .15s }
+.btn:hover { background: var(--sel); color: var(--tx) }
+.btn.pri { background: var(--sel); color: var(--tx); font-weight: 600 }
+.btn.pri:hover { background: var(--line2) }
+.btn.solo { border: 1px solid var(--line) }
+.btn.md { height: 32px; font-size: 13px }
+.btn.lg { height: 36px; padding: 0 14px; font-size: 13px }
+.btn:disabled { opacity: .45; pointer-events: none }
+.btn > * { position: relative }
+/* Mantener presionado: línea ámbar de 2 px que avanza con --hold (0 a 1) */
+.btn::after { content: ""; position: absolute; left: 0; bottom: 0; width: 100%; height: 2px; background: var(--perm); transform-origin: left; transform: scaleX(var(--hold, 0)) }
+.kbd { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 4px; background: var(--key); border: 1px solid var(--line); font: 400 10.5px/1 var(--f-ui); color: var(--tx3) }
+.keys { display: inline-flex; gap: 3px }
+/* Interruptor 38×22 (sm 28×16). Funciona como <input type=checkbox> o como <span class="sw on"> dentro de un botón. */
+.sw { appearance: none; -webkit-appearance: none; position: relative; display: inline-block; flex: none; width: 38px; height: 22px; margin: 0; border-radius: 11px; background: var(--off); cursor: pointer; transition: background .2s }
+.sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: var(--knob); transition: transform .22s var(--e-out), background .2s }
+.sw:checked, .sw.on { background: var(--tx) }
+.sw:checked::after, .sw.on::after { transform: translateX(16px); background: var(--surface) }
+.sw.sm { width: 28px; height: 16px; border-radius: 8px }
+.sw.sm::after { top: 2px; left: 2px; width: 12px; height: 12px }
+.sw.sm:checked::after, .sw.sm.on::after { transform: translateX(12px) }
+.seg { display: inline-flex; flex-wrap: wrap; padding: 3px; gap: 2px; border-radius: 8px; background: var(--well); border: 1px solid var(--line) }
+.seg button { height: 28px; padding: 0 11px; border: 0; border-radius: 6px; background: transparent; color: var(--tx3); font-size: 12.5px; white-space: nowrap }
+.seg button:hover { color: var(--tx2) }
+.seg button[aria-pressed="true"] { background: var(--sel); color: var(--tx) }
+.sl { display: inline-flex; align-items: center; gap: 12px }
+.sl input { -webkit-appearance: none; appearance: none; width: 170px; height: 6px; margin: 0; border-radius: 3px; background: linear-gradient(90deg, var(--tx) var(--v), var(--off) var(--v)) }
+.sl input::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: var(--tx); border: 3px solid var(--raised) }
+.sl output { min-width: 40px; text-align: right; font-size: 12.5px; color: var(--tx2); font-variant-numeric: tabular-nums }
+.swc { width: 24px; height: 24px; padding: 0; border-radius: 6px; border: 0; box-shadow: inset 0 0 0 1px rgba(0,0,0,.18) }
+.swc[aria-checked="true"] { box-shadow: 0 0 0 2px var(--raised), 0 0 0 3.5px var(--tx) }
+.chip { display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 10px; border-radius: 6px; border: 1px solid var(--line); background: transparent; color: var(--tx3); font-size: 12px }
+.chip:hover { color: var(--tx2) }
+.chip[aria-pressed="true"] { color: var(--tx); background: var(--sel); border-color: var(--line2) }
+.chip .ms { font-size: 14px }
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; flex: none }
+.dot.fill { background: var(--tx) }
+.dot.halo { background: var(--perm); box-shadow: 0 0 0 3px var(--permring) }
+.dot.done { border: 1.5px solid var(--done) }
+.dot.calm { border: 1.5px solid var(--tx3) }
+.surf { background: var(--surface); box-shadow: inset 0 0 0 1px var(--line), inset 0 1px 0 var(--hi), 0 24px 48px -12px var(--shadow) }
+.spin { animation: spin 1.4s linear infinite }
+@keyframes spin { to { transform: rotate(360deg) } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none } .sw, .sw::after { transition: none } }

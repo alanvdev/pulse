@@ -1,6 +1,7 @@
 // Hooks de React sobre el puente con el núcleo (solo Bolsillo y Mosaico).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { dailySummary, getConfig, getSnapshot, onConfig, onState, setConfig, type Config, type DaySummary, type Snapshot } from './bridge';
+import { followTheme } from './theme';
 
 const EMPTY: Snapshot = { sessions: [], pending: [], feed: [], focus: false, focus_auto: false, deferred: [] };
 
@@ -41,4 +42,10 @@ export function useHold(onDone: () => void) {
   const begin = () => { if (raf.current) return; t0.current = performance.now(); const step = (t: number) => { const x = Math.min(1, (t - t0.current) / 900); setP(x); if (x >= 1) { raf.current = 0; setP(0); onDone(); return; } raf.current = requestAnimationFrame(step); }; raf.current = requestAnimationFrame(step); };
   const end = () => { if (!raf.current) return; cancelAnimationFrame(raf.current); raf.current = 0; setP(0); };
   return { p, begin, end };
+}
+
+/** Aplica `appearance.theme` a esta ventana y lo sigue mientras cambie. */
+export function useTheme(cfg: Config | null) {
+  const pref = cfg?.appearance?.theme;
+  useEffect(() => followTheme(pref), [pref]);
 }

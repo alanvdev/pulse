@@ -1,4 +1,5 @@
 import '../shared/base.css';
+import '../shared/ui.css';
 import './panel.css';
 import { createRoot } from 'react-dom/client';
 import { SP_MOVE } from '../shared/motion';

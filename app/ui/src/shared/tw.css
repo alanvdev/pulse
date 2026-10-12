@@ -1,18 +1,15 @@
-/* Tailwind para Bolsillo y Mosaico, con los tokens de los artboards. */
+/* Tailwind para Bolsillo, flyout y Mosaico, leyendo los tokens de base.css (cambian con data-theme). */
 @import "tailwindcss";
 
-@theme {
-  --font-sans: "Geist", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
-  --font-mono: "Geist Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
-  --color-work: #e8eefc;
-  --color-perm: #ffb02e;
-  --color-done: #4fe0a0;
-  --color-idle: #b6c0d4;
-  --color-err: #ff5a52;
-  --color-sub: #5cc8ff;
-  --color-moon: #b9a2ff;
-  --color-acc: #7aa7ff;
-  --color-muted: #a7adb6;
-  --color-faint: #8a919b;
+@theme inline {
+  --font-sans: var(--f-ui);
+  --font-mono: var(--f-mono);
+  --color-side: var(--side); --color-bg: var(--bg); --color-surface: var(--surface); --color-raised: var(--raised);
+  --color-barbg: var(--barbg); --color-well: var(--well); --color-line: var(--line); --color-line2: var(--line2);
+  --color-sel: var(--sel); --color-tx: var(--tx); --color-tx2: var(--tx2); --color-tx3: var(--tx3);
+  --color-perm: var(--perm); --color-done: var(--done); --color-err: var(--err); --color-sub: var(--sub);
+  /* legado (Bolsillo y Mosaico viejos); se borran en la Task 5.3 */
+  --color-work: var(--tx); --color-idle: var(--tx2); --color-moon: var(--tx2); --color-acc: var(--tx);
+  --color-muted: var(--tx2); --color-faint: var(--tx3);
   --ease-out: cubic-bezier(.16,1,.3,1);
 }
