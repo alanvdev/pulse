@@ -1,11 +1,21 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
-const S = 1024, R1 = 300, R2 = 400, stops = [[230,238,255],[255,176,46],[79,224,160],[92,200,255],[230,238,255]];
+// Logo de Pulse (DESIGN.md): anillo con los colores apagados de Grafito sobre un azulejo grafito de esquinas redondeadas.
+// Uso: node scripts/make-icon.mjs, y luego `npx --prefix app tauri icon assets/icon.png -o app/src-tauri/icons`.
+const S = 1024, R1 = 246, R2 = 338, CORNER = S * .22, TILE = [17, 19, 17];   // --surface #111311
+const stops = [[234,237,234],[227,176,92],[143,195,160],[143,176,214],[234,237,234]];   // tx, perm, done, sub, tx
 const px = Buffer.alloc(S * S * 4);
+const clamp = v => Math.max(0, Math.min(1, v));
 for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
-  const dx = x - S / 2 + .5, dy = y - S / 2 + .5, r = Math.hypot(dx, dy), a = Math.max(0, Math.min(1, Math.min(r - R1, R2 - r) / 2 + .5));
+  const o = (y * S + x) * 4;
+  // azulejo: cuadrado redondeado con borde suavizado
+  const qx = Math.max(Math.abs(x + .5 - S / 2) - (S / 2 - CORNER), 0), qy = Math.max(Math.abs(y + .5 - S / 2) - (S / 2 - CORNER), 0);
+  const ta = clamp(CORNER - Math.hypot(qx, qy) + .5);
+  // anillo con degradado alrededor
+  const dx = x - S / 2 + .5, dy = y - S / 2 + .5, r = Math.hypot(dx, dy), a = clamp(Math.min(r - R1, R2 - r) / 2 + .5);
   const t = ((Math.atan2(dy, dx) / (2 * Math.PI)) + 1) % 1 * 4, i = Math.floor(t), f = t - i, c = stops[i].map((v, k) => Math.round(v + (stops[i + 1][k] - v) * f));
-  const o = (y * S + x) * 4; px[o] = c[0]; px[o + 1] = c[1]; px[o + 2] = c[2]; px[o + 3] = Math.round(a * 255);
+  for (let k = 0; k < 3; k++) px[o + k] = Math.round(c[k] * a + TILE[k] * (1 - a));
+  px[o + 3] = Math.round(ta * 255);
 }
 const raw = Buffer.alloc((S * 4 + 1) * S);
 for (let y = 0; y < S; y++) px.copy(raw, y * (S * 4 + 1) + 1, y * S * 4, (y + 1) * S * 4);
