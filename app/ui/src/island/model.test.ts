@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import type { Fx, Pending } from '../shared/bridge';
+import type { Config, Fx, Pending, Session, SessionState, Snapshot } from '../shared/bridge';
 import { COLORS } from '../shared/format';
-import { digitIndex, qHint, queueInfo, releaseRow, toNotice, verb } from './model';
+import { dayLine, digitIndex, qHint, queueInfo, releaseRow, sessionRows, showDots, toNotice, verb } from './model';
 
 const fx = (kind: Fx['kind'], text = '', visual = true): Fx => ({ kind, session_id: 's', project: 'pulse', slot: 0, text, visual, sound: false, monitor: 0 });
 const pend = (id: number, project: string, command: string, tool = 'Bash', kind: Pending['kind'] = 'permission'): Pending =>
@@ -57,4 +57,34 @@ describe('preguntas', () => {
     expect(qHint(true, 3, 2)).toBe('2 elegidas');
   });
   it('teclas 1 a 9', () => { expect(digitIndex('2', 3)).toBe(1); expect(digitIndex('4', 3)).toBe(-1); expect(digitIndex('0', 3)).toBe(-1); expect(digitIndex('a', 3)).toBe(-1); });
+});
+
+const ses = (id: string, state: SessionState, slot = 0, over: Partial<Session> = {}): Session => ({ id, project: id, slot, state, last: '', subagents: 0, since_ms: 0, last_event_ms: 0, actions: 0, muted_until_ms: 0, ...over });
+const snap = (sessions: Session[], pending: Pending[] = []): Snapshot => ({ sessions, pending, feed: [], focus: false, focus_auto: false, deferred: [] });
+const cfgDots = (dots: boolean) => ({ island: { dots } }) as Config;
+
+describe('puntos y resumen de Comando', () => {
+  it('orden: te necesita, te espera, trabaja, terminó, en calma; empate por llegada', () => {
+    const s = snap([ses('d', 'Done', 0), ses('w', 'Working', 1), ses('i', 'Idle', 2), ses('q', 'IdleWait', 3), ses('p', 'Waiting', 4)]);
+    expect(sessionRows(s, 0).map(r => r.id)).toEqual(['p', 'q', 'w', 'd', 'i']);
+  });
+  it('la que tiene un pendiente se marca, con punto ámbar y su pendiente', () => {
+    const p = { ...pend(7, 'api', 'npm run migrate'), session_id: 'api' };
+    const [r] = sessionRows(snap([ses('api', 'Waiting')], [p]), 0);
+    expect([r.need, r.dot, r.pendingId, r.what]).toEqual([true, 'halo', 7, 'Permiso · npm run migrate']);
+  });
+  it('qué hace cada una', () => {
+    const rows = sessionRows(snap([ses('w', 'Working', 0, { last: 'Edit orbe.ts', subagents: 2, since_ms: 0 })]), 400_000);
+    expect([rows[0].what, rows[0].mono, rows[0].dot, rows[0].state]).toEqual(['Edit orbe.ts · 2 subagentes', true, 'fill', 'Working']);
+  });
+  it('los puntos se ven si alguna trabaja o espera, y si el ajuste está encendido', () => {
+    expect(showDots(snap([ses('a', 'Working')]), cfgDots(true))).toBe(true);
+    expect(showDots(snap([ses('a', 'Working')]), cfgDots(false))).toBe(false);
+    expect(showDots(snap([ses('a', 'Done'), ses('b', 'Idle')]), cfgDots(true))).toBe(false);
+    expect(showDots(snap([ses('a', 'IdleWait')]), cfgDots(true))).toBe(true);
+  });
+  it('pie del resumen', () => {
+    expect(dayLine(null)).toBe('Hoy');
+    expect(dayLine({ sessions: [], total_work_ms: 192 * 60_000, total_waited_ms: 14 * 60_000, actions_by_hour: [] })).toBe('Hoy 3 h 12 min · te esperó 14 min');
+  });
 });

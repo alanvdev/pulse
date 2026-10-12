@@ -1,5 +1,5 @@
 import { listen } from '@tauri-apps/api/event';
-import { allowAll, answer, decide, holdQuestion, skip, getConfig, getSnapshot, islandFocus, muteSession, onConfig, onFx, onState, openDashboard, setConfig, setFocus, setIslandHitbox, type Config, type Fx, type Snapshot } from '../shared/bridge';
+import { allowAll, answer, dailySummary, decide, holdQuestion, skip, getConfig, getSnapshot, islandFocus, muteSession, onConfig, onFx, onState, openDashboard, setConfig, setFocus, setIslandHitbox, type Config, type DaySummary, type Fx, type Snapshot } from '../shared/bridge';
 import { SP_MOVE, SP_OPEN, T } from '../shared/motion';
 import { mountComando } from './comando';
 import { mountOrbe, type OrbeCtx } from './orbe';
@@ -11,6 +11,7 @@ const board = document.getElementById('board')!;
 document.documentElement.style.setProperty('--sp', SP_MOVE.e);
 let cfg: Config, snap: Snapshot;
 let notice: Notice | null = null, noticeT = 0;
+let day: DaySummary | null = null, dayAt = 0;
 type Mode = { render(): void; light(kind: string): void; destroy(): void; open?: () => void; openMenu?: () => void };
 let mode: Mode | null = null, modeName = '';
 
@@ -22,8 +23,10 @@ function hitbox(el: HTMLElement | null) {
 
 const ctx: OrbeCtx = {
   snap: () => snap, cfg: () => cfg, notice: () => notice,
+  day: () => day,
+  refreshDay: () => { if (Date.now() - dayAt < 30_000) return; dayAt = Date.now(); dailySummary().then(d => { day = d; render(); }).catch(() => {}); },
   decide: (id, allow) => { decide(id, allow); }, answer: (id, a) => { answer(id, a); }, skip: id => { skip(id); }, hold: (id, on) => { holdQuestion(id, on); }, allowAll: () => { allowAll(); }, setFocus: on => { setFocus(on); },
-  muteSession: (id, minutes) => { muteSession(id, minutes); }, openDashboard: () => { openDashboard(); },
+  muteSession: (id, minutes) => { muteSession(id, minutes); }, openDashboard: view => { openDashboard(view); },
   islandFocus: on => { islandFocus(on); }, hitbox,
   setSide: side => { cfg = { ...cfg, island: { ...cfg.island, orb_side: side } }; setConfig(cfg); },
 };

@@ -1,6 +1,6 @@
 // Lógica pura de la isla (sin DOM): avisos, cola de permisos, preguntas. Probada en model.test.ts.
-import type { Deferred, Fx, Pending } from '../shared/bridge';
-import { COLORS, dur, hhmm } from '../shared/format';
+import type { Config, DaySummary, Deferred, Fx, Pending, SessionState, Snapshot } from '../shared/bridge';
+import { COLORS, dotKind, dur, hhmm, hm, sessionWhat, type DotKind } from '../shared/format';
 
 /** Aviso breve (spec §3.4): `who` en negrita, `what` en tx2, `extra` en monoespaciada; `items` = "mientras estabas en foco". */
 export interface Notice { id: number; icon: string; color: string; who?: string; what: string; extra?: string; life: number; items?: Deferred[] }
@@ -53,3 +53,18 @@ export const qHint = (multi: boolean, optionCount: number, chosen: number) => mu
 export const digitIndex = (key: string, count: number) => { const n = Number(key); return /^[1-9]$/.test(key) && n <= Math.min(9, count) ? n - 1 : -1; };
 
 export const PAL_EMPTY = 'Nada coincide. Prueba con "foco", "silenciar" o el nombre de un proyecto.';
+
+/** Una fila del resumen de Comando (y de las tablas de sesiones). */
+export interface Row { id: string; project: string; state: SessionState; dot: DotKind; what: string; mono: boolean; since: number; need: boolean; pendingId?: number }
+const RANK: Record<SessionState, number> = { Waiting: 0, IdleWait: 1, Working: 2, Done: 3, Idle: 4 };
+/** Sesiones en orden de urgencia (la que te necesita primero) y, a igual urgencia, por orden de llegada. */
+export function sessionRows(s: Snapshot, now: number): Row[] {
+  return [...s.sessions].sort((a, b) => RANK[a.state] - RANK[b.state] || a.slot - b.slot).map(x => {
+    const p = s.pending.find(q => q.session_id === x.id), w = sessionWhat(x, p, now);
+    return { id: x.id, project: x.project, state: x.state, dot: p ? 'halo' : dotKind(x.state), what: w.text, mono: w.mono, since: x.since_ms, need: !!p, pendingId: p?.id };
+  });
+}
+/** Puntos de sesión en reposo (spec §3.1): solo con el ajuste encendido y mientras alguna trabaja o espera. */
+export const showDots = (s: Snapshot, c: Config) => c.island.dots && s.sessions.some(x => x.state === 'Working' || x.state === 'Waiting' || x.state === 'IdleWait');
+/** Pie del resumen: horas de trabajo de hoy y cuánto te esperó Claude. */
+export const dayLine = (d: DaySummary | null) => d ? `Hoy ${hm(d.total_work_ms)} · te esperó ${hm(d.total_waited_ms)}` : 'Hoy';
