@@ -51,3 +51,12 @@ export function sessionWhat(s: Session, p: Pending | undefined, now: number): { 
   if (!s.last) return { text: LBL[s.state], mono: false };
   return { text: s.last + (s.subagents ? ` · ${s.subagents} subagente${s.subagents > 1 ? 's' : ''}` : ''), mono: true };
 }
+/** Frase de 20 px de Bolsillo (spec §7). */
+export function headline(s: Snapshot): string {
+  const c = counts(s);
+  if (!c.total) return 'Sin sesiones';
+  if (c.need) return c.need === 1 ? 'Una te necesita' : `${c.need} te necesitan`;
+  if (c.working) return c.working === 1 ? 'Una trabajando' : `${c.working} trabajando`;
+  return 'Todo en calma';
+}
+export const sessionsLabel = (n: number) => n === 1 ? '1 sesión' : `${n} sesiones`;

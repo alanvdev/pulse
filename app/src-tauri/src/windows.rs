@@ -109,13 +109,13 @@ pub fn toggle_panel(app: &AppHandle) {
     if crate::now_ms() - PANEL_HIDDEN_AT.load(std::sync::atomic::Ordering::SeqCst) < 300 { return; }
     let scale = win.scale_factor().unwrap_or(1.0);
     let (_, _, r, b) = work_area();
-    let _ = win.set_position(tauri::LogicalPosition::new(r / scale - 380.0 - 12.0, b / scale - 540.0 - 12.0));
+    let _ = win.set_position(tauri::LogicalPosition::new(r / scale - 380.0 - 12.0, b / scale - 580.0 - 12.0));
     let _ = win.show(); let _ = win.set_focus();
 }
 fn create_panel(app: &AppHandle) -> tauri::Result<tauri::WebviewWindow> {
     let w = WebviewWindowBuilder::new(app, "panel", WebviewUrl::App("panel.html".into()))
         .transparent(true).decorations(false).always_on_top(true).skip_taskbar(true).resizable(false).shadow(false)
-        .inner_size(380.0, 540.0).visible(false).build()?;
+        .inner_size(380.0, 580.0).visible(false).build()?;
     let w2 = w.clone();
     w.on_window_event(move |e| if let tauri::WindowEvent::Focused(false) = e { if w2.is_visible().unwrap_or(false) { PANEL_HIDDEN_AT.store(crate::now_ms(), std::sync::atomic::Ordering::SeqCst); } let _ = w2.hide(); });
     Ok(w)

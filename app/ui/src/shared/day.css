@@ -1,0 +1,17 @@
+/* Línea de tiempo del día (artboard Mosaico, sección Hoy). */
+.tl { display: grid; gap: 14px 16px; align-items: center; font-size: 12.5px; color: var(--tx2) }
+.tl-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.tl-lane { position: relative; height: 8px; border-radius: 4px; background: var(--track) }
+.tl-lane i { position: absolute; top: 0; bottom: 0; border-radius: 4px }
+.k-w { background: var(--work) }
+.k-p { background: repeating-linear-gradient(135deg, var(--perm) 0 3px, color-mix(in srgb, var(--perm) 55%, transparent) 3px 5px) }
+.tl-lane .k-e { width: 2px; top: -3px; bottom: -3px; border-radius: 1px; background: var(--err) }
+.tl-ticks { position: relative; height: 14px; font-size: 11px; color: var(--tx3) }
+.tl-ticks span { position: absolute; top: 0; translate: -50% 0; white-space: nowrap }
+.tl-ticks span:first-child { translate: 0 0 }
+.tl-ticks span:last-child { translate: -100% 0 }
+.tl-leg { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--tx3) }
+.tl-leg i { width: 8px; height: 8px; border-radius: 50%; margin-left: 8px }
+.tl-leg i:first-child { margin-left: 0 }
+.tl-leg .k-e { background: var(--err) }
+.empty { margin: 0; font-size: 12.5px; color: var(--tx3) }

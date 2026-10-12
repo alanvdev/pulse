@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ago, clock, counts, dotKind, dur, hhmm, hm, sessionWhat, since, statusLine, topDot } from './format';
+import { ago, clock, counts, dotKind, dur, headline, hhmm, hm, sessionsLabel, sessionWhat, since, statusLine, topDot } from './format';
 import type { Pending, Session, SessionState, Snapshot } from './bridge';
 describe('formatos', () => {
   it('tiempo transcurrido en español', () => { expect(ago(4_000)).toBe('4 s'); expect(ago(125_000)).toBe('2 min 05 s'); expect(ago(3_900_000)).toBe('1 h 05 min'); });
@@ -39,4 +39,15 @@ describe('qué hace una sesión', () => {
   it('trabajando, con subagentes', () => expect(sessionWhat(s({ last: 'Edit orbe.ts', subagents: 2 }), undefined, 0)).toEqual({ text: 'Edit orbe.ts · 2 subagentes', mono: true }));
   it('terminó', () => expect(sessionWhat(s({ state: 'Done', since_ms: 0 }), undefined, 190_000)).toEqual({ text: 'Terminó hace 3 min', mono: false }));
   it('sin última acción', () => expect(sessionWhat(s({ state: 'IdleWait' }), undefined, 0)).toEqual({ text: 'te espera', mono: false }));
+});
+describe('cabecera de Bolsillo', () => {
+  it('frase de estado', () => {
+    expect(headline(snap())).toBe('Sin sesiones');
+    expect(headline(snap('Waiting', 'Working'))).toBe('Una te necesita');
+    expect(headline(snap('Waiting', 'IdleWait'))).toBe('2 te necesitan');
+    expect(headline(snap('Working'))).toBe('Una trabajando');
+    expect(headline(snap('Working', 'Working', 'Done'))).toBe('2 trabajando');
+    expect(headline(snap('Done'))).toBe('Todo en calma');
+  });
+  it('número de sesiones', () => { expect(sessionsLabel(1)).toBe('1 sesión'); expect(sessionsLabel(3)).toBe('3 sesiones'); });
 });
