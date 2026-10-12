@@ -25,7 +25,7 @@ html, body, #root { height: 100%; background: transparent }
 .bp-foot { display: flex; align-items: center; gap: 4px; height: 44px; padding: 0 8px; border-top: 1px solid var(--line); background: var(--barbg) }
 .tab { transition: color .15s, transform .12s var(--e-out); height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--tx3); font-size: 12px }
 .tab:hover { color: var(--tx2) }
-.tab[aria-selected="true"] { background: var(--sel); color: var(--tx) }
+.tab[aria-selected="true"] { color: var(--tx) }   /* el fondo lo pone el resaltado que se desliza (.hl) */
 .bp-open { margin-left: auto; font-size: 12px }
 .qs { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 16px; align-items: center; min-height: 52px; padding: 8px 2px; font-size: 13px }
 .qs + .qs { border-top: 1px solid var(--line) }

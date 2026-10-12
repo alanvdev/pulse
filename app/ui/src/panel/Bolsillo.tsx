@@ -1,9 +1,10 @@
 // Bolsillo: panel de la bandeja (spec §7, artboard Bolsillo). Pestañas Ahora, Hoy y Ajustes rápidos.
-import { useEffect, useRef, useState, type KeyboardEvent as RKeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as RKeyboardEvent } from 'react';
 import { decide, openDashboard, setFocus, skip, togglePanel, type Config, type DaySummary, type Pending, type Snapshot } from '../shared/bridge';
 import { clock, headline, hm, sessionsLabel } from '../shared/format';
 import { reduceMotion } from '../shared/motion';
-import { useConfig, useDaySummary, useFocusEdge, useFocusHalo, useHold, useNow, useResolved, useSnapshot, useTheme, type Resolved } from '../shared/react';
+import { useConfig, useDaySummary, useFlash, useFocusEdge, useFocusHalo, useHighlight, useHold, useNow, useResolved, useSnapshot, useTheme, type Resolved } from '../shared/react';
+import type { Row } from '../island/model';
 import { isUrgent } from '../shared/micro';
 import { Button, Chip, Dot, Icon, Keys, ResolvedNote, Seg, Slider, StateIcon, Switch } from '../shared/ui';
 import { Timeline, TimelineLegend } from '../shared/timeline';
@@ -37,6 +38,16 @@ function PendingBlock({ p, cfg, now, hold }: { p: Pending; cfg: Config; now: num
   </div>;
 }
 
+/** Fila de sesión: entra escalonada y destella cuando termina o pide permiso. */
+function SessionRow({ r, i, now }: { r: Row; i: number; now: number }) {
+  const st = r.pendingId ? 'Waiting' : r.state, ref = useFlash<HTMLDivElement>(st);
+  return <div ref={ref} className="s row-in" style={{ '--i': i } as CSSProperties}>
+    <StateIcon s={st} />
+    <span className="min-w-0"><span className="s-p">{r.project}</span><span className={`s-w ${r.mono ? 'mono' : ''}`}>{r.what}</span></span>
+    <span className="s-t mono">{r.state === 'Done' ? '' : clock(now - r.since)}</span>
+  </div>;
+}
+
 function Ahora({ snap, cfg, save, now, hold, resolved }: { snap: Snapshot; cfg: Config; save: (c: Config) => void; now: number; hold: Hold; resolved: Resolved | null }) {
   const top = snap.pending[0], rows = sessionRows(snap, now).filter(r => !top || r.pendingId !== top.id);
   const flip = <K extends 'sounds' | 'pulses' | 'keyboard'>(k: K) => save({ ...cfg, [k]: { ...cfg[k], enabled: !cfg[k].enabled } });
@@ -44,11 +55,7 @@ function Ahora({ snap, cfg, save, now, hold, resolved }: { snap: Snapshot; cfg: 
     <header><div className="bp-n">{sessionsLabel(snap.sessions.length)}{snap.focus && <> · <span className="fz"><Icon name="dark_mode" />{focusLine(snap)}</span></>}</div><div className="bp-h">{headline(snap)}</div></header>
     {resolved && <ResolvedNote key={resolved.n} {...resolved} />}
     {top && <PendingBlock key={top.id} p={top} cfg={cfg} now={now} hold={hold} />}
-    {snap.sessions.length ? <div>{rows.map(r => <div key={r.id} className="s">
-      <StateIcon s={r.pendingId ? 'Waiting' : r.state} />
-      <span className="min-w-0"><span className="s-p">{r.project}</span><span className={`s-w ${r.mono ? 'mono' : ''}`}>{r.what}</span></span>
-      <span className="s-t mono">{r.state === 'Done' ? '' : clock(now - r.since)}</span>
-    </div>)}</div> : <p className="empty">No hay sesiones de Claude Code abiertas.</p>}
+    {snap.sessions.length ? <div>{rows.map((r, i) => <SessionRow key={r.id} r={r} i={i} now={now} />)}</div> : <p className="empty">No hay sesiones de Claude Code abiertas.</p>}
     <div className="chips">
       <Chip icon="dark_mode" tone="focus" on={snap.focus} onClick={() => setFocus(!snap.focus)}>Foco</Chip>
       <Chip icon="volume_up" iconOff="volume_off" on={cfg.sounds.enabled} onClick={() => flip('sounds')}>Sonidos</Chip>
@@ -90,7 +97,8 @@ export function Bolsillo() {
   const hold = useHold(() => decide(holdId.current, true)), resolved = useResolved();
   useEffect(() => { hold.end(); }, [top?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const beginHold = () => { if (top) { holdId.current = top.id; hold.begin(); } };
-  const bp = useRef<HTMLElement>(null), view = useRef<HTMLDivElement>(null);
+  const bp = useRef<HTMLElement>(null), view = useRef<HTMLDivElement>(null), tabs = useRef<HTMLDivElement>(null);
+  useHighlight(tabs, '[aria-selected="true"]', [tab, cfg === null]);
   useFocusHalo(bp, useFocusEdge(snap));
 
   // aparece desde la bandeja al mostrarse
@@ -126,7 +134,7 @@ export function Bolsillo() {
       {tab === 'ajustes' && <Rapidos cfg={cfg} save={save} />}
     </div>
     <div className="bp-foot">
-      <div role="tablist" aria-label="Vista" className="flex gap-1">{TABS.map(([k, l]) => <button key={k} type="button" role="tab" className="tab" aria-selected={tab === k} onClick={() => pick(k)}>{l}</button>)}</div>
+      <div ref={tabs} role="tablist" aria-label="Vista" className="flex gap-1 hl">{TABS.map(([k, l]) => <button key={k} type="button" role="tab" className="tab" aria-selected={tab === k} onClick={() => pick(k)}>{l}</button>)}</div>
       <button type="button" className="btn bp-open" onClick={() => openDashboard()}><span>Abrir Pulse</span><Keys k={['Ctrl', 'O']} /></button>
     </div>
   </section>;

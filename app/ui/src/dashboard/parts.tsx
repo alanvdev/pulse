@@ -1,8 +1,9 @@
 // Piezas de Mosaico: bloque "Necesita tu respuesta" y tabla de sesiones (filas de 48 px).
-import { useEffect, type KeyboardEvent as RKeyboardEvent, type ReactNode } from 'react';
+import { useEffect, type CSSProperties, type KeyboardEvent as RKeyboardEvent, type ReactNode } from 'react';
 import { decide, skip, type Config, type Pending, type Session, type Snapshot } from '../shared/bridge';
 import { clock } from '../shared/format';
-import { useHold } from '../shared/react';
+import { useFlash, useHold } from '../shared/react';
+import type { Row } from '../island/model';
 import { isUrgent } from '../shared/micro';
 import { Button, Icon, StateIcon } from '../shared/ui';
 import { sessionRows, verb } from '../island/model';
@@ -47,14 +48,20 @@ export function SessionTable({ snap, cfg, now, onOpen, expanded, renderDetail }:
   const rows = sessionRows(snap, now);
   if (!rows.length) return <p className="empty">No hay sesiones de Claude Code abiertas.</p>;
   const keys = cfg.keyboard.enabled && cfg.keyboard.session_keys;
-  return <div className="mz-table">{rows.map(r => { const s = snap.sessions.find(x => x.id === r.id)!, open = expanded === r.id;
-    return <div key={r.id} className="mz-rw" data-sid={r.id}>
-      <button type="button" className="mz-row" aria-expanded={renderDetail ? open : undefined} onClick={() => onOpen(r.id)}>
-        <StateIcon s={r.pendingId ? 'Waiting' : r.state} /><span className="mz-p">{r.project}</span>
-        <span className={`mz-w ${r.mono ? 'mono' : ''}`}>{r.what}</span>
-        <span className="mono mz-t">{r.state === 'Done' ? '' : clock(now - r.since)}</span>
-        {keys && s.slot < 3 ? <kbd className="kbd">F{s.slot + 1}</kbd> : <span />}
-      </button>
-      {renderDetail && open && renderDetail(s)}
-    </div>; })}</div>;
+  return <div className="mz-table">{rows.map((r, i) => <TableRow key={r.id} r={r} i={i} s={snap.sessions.find(x => x.id === r.id)!} now={now} keys={keys}
+    open={expanded === r.id} expandable={!!renderDetail} onOpen={onOpen} detail={renderDetail} />)}</div>;
+}
+
+/** Fila de 48 px: entra escalonada y destella cuando la sesión termina o pide permiso. */
+function TableRow({ r, i, s, now, keys, open, expandable, onOpen, detail }: { r: Row; i: number; s: Session; now: number; keys: boolean; open: boolean; expandable: boolean; onOpen: (id: string) => void; detail?: (s: Session) => ReactNode }) {
+  const st = r.pendingId ? 'Waiting' : r.state, ref = useFlash<HTMLDivElement>(st);
+  return <div ref={ref} className="mz-rw row-in" data-sid={r.id} style={{ '--i': i } as CSSProperties}>
+    <button type="button" className="mz-row" aria-expanded={expandable ? open : undefined} onClick={() => onOpen(r.id)}>
+      <StateIcon s={st} /><span className="mz-p">{r.project}</span>
+      <span className={`mz-w ${r.mono ? 'mono' : ''}`}>{r.what}</span>
+      <span className="mono mz-t">{r.state === 'Done' ? '' : clock(now - r.since)}</span>
+      {keys && s.slot < 3 ? <kbd className="kbd">F{s.slot + 1}</kbd> : <span />}
+    </button>
+    {detail && open && detail(s)}
+  </div>;
 }

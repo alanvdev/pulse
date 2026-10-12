@@ -115,3 +115,13 @@
 .urgent { display: inline-block; color: var(--perm) !important; animation: urgent 1s ease-in-out infinite }
 @keyframes urgent { 0%, 100% { transform: scale(1) } 15% { transform: scale(1.2) } 32% { transform: scale(1) } }
 @media (prefers-reduced-motion: reduce) { .fold { animation-duration: .12s; animation-delay: .35s } .draw-in, .resolved, .urgent { animation: none } }
+
+/* ---------- listas y navegación ---------- */
+/* filas que entran escalonadas (--i = posición) */
+.row-in { animation: rowIn .32s var(--e-out) calc(var(--i, 0) * 30ms) backwards }
+@keyframes rowIn { from { opacity: 0; transform: translateY(4px) } }
+/* cambio de pantalla con fundido */
+.screen-in { animation: screenIn .28s var(--e-out) }
+@keyframes screenIn { from { opacity: 0; transform: translateY(6px) } }
+@media (prefers-reduced-motion: reduce) { .row-in { animation: none } .screen-in { animation: fadeOnly .12s } }
+@keyframes fadeOnly { from { opacity: 0 } }

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Config, PulseCfg } from '../../shared/bridge';
 import { reduceMotion } from '../../shared/motion';
 import { Icon, MultiSeg, Seg, Slider, Swatches, Switch } from '../../shared/ui';
+import { useHighlight } from '../../shared/react';
 import { EVENTS, FINISH, finishOf, PALETTE, seconds, SHAPES, silentLine } from '../settings';
 
 const SECTIONS: [string, string, string][] = [['isla', 'wb_iridescent', 'Isla'], ['pulsos', 'blur_on', 'Pulsos'], ['sonidos', 'volume_up', 'Sonidos'], ['foco', 'dark_mode', 'Modo foco'], ['teclado', 'keyboard', 'Teclado'], ['apariencia', 'contrast', 'Apariencia']];
@@ -18,7 +19,8 @@ function Section({ id, title, children }: { id: string; title: string; children:
 
 export function Ajustes({ cfg, save, section, back }: { cfg: Config; save: (c: Config) => void; section?: string; back: () => void }) {
   const [ev, setEv] = useState('permission'), [detail, setDetail] = useState(false), [cur, setCur] = useState(section ?? 'isla');
-  const main = useRef<HTMLElement>(null);
+  const main = useRef<HTMLElement>(null), nav = useRef<HTMLElement>(null);
+  useHighlight(nav, 'a[aria-current]', [cur]);
   const set = <K extends keyof Config>(k: K, v: Partial<Config[K]>) => save({ ...cfg, [k]: { ...cfg[k], ...v } });
   const pc = cfg.pulses.events[ev], evName = EVENTS.find(([k]) => k === ev)?.[1] ?? ev;
   const setPc = (v: Partial<PulseCfg>) => set('pulses', { events: { ...cfg.pulses.events, [ev]: { ...pc, ...v } } });
@@ -40,11 +42,11 @@ export function Ajustes({ cfg, save, section, back }: { cfg: Config; save: (c: C
   }, []);
 
   return <div className="mz">
-    <nav className="mz-nav" aria-label="Ajustes">
+    <nav ref={nav} className="mz-nav hl" aria-label="Ajustes">
       <a href="#inicio" className="aj-back" onClick={e => { e.preventDefault(); back(); }}><Icon name="arrow_back" />Volver<small /></a>
       {SECTIONS.map(([id, ic, l]) => <a key={id} href={`#ajustes/${id}`} aria-current={cur === id ? 'location' : undefined} onClick={e => { e.preventDefault(); go(id); }}><Icon name={ic} />{l}<small /></a>)}
     </nav>
-    <main ref={main} className="mz-main surf aj">
+    <main ref={main} className="mz-main surf aj screen-in">
       <div className="aj-col">
         <h1>Ajustes</h1>
 

@@ -13,7 +13,7 @@ body { user-select: none }
 .mz-nav a { display: grid; grid-template-columns: 18px minmax(0,1fr) auto; gap: 10px; align-items: center; height: 32px; padding: 0 10px; border-radius: 7px; color: var(--tx2); text-decoration: none; font-size: 13px }
 .mz-nav a:hover { color: var(--tx) }
 .mz-nav a .ms { font-size: 18px; color: var(--tx3) }
-.mz-nav a[aria-current] { background: var(--sel); color: var(--tx) }
+.mz-nav a[aria-current] { color: var(--tx) }   /* el fondo lo pone el resaltado que se desliza (.hl) */
 .mz-nav a[aria-current] .ms { color: var(--tx) }
 .mz-nav a small { font-size: 11.5px; color: var(--tx3) }
 .mz-main { flex: 1; min-width: 0; margin: 10px 10px 10px 0; border-radius: 22px; overflow: auto; padding: 26px 30px 30px; display: flex; flex-direction: column; gap: 26px }
@@ -100,3 +100,4 @@ body { user-select: none }
 @media (max-width: 900px) { .aj-r { grid-template-columns: 1fr; gap: 10px } }
 .mz-s .fold { --fold-gap: -10px }
 .mz-s .resolved { padding: 18px 20px; border-radius: 20px; font-size: 14px }
+.mz-screen { display: flex; flex-direction: column; gap: 26px }
