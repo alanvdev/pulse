@@ -59,7 +59,7 @@ function Ahora({ snap, cfg, save, now, hold }: { snap: Snapshot; cfg: Config; sa
 function Hoy({ day, now }: { day: DaySummary | null; now: number }) {
   return <>
     <header><div className="bp-n">Hoy</div><div className="bp-h">{day ? hm(day.total_work_ms) : '—'}</div><div className="bp-n">de trabajo de Claude · te esperó {day ? hm(day.total_waited_ms) : '—'}</div></header>
-    <Timeline day={day} now={now} label={96} minGap={0.2} />
+    <Timeline day={day} now={now} label={96} minGap={0.2} max={5} />
     <TimelineLegend />
   </>;
 }

@@ -6,7 +6,9 @@ pub struct SessionDay { pub project: String, pub work_ms: i64, pub waited_ms: i6
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct DaySummary { pub sessions: Vec<SessionDay>, pub total_work_ms: i64, pub total_waited_ms: i64, pub actions_by_hour: [u32; 24] }
 
-#[derive(Default)] struct Open { work: Option<i64>, wait: Option<i64> }
+#[derive(Default)] struct Open { work: Option<i64>, wait: Option<i64>, last: i64 }
+/// Una sesión sin eventos por más de esto ya no está trabajando ni esperando: lo abierto se cierra en su último evento.
+const STALE_MS: i64 = 15 * 60_000;
 
 pub fn summarize(lines: impl Iterator<Item = String>, day_start_ms: i64, now_ms: i64) -> DaySummary {
     let span = (now_ms - day_start_ms).max(1) as f64;
@@ -18,6 +20,7 @@ pub fn summarize(lines: impl Iterator<Item = String>, day_start_ms: i64, now_ms:
         let (Some(sid), Some(at), Some(kind)) = (v["session_id"].as_str(), v["at_ms"].as_i64(), v["event"]["kind"].as_str()) else { continue };
         if at < day_start_ms || at > now_ms { continue; }
         let (d, o) = days.entry(sid.to_string()).or_default();
+        o.last = o.last.max(at);
         if d.project.is_empty() { d.project = v["project"].as_str().unwrap_or("sesión").to_string(); }
         let close_wait = |d: &mut SessionDay, o: &mut Open, t: i64| if let Some(w) = o.wait.take() { d.waited_ms += t - w; d.max_wait_ms = d.max_wait_ms.max(t - w); d.lanes.push((frac(w), frac(t), 'p')); };
         match kind {
@@ -31,12 +34,23 @@ pub fn summarize(lines: impl Iterator<Item = String>, day_start_ms: i64, now_ms:
             _ => {}
         }
     }
+    // lo que quedó abierto llega hasta ahora si la sesión sigue viva; si no, hasta su último evento
+    let mut projects: BTreeMap<String, (SessionDay, i64)> = BTreeMap::new();
     for (_, (mut d, mut o)) in days {
-        if let Some(w) = o.wait.take() { d.waited_ms += now_ms - w; d.max_wait_ms = d.max_wait_ms.max(now_ms - w); d.lanes.push((frac(w), 1.0, 'p')); }
-        if let Some(w) = o.work.take() { d.work_ms += now_ms - w; d.lanes.push((frac(w), 1.0, 'w')); }
+        let end = if now_ms - o.last > STALE_MS { o.last } else { now_ms };
+        if let Some(w) = o.wait.take() { d.waited_ms += end - w; d.max_wait_ms = d.max_wait_ms.max(end - w); d.lanes.push((frac(w), frac(end), 'p')); }
+        if let Some(w) = o.work.take() { d.work_ms += end - w; d.lanes.push((frac(w), frac(end), 'w')); }
         out.total_work_ms += d.work_ms; out.total_waited_ms += d.waited_ms;
-        out.sessions.push(d);
+        if d.lanes.is_empty() { continue; }   // solo se abrió: no hay nada que dibujar
+        // una fila por proyecto (spec §8): las sesiones del mismo proyecto se juntan
+        let (p, last) = projects.entry(d.project.clone()).or_insert_with(|| (SessionDay { project: d.project.clone(), ..Default::default() }, 0));
+        p.work_ms += d.work_ms; p.waited_ms += d.waited_ms; p.max_wait_ms = p.max_wait_ms.max(d.max_wait_ms);
+        p.perms += d.perms; p.errors += d.errors; p.subagents += d.subagents; p.actions += d.actions; p.lanes.extend(d.lanes);
+        *last = (*last).max(o.last);
     }
+    let mut rows: Vec<(SessionDay, i64)> = projects.into_values().collect();
+    rows.sort_by(|a, b| b.1.cmp(&a.1));   // el más reciente arriba
+    out.sessions = rows.into_iter().map(|(d, _)| d).collect();
     out
 }
 
@@ -84,6 +98,23 @@ mod tests {
         let lines = vec![format!(r#"{{"v":1,"session_id":"b","project":"p-b","cwd":"","at_ms":{},"event":{{"kind":"start","prompt":"x"}}}}"#, 10 * H), "basura".to_string()];
         let d = summarize(lines.into_iter(), 0, 10 * H + 120_000);
         assert_eq!(d.sessions[0].work_ms, 120_000);
+    }
+    #[test] fn one_row_per_project_newest_first() {
+        let lines = vec![l("a", H, "start"), l("a", 2 * H, "done"), l("b", 3 * H, "start"), l("b", 4 * H, "done"), l("c", 5 * H, "session-start"),
+            // otra sesión del mismo proyecto que "a"
+            format!(r#"{{"v":1,"session_id":"a2","project":"p-a","cwd":"","at_ms":{},"event":{{"kind":"start","prompt":"x"}}}}"#, 5 * H), l("a2", 6 * H, "done")];
+        let d = summarize(lines.into_iter(), 0, 7 * H);
+        // p-c solo se abrió: no tiene actividad y no se muestra
+        assert_eq!(d.sessions.iter().map(|s| s.project.as_str()).collect::<Vec<_>>(), vec!["p-a", "p-b"]);
+        assert_eq!(d.sessions[0].work_ms, 2 * H);
+        assert_eq!(d.sessions[0].lanes.len(), 2);
+    }
+    #[test] fn abandoned_work_ends_at_the_last_event() {
+        // empezó a las 10 y no volvió a dar señales: no cuenta como trabajando hasta las 18
+        let lines = vec![format!(r#"{{"v":1,"session_id":"z","project":"p-z","cwd":"","at_ms":{},"event":{{"kind":"start","prompt":"x"}}}}"#, 10 * H), tool("z", 10 * H + 60_000)];
+        let d = summarize(lines.into_iter(), 0, 18 * H);
+        assert_eq!(d.sessions[0].work_ms, 60_000);
+        assert!(d.sessions[0].lanes.iter().all(|x| x.1 < 0.6));
     }
     #[test] fn ignores_other_days() {
         let d = summarize(vec![l("c", 5, "done")].into_iter(), 1_000, 2_000);
