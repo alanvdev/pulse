@@ -3,6 +3,7 @@ import { useEffect, type KeyboardEvent as RKeyboardEvent, type ReactNode } from 
 import { decide, skip, type Config, type Pending, type Session, type Snapshot } from '../shared/bridge';
 import { clock } from '../shared/format';
 import { useHold } from '../shared/react';
+import { isUrgent } from '../shared/micro';
 import { Button, Icon, StateIcon } from '../shared/ui';
 import { sessionRows, verb } from '../island/model';
 
@@ -27,7 +28,7 @@ export function PendingBlock({ p, cfg, now, more }: { p: Pending; cfg: Config; n
   return <div className="mz-pend">
     <Icon name={p.kind === 'question' ? 'help' : 'front_hand'} />
     <div className="mz-pend-b">
-      <div className="mz-pend-h"><b>{p.project}</b> {p.kind === 'question' ? 'te pregunta' : verb(p.tool, true)}{cfg.island.countdown && <> · <span className="mono">{secsLeft(p, now)}</span></>}{more > 0 && <span className="tx3"> · {more} más en espera</span>}</div>
+      <div className="mz-pend-h"><b>{p.project}</b> {p.kind === 'question' ? 'te pregunta' : verb(p.tool, true)}{cfg.island.countdown && <> · <span className={`mono ${isUrgent(p, now) ? 'urgent' : ''}`}>{secsLeft(p, now)}</span></>}{more > 0 && <span className="tx3"> · {more} más en espera</span>}</div>
       <div className={`mz-pend-c ${p.kind === 'question' ? '' : 'mono'}`}>{p.command}</div>
       {p.kind === 'question' ? <div className="mz-pend-d">Respóndela en la isla, arriba de tu pantalla.</div> : p.description && <div className="mz-pend-d">{p.description}</div>}
     </div>

@@ -1,6 +1,7 @@
 // Piezas compartidas de la isla (Comando y Orbe): tarjeta de permiso, avisos, "mientras estabas en foco" y efectos de luz.
 import type { Config, Pending } from '../shared/bridge';
 import { esc } from '../shared/format';
+import { isUrgent } from '../shared/micro';
 import { reduceMotion, T } from '../shared/motion';
 import { queueInfo, releaseRow, verb, type Notice } from './model';
 
@@ -38,7 +39,7 @@ export function permCard(p: Pending, cfg: Config, all: Pending[], width = 480) {
 /** Aviso de una línea con su tiempo en la línea fina de abajo (`.tm`, la anima morph con `life`). */
 export function noticeHTML(n: Notice) {
   if (n.items) return releaseCard(n);
-  return `<div class="nt"><span class="ms" style="color:${n.color}">${n.icon}</span><span class="t">${n.who ? `<b>${esc(n.who)}</b> ` : ''}<span class="tx2">${esc(n.what)}</span>${n.extra ? ` <span class="mono">${esc(n.extra)}</span>` : ''}</span><i class="tm"></i></div>`;
+  return `<div class="nt"><span class="ms${n.icon === 'check' ? ' draw' : ''}" style="color:${n.color}">${n.icon}</span><span class="t">${n.who ? `<b>${esc(n.who)}</b> ` : ''}<span class="tx2">${esc(n.what)}</span>${n.extra ? ` <span class="mono">${esc(n.extra)}</span>` : ''}</span><i class="tm"></i></div>`;
 }
 /** "Mientras estabas en foco" (spec §3.3): icono, proyecto, qué pasó y hora de cada evento guardado. */
 export function releaseCard(n: Notice) {
@@ -57,7 +58,7 @@ export function fitCommand(root: ParentNode) {
 }
 /** Segundos restantes de cada tarjeta, sin volver a dibujarla. */
 export function tickSecs(root: ParentNode, pending: Pending[]) {
-  root.querySelectorAll<HTMLElement>('[data-pid]').forEach(card => { const p = pending.find(x => x.id === Number(card.dataset.pid)); const s = card.querySelector('.secs'); if (p && s) s.textContent = secsLeft(p); });
+  root.querySelectorAll<HTMLElement>('[data-pid]').forEach(card => { const p = pending.find(x => x.id === Number(card.dataset.pid)); const s = card.querySelector('.secs'); if (p && s) { s.textContent = secsLeft(p); s.classList.toggle('urgent', isUrgent(p, Date.now())); } });
 }
 
 export function beam(board: HTMLElement, c: string, xpx: number, enabled = true) {

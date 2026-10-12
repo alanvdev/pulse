@@ -20,3 +20,14 @@ export function flashColor(prev: SessionState | undefined, next: SessionState): 
 
 /** Valor de una cifra que cuenta hacia `to` en el instante `t` (0 a 1), frenando al final. */
 export const countAt = (t: number, to: number) => Math.round(to * (1 - Math.pow(1 - Math.min(1, Math.max(0, t)), 3)));
+
+/** Cómo se ve un pendiente recién resuelto (etiqueta del efecto `resolved` del núcleo). */
+export function resolvedLook(label: string): { icon: string; tone: 'ok' | 'no' | ''; text: string } {
+  switch (label) {
+    case 'allow': return { icon: 'check', tone: 'ok', text: 'Permitido' };
+    case 'deny': return { icon: 'close', tone: 'no', text: 'Denegado' };
+    case 'answer': return { icon: 'send', tone: 'ok', text: 'Respuesta enviada' };
+    case 'none': return { icon: 'schedule', tone: '', text: 'Sin respuesta: pasa a la terminal' };
+    default: return { icon: 'terminal', tone: '', text: 'En la terminal' };
+  }
+}

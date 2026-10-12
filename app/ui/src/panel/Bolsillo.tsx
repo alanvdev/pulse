@@ -3,8 +3,9 @@ import { useEffect, useRef, useState, type KeyboardEvent as RKeyboardEvent } fro
 import { decide, openDashboard, setFocus, skip, togglePanel, type Config, type DaySummary, type Pending, type Snapshot } from '../shared/bridge';
 import { clock, headline, hm, sessionsLabel } from '../shared/format';
 import { reduceMotion } from '../shared/motion';
-import { useConfig, useDaySummary, useFocusEdge, useFocusHalo, useHold, useNow, useSnapshot, useTheme } from '../shared/react';
-import { Button, Chip, Dot, Icon, Keys, Seg, Slider, StateIcon, Switch } from '../shared/ui';
+import { useConfig, useDaySummary, useFocusEdge, useFocusHalo, useHold, useNow, useResolved, useSnapshot, useTheme, type Resolved } from '../shared/react';
+import { isUrgent } from '../shared/micro';
+import { Button, Chip, Dot, Icon, Keys, ResolvedNote, Seg, Slider, StateIcon, Switch } from '../shared/ui';
 import { Timeline, TimelineLegend } from '../shared/timeline';
 import { focusLine, sessionRows, verb } from '../island/model';
 
@@ -24,7 +25,7 @@ function PendingBlock({ p, cfg, now, hold }: { p: Pending; cfg: Config; now: num
     <div className="pb-a"><Button solo size="md" onClick={() => skip(p.id)}>Responder en la terminal</Button></div>
   </div>;
   return <div className="pb">
-    <div className="pb-h"><Dot kind="halo" /><b>{p.project}</b>{verb(p.tool, true)}{cfg.island.countdown && <span className="pb-s mono">{secsLeft(p, now)}</span>}</div>
+    <div className="pb-h"><Dot kind="halo" /><b>{p.project}</b>{verb(p.tool, true)}{cfg.island.countdown && <span className={`pb-s mono ${isUrgent(p, now) ? 'urgent' : ''}`}>{secsLeft(p, now)}</span>}</div>
     <div className="pb-c mono">{p.command}</div>
     {p.description && <div className="pb-n">{p.description}</div>}
     <div className="pb-a">
@@ -36,11 +37,12 @@ function PendingBlock({ p, cfg, now, hold }: { p: Pending; cfg: Config; now: num
   </div>;
 }
 
-function Ahora({ snap, cfg, save, now, hold }: { snap: Snapshot; cfg: Config; save: (c: Config) => void; now: number; hold: Hold }) {
+function Ahora({ snap, cfg, save, now, hold, resolved }: { snap: Snapshot; cfg: Config; save: (c: Config) => void; now: number; hold: Hold; resolved: Resolved | null }) {
   const top = snap.pending[0], rows = sessionRows(snap, now).filter(r => !top || r.pendingId !== top.id);
   const flip = <K extends 'sounds' | 'pulses' | 'keyboard'>(k: K) => save({ ...cfg, [k]: { ...cfg[k], enabled: !cfg[k].enabled } });
   return <>
     <header><div className="bp-n">{sessionsLabel(snap.sessions.length)}{snap.focus && <> · <span className="fz"><Icon name="dark_mode" />{focusLine(snap)}</span></>}</div><div className="bp-h">{headline(snap)}</div></header>
+    {resolved && <ResolvedNote key={resolved.n} {...resolved} />}
     {top && <PendingBlock key={top.id} p={top} cfg={cfg} now={now} hold={hold} />}
     {snap.sessions.length ? <div>{rows.map(r => <div key={r.id} className="s">
       <StateIcon s={r.pendingId ? 'Waiting' : r.state} />
@@ -85,7 +87,7 @@ export function Bolsillo() {
   const [tab, setTab] = useState<Tab>('ahora');
   const top = snap.pending[0], holdId = useRef(0);
   // un solo "mantener" para el bloque y la tecla Y; aprueba el pendiente con el que empezó, y se cancela si ese cambia
-  const hold = useHold(() => decide(holdId.current, true));
+  const hold = useHold(() => decide(holdId.current, true)), resolved = useResolved();
   useEffect(() => { hold.end(); }, [top?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const beginHold = () => { if (top) { holdId.current = top.id; hold.begin(); } };
   const bp = useRef<HTMLElement>(null), view = useRef<HTMLDivElement>(null);
@@ -119,7 +121,7 @@ export function Bolsillo() {
   if (!cfg) return null;
   return <section ref={bp} aria-label="Bolsillo" className={`bp surf f-host ${snap.focus ? 'in-focus' : ''}`}>
     <div ref={view} className="bp-view" role="tabpanel">
-      {tab === 'ahora' && <Ahora snap={snap} cfg={cfg} save={save} now={now} hold={{ ...hold, begin: beginHold }} />}
+      {tab === 'ahora' && <Ahora snap={snap} cfg={cfg} save={save} now={now} hold={{ ...hold, begin: beginHold }} resolved={resolved} />}
       {tab === 'hoy' && <Hoy day={day} now={now} />}
       {tab === 'ajustes' && <Rapidos cfg={cfg} save={save} />}
     </div>

@@ -96,3 +96,22 @@
   .chip.rip::before, .chip .ms, .mi .ms.swap { animation: none }
   .sw:active::after { width: 16px } .sw.sm:active::after { width: 12px }
 }
+
+/* ---------- decidir un permiso ---------- */
+/* el bloque resuelto se queda medio segundo con su ✓/✗ y se pliega; lo de abajo sube solo */
+.fold { display: grid; grid-template-rows: 1fr; animation: fold .3s var(--e-in) .55s forwards }
+.fold > div { min-height: 0; overflow: hidden }
+@keyframes fold { to { grid-template-rows: 0fr; opacity: 0; margin-bottom: var(--fold-gap, 0px) } }
+.resolved { display: flex; align-items: center; gap: 10px; padding: 14px; border-radius: 10px; background: var(--raised); border: 1px solid var(--line); font-size: 13px; white-space: nowrap; animation: resIn .22s var(--e-out) }
+.resolved b { font-weight: 500 }
+.resolved .ms { font-size: 18px; color: var(--tx2) }
+.resolved.ok .ms { color: var(--done) } .resolved.no .ms { color: var(--err) }
+.resolved-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 12.5px }
+.resolved-t .mono { font-size: 12px; color: var(--tx2) }
+.draw-in { animation: drawIn .45s var(--e-out) .05s backwards }
+@keyframes drawIn { from { clip-path: inset(0 100% 0 0) } }
+@keyframes resIn { from { opacity: 0; transform: scale(.98) } }
+/* últimos 5 s: la cuenta late en ámbar */
+.urgent { display: inline-block; color: var(--perm) !important; animation: urgent 1s ease-in-out infinite }
+@keyframes urgent { 0%, 100% { transform: scale(1) } 15% { transform: scale(1.2) } 32% { transform: scale(1) } }
+@media (prefers-reduced-motion: reduce) { .fold { animation-duration: .12s; animation-delay: .35s } .draw-in, .resolved, .urgent { animation: none } }

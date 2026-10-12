@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Pending } from './bridge';
-import { countAt, flashColor, focusEdge, isUrgent } from './micro';
+import { countAt, flashColor, focusEdge, isUrgent, resolvedLook } from './micro';
 
 const p = (over: Partial<Pending>): Pending => ({ id: 1, kind: 'permission', session_id: 's', project: 'p', tool: 'Bash', command: 'ls', description: '', danger: false, at_ms: 0, timeout_ms: 30_000, deadline_ms: 30_000, paused: false, left_ms: 30_000, ...over });
 
@@ -27,5 +27,12 @@ describe('microinteracciones', () => {
     expect(countAt(0, 100)).toBe(0);
     expect(countAt(1, 100)).toBe(100);
     expect(countAt(.5, 100)).toBeGreaterThan(50);
+  });
+});
+describe('pendiente resuelto', () => {
+  it('icono y tono', () => {
+    expect(resolvedLook('allow')).toEqual({ icon: 'check', tone: 'ok', text: 'Permitido' });
+    expect(resolvedLook('deny').tone).toBe('no');
+    expect(resolvedLook('skip').icon).toBe('terminal');
   });
 });

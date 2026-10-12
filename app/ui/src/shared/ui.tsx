@@ -2,6 +2,7 @@
 import type { ButtonHTMLAttributes, CSSProperties, MouseEvent, ReactNode } from 'react';
 import type { SessionState } from './bridge';
 import { ICON, STATE_VAR, type DotKind } from './format';
+import { resolvedLook } from './micro';
 
 const cx = (...c: (string | false | undefined | null)[]) => c.filter(Boolean).join(' ');
 const vars = (v: Record<string, string | number>) => v as CSSProperties;
@@ -47,3 +48,11 @@ export const Chip = ({ on, icon, iconOff, children, onClick, tone }: { on: boole
 export const Dot = ({ kind }: { kind: DotKind }) => <span className={`dot ${kind}`} aria-hidden="true" />;
 export const StateIcon = ({ s, size = 16 }: { s: SessionState; size?: number }) =>
   <Icon name={ICON[s]} className={s === 'Working' ? 'spin' : undefined} style={{ color: STATE_VAR[s], fontSize: size }} />;
+/** Pendiente recién resuelto: ✓ que se dibuja o ✗, y el bloque se pliega solo (ui.css .fold). */
+export function ResolvedNote({ label, text, project }: { label: string; text: string; project: string }) {
+  const l = resolvedLook(label);
+  return <div className="fold" role="status"><div><div className={cx('resolved', l.tone)}>
+    <Icon name={l.icon} className={l.tone === 'ok' ? 'draw-in' : undefined} /><b>{l.text}</b>
+    <span className="resolved-t"><span className="tx3">{project}</span>{text && label !== 'answer' && <span className="mono"> {text}</span>}</span>
+  </div></div></div>;
+}

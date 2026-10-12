@@ -98,3 +98,5 @@ body { user-select: none }
 .aj-time { height: 30px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--well); color: var(--tx); font-size: 12.5px }
 .mz-nav .aj-back { margin-bottom: 12px; color: var(--tx3) }
 @media (max-width: 900px) { .aj-r { grid-template-columns: 1fr; gap: 10px } }
+.mz-s .fold { --fold-gap: -10px }
+.mz-s .resolved { padding: 18px 20px; border-radius: 20px; font-size: 14px }

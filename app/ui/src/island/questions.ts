@@ -3,6 +3,7 @@ import type { Pending, Question } from '../shared/bridge';
 import { esc } from '../shared/format';
 import { reduceMotion, SP_OPEN } from '../shared/motion';
 import { digitIndex, qHint } from './model';
+import { isUrgent } from '../shared/micro';
 import { keys } from './shared';
 
 /** Lo elegido en una pregunta: opciones marcadas, si "Otra…" está marcada y lo escrito. */
@@ -162,7 +163,9 @@ export function bindQuestions(root: HTMLElement, find: (id: number) => Pending |
     const p = find(Number(card.dataset.qid)); if (!p) return;
     if (!card.dataset.ready) { card.dataset.ready = '1'; refresh(card, p); }
     const left = Math.max(0, p.paused ? p.left_ms : p.deadline_ms - Date.now());
-    card.querySelector('.qleft')!.textContent = p.paused ? 'En pausa mientras respondes' : `Pasa a la terminal en ${Math.ceil(left / 1000)} s`;
+    const ql = card.querySelector<HTMLElement>('.qleft')!;
+    ql.textContent = p.paused ? 'En pausa mientras respondes' : `Pasa a la terminal en ${Math.ceil(left / 1000)} s`;
+    ql.classList.toggle('urgent', isUrgent(p, Date.now()));
     card.querySelector<HTMLElement>('.qbar b')!.style.transform = `scaleX(${Math.min(1, left / p.timeout_ms)})`;
     card.classList.toggle('paused', p.paused);
   }), 250);

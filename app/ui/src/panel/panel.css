@@ -33,3 +33,4 @@ html, body, #root { height: 100%; background: transparent }
 .qs .sl input { width: 120px }
 .tab:active { transform: scale(.95) }
 @media (prefers-reduced-motion: reduce) { .tab:active { transform: none } }
+.bp-view .fold { --fold-gap: -20px }

@@ -1,6 +1,6 @@
 // Hooks de React sobre el puente con el núcleo (solo Bolsillo y Mosaico).
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
-import { dailySummary, getConfig, logToday, getSnapshot, onConfig, onState, setConfig, type Config, type DaySummary, type LogItem, type Snapshot } from './bridge';
+import { dailySummary, getConfig, logToday, getSnapshot, onConfig, onFx, onState, setConfig, type Config, type DaySummary, type LogItem, type Snapshot } from './bridge';
 import { countAt, flashColor, focusEdge } from './micro';
 import { reduceMotion } from './motion';
 import { followTheme } from './theme';
@@ -127,4 +127,21 @@ export function useFocusHalo(ref: RefObject<HTMLElement>, ev: { edge: 'enter' | 
     const el = ref.current; if (!el || !ev) return;
     el.classList.remove('f-enter', 'f-exit'); void el.offsetWidth; el.classList.add(`f-${ev.edge}`);
   }, [ev?.n]); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
+export type Resolved = { n: number; label: string; text: string; project: string };
+/** El último pendiente resuelto (desde cualquier lado: isla, atajo, aquí), visible un momento para plegarse con ✓ o ✗. */
+export function useResolved(): Resolved | null {
+  const [r, set] = useState<Resolved | null>(null);
+  useEffect(() => {
+    let off: (() => void) | undefined, t = 0;
+    onFx(fx => {
+      if (fx.kind !== 'resolved') return;
+      const [label, ...rest] = fx.text.split('|');
+      set({ n: Date.now(), label, text: rest.join('|'), project: fx.project });
+      clearTimeout(t); t = window.setTimeout(() => set(null), reduceMotion() ? 500 : 950);
+    }).then(f => (off = f));
+    return () => { off?.(); clearTimeout(t); };
+  }, []);
+  return r;
 }
