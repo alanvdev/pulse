@@ -47,7 +47,7 @@ pub fn today() -> DaySummary {
     summarize(lines.lines().map(str::to_string), start, now)
 }
 
-fn local_midnight_ms(now_ms: i64) -> i64 {
+pub(crate) fn local_midnight_ms(now_ms: i64) -> i64 {
     use windows_sys::Win32::System::Time::{GetTimeZoneInformation, TIME_ZONE_INFORMATION};
     let mut tz: TIME_ZONE_INFORMATION = unsafe { std::mem::zeroed() };
     unsafe { GetTimeZoneInformation(&mut tz) };

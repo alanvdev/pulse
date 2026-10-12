@@ -1,6 +1,6 @@
 // Hooks de React sobre el puente con el núcleo (solo Bolsillo y Mosaico).
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { dailySummary, getConfig, getSnapshot, onConfig, onState, setConfig, type Config, type DaySummary, type Snapshot } from './bridge';
+import { dailySummary, getConfig, logToday, getSnapshot, onConfig, onState, setConfig, type Config, type DaySummary, type LogItem, type Snapshot } from './bridge';
 import { followTheme } from './theme';
 
 const EMPTY: Snapshot = { sessions: [], pending: [], feed: [], focus: false, focus_auto: false, deferred: [] };
@@ -49,4 +49,14 @@ export function useTheme(cfg: Config | null) {
   const pref = cfg?.appearance?.theme, ready = cfg !== null;
   // sin config todavía se queda el tema recordado (applyRemembered en main.tsx)
   useEffect(() => ready ? followTheme(pref) : undefined, [pref, ready]);
+}
+
+/** Eventos de hoy para la Bitácora. Se refresca cada `every` ms y con cada cambio de estado, con un mínimo de 5 s entre llamadas. */
+export function useLogToday(snap: Snapshot, every = 15_000): LogItem[] | null {
+  const [d, set] = useState<LogItem[] | null>(null);
+  const last = useRef(0);
+  const load = useCallback(() => { last.current = Date.now(); logToday().then(set).catch(() => {}); }, []);
+  useEffect(() => { load(); const t = setInterval(load, every); return () => clearInterval(t); }, [load, every]);
+  useEffect(() => { if (Date.now() - last.current > 5_000) load(); }, [snap]); // eslint-disable-line react-hooks/exhaustive-deps
+  return d;
 }

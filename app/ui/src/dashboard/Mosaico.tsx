@@ -4,6 +4,7 @@ import { onRoute, openPalette } from '../shared/bridge';
 import { useConfig, useDaySummary, useNow, useSnapshot, useTheme } from '../shared/react';
 import { Icon } from '../shared/ui';
 import { formatRoute, parseRoute, type Route, type Screen } from './route';
+import { Bitacora } from './screens/Bitacora';
 import { Hoy } from './screens/Hoy';
 import { Inicio } from './screens/Inicio';
 import { Sesiones } from './screens/Sesiones';
@@ -18,7 +19,7 @@ function useRoute(): [Route, (r: Route) => void] {
   return [route, go];
 }
 
-const NAV: [Screen, string, string][] = [['inicio', 'home', 'Inicio'], ['sesiones', 'stacks', 'Sesiones'], ['hoy', 'schedule', 'Hoy']];
+const NAV: [Screen, string, string][] = [['inicio', 'home', 'Inicio'], ['sesiones', 'stacks', 'Sesiones'], ['hoy', 'schedule', 'Hoy'], ['bitacora', 'history', 'Bitácora']];
 
 export function Mosaico() {
   const snap = useSnapshot(), [cfg] = useConfig(), now = useNow(), day = useDaySummary(snap);
@@ -29,7 +30,7 @@ export function Mosaico() {
     window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k);
   }, []);
   if (!cfg) return null;
-  const screen = route.screen === 'ajustes' || route.screen === 'bitacora' ? 'inicio' : route.screen;   // llegan en las Tasks 5.2 y 5.3
+  const screen = route.screen === 'ajustes' ? 'inicio' : route.screen;   // Ajustes llega en la Task 5.3
   const link = (s: Screen, ic: string, l: string, count?: number) => <a key={s} href={`#${s}`} aria-current={screen === s ? 'page' : undefined} onClick={e => { e.preventDefault(); go({ screen: s }); }}><Icon name={ic} />{l}<small>{count || ''}</small></a>;
   return <div className="mz">
     <nav className="mz-nav" aria-label="Secciones">
@@ -42,6 +43,7 @@ export function Mosaico() {
       {screen === 'inicio' && <Inicio snap={snap} cfg={cfg} day={day} now={now} go={go} />}
       {screen === 'sesiones' && <Sesiones snap={snap} cfg={cfg} now={now} arg={route.arg} />}
       {screen === 'hoy' && <Hoy day={day} now={now} />}
+      {screen === 'bitacora' && <Bitacora snap={snap} />}
     </main>
   </div>;
 }

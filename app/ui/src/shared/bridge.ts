@@ -44,3 +44,5 @@ export const quit = () => invoke('quit');
 export const onFlyoutOpen = (f: () => void) => listen('pulse://flyout-open', () => f());
 export const onRoute = (f: (view: string) => void) => listen<string>('pulse://route', e => f(e.payload));
 export const togglePanel = () => invoke('toggle_panel');
+export interface LogItem { at_ms: number; session_id: string; project: string; kind: string; text: string }
+export const logToday = () => invoke<LogItem[]>('log_today');

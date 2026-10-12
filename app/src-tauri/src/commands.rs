@@ -32,6 +32,7 @@ use tauri::{AppHandle, Emitter, State};
     broadcast(&app);
 }
 
+#[tauri::command] pub fn log_today() -> Vec<crate::logbook::LogItem> { crate::logbook::today(500) }
 #[tauri::command] pub fn daily_summary() -> crate::daylog::DaySummary { crate::daylog::today() }
 #[derive(serde::Deserialize)] pub struct Rect { x: f64, y: f64, w: f64, h: f64 }
 #[tauri::command] pub fn set_island_hitbox(hb: State<crate::windows::Hitbox>, rect: Option<Rect>) { *hb.0.lock().unwrap() = rect.map(|r| (r.x - 6.0, r.y - 6.0, r.w + 12.0, r.h + 12.0)); }

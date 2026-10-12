@@ -67,3 +67,12 @@ body { user-select: none }
   .mz-det { grid-template-columns: 1fr; padding-left: 18px }
 }
 @media (prefers-reduced-motion: reduce) { .mz-det { animation: none } }
+.mz-filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center }
+.mz-chips { display: flex; flex-wrap: wrap; gap: 6px }
+.mz-log { margin: 0; padding: 0; list-style: none; border-radius: 20px; border: 1px solid var(--line); overflow: hidden }
+.mz-log li { display: grid; grid-template-columns: 44px 18px 150px minmax(0,1fr); gap: 12px; align-items: center; min-height: 40px; padding: 6px 18px; font-size: 13px }
+.mz-log li + li { border-top: 1px solid var(--line) }
+.mz-log .ms { font-size: 16px }
+.mz-log-p { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--tx2) }
+.mz-log-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.mz-log-t.mono { font-size: 12px }
