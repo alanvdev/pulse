@@ -112,6 +112,7 @@ pub fn run() {
                 // `pulse ask` se cerró (Claude Code dejó de esperar al hook): se respondió en la terminal
                 let gone: Vec<u64> = h2.state::<AppState>().waiters.lock().unwrap().iter().filter(|(_, tx)| tx.is_closed()).map(|(id, _)| *id).collect();
                 for id in gone { resolve_as(&h2, id, Decision::None, "terminal"); }
+                if tray::theme_changed() { broadcast(&h2); }   // barra de tareas clara u oscura: otro color de tinta
                 if h2.state::<AppState>().store.lock().unwrap().should_exit(now_ms()) { chroma::shutdown(); h2.exit(0); }
             } });
             focus::start(&h);
