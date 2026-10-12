@@ -53,7 +53,7 @@ pub fn create_island(app: &AppHandle) -> tauri::Result<()> {
     win.set_ignore_cursor_events(true)?;
     app.manage(Hitbox::default());
     let a = app.clone();
-    tauri::async_runtime::spawn(async move { let mut last = true; loop {
+    tauri::async_runtime::spawn(async move { loop {
         tokio::time::sleep(std::time::Duration::from_millis(40)).await;
         let Some(win) = a.get_webview_window("island") else { continue };
         let hb = *a.state::<Hitbox>().0.lock().unwrap();   // soltar el lock antes de llamar al hilo principal
@@ -61,7 +61,7 @@ pub fn create_island(app: &AppHandle) -> tauri::Result<()> {
             (Some((x, y, w, h)), Ok(c), Ok(o), Ok(s)) => { let (cx, cy) = ((c.x - o.x as f64) / s, (c.y - o.y as f64) / s); !(cx >= x && cx <= x + w && cy >= y && cy <= y + h) }
             _ => true,
         };
-        if ignore != last { let _ = win.set_ignore_cursor_events(ignore); last = ignore; }
+        if ignore != ISLAND_IGNORES.load(std::sync::atomic::Ordering::SeqCst) { let _ = win.set_ignore_cursor_events(ignore); ISLAND_IGNORES.store(ignore, std::sync::atomic::Ordering::SeqCst); }
         // recuerda la última ventana activa que no es de Pulse, para devolverle el teclado
         let fg = unsafe { windows_sys::Win32::UI::WindowsAndMessaging::GetForegroundWindow() } as isize;
         if fg != 0 && !is_ours(fg) { PREV_FOREGROUND.store(fg, std::sync::atomic::Ordering::SeqCst); }
@@ -77,6 +77,8 @@ fn work_area() -> (f64, f64, f64, f64) {
 }
 /// Momento en que el panel se ocultó por perder el foco: el clic en la bandeja que lo provocó no debe volver a abrirlo.
 static PANEL_HIDDEN_AT: std::sync::atomic::AtomicI64 = std::sync::atomic::AtomicI64::new(0);
+/// Si la isla deja pasar los clics ahora mismo. Lo comparten el ciclo de 40 ms y `island_keyboard`.
+static ISLAND_IGNORES: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
 /// Ventana que tenía el teclado antes de que la isla lo tomara (paleta, "Otra…").
 static PREV_FOREGROUND: std::sync::atomic::AtomicIsize = std::sync::atomic::AtomicIsize::new(0);
 fn is_ours(h: isize) -> bool {
@@ -90,7 +92,8 @@ pub fn island_keyboard(app: &AppHandle, on: bool) {
     use std::sync::atomic::Ordering;
     let Some(w) = app.get_webview_window("island") else { return };
     let island = w.hwnd().map(|h| h.0 as isize).unwrap_or(0);
-    let _ = w.set_ignore_cursor_events(!on);
+    // al tomar el teclado recibe clics; al soltarlo, el ciclo de 40 ms decide según dónde está el cursor
+    if on { let _ = w.set_ignore_cursor_events(false); ISLAND_IGNORES.store(false, Ordering::SeqCst); }
     unsafe {
         let fg = GetForegroundWindow() as isize;
         if on {
@@ -108,8 +111,8 @@ pub fn toggle_panel(app: &AppHandle) {
     if win.is_visible().unwrap_or(false) { let _ = win.hide(); return; }
     if crate::now_ms() - PANEL_HIDDEN_AT.load(std::sync::atomic::Ordering::SeqCst) < 300 { return; }
     let scale = win.scale_factor().unwrap_or(1.0);
-    let (_, _, r, b) = work_area();
-    let _ = win.set_position(tauri::LogicalPosition::new(r / scale - 380.0 - 12.0, b / scale - 580.0 - 12.0));
+    let (_, t, r, b) = work_area();
+    let _ = win.set_position(tauri::LogicalPosition::new(r / scale - 380.0 - 12.0, (b / scale - 580.0 - 12.0).max(t / scale)));
     let _ = win.show(); let _ = win.set_focus();
 }
 fn create_panel(app: &AppHandle) -> tauri::Result<tauri::WebviewWindow> {

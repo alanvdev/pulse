@@ -9,5 +9,6 @@ describe('marcas de la línea de tiempo', () => {
   it('temprano solo las que ya pasaron, y la de ahora al final', () => {
     expect(ticks(at(7)).map(t => t[1])).toEqual(['00:00', '06:00', '07:00']);
     expect(ticks(at(6, 10)).map(t => t[1])).toEqual(['00:00', '06:10']);   // 06:00 chocaría con la de ahora
+    expect(ticks(at(7), 0.2).map(t => t[1])).toEqual(['00:00', '07:00']);   // en Bolsillo, más espacio
   });
 });

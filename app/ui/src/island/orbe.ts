@@ -12,12 +12,12 @@ export interface OrbeCtx extends Ctx { setSide(side: Side): void }
 const twoTone = (line: string) => { const [a, ...b] = line.split(' · '); return `<span>${esc(a)}</span>${b.length ? `<span class="tx3">· ${esc(b.join(' · '))}</span>` : ''}`; };
 
 export function mountOrbe(board: HTMLElement, ctx: OrbeCtx) {
-  const sh = document.createElement('div'); sh.className = 'shell glass o-shell'; sh.tabIndex = 0; sh.setAttribute('role', 'button');
+  const sh = document.createElement('div'); sh.className = 'shell glass o-shell'; sh.tabIndex = 0;
   const tip = document.createElement('div'); tip.className = 'o-tip';
   const zones = document.createElement('div'); zones.className = 'o-zones'; zones.setAttribute('aria-hidden', 'true'); zones.innerHTML = '<span></span><span></span><span></span>';
   board.append(zones, sh, tip);
   const m: Morph = { el: sh, w: 0, h: 0, sig: '', op: 1 };
-  let side: Side = ctx.cfg().island.orb_side, hover = false, menu = false;
+  let side: Side = ctx.cfg().island.orb_side, hover = false, menu = false, state = 'c';   // state: primera letra de la firma (c punto, h resumen, m menú, t aviso, p tarjeta)
   const place = () => { sh.classList.remove('left', 'right', 'center'); sh.classList.add(side); };
   place();
   sh.addEventListener('mouseenter', () => { hover = true; render(); });
@@ -27,11 +27,11 @@ export function mountOrbe(board: HTMLElement, ctx: OrbeCtx) {
   let down = false, sx = 0, moved = false;
   const frac = (clientX: number) => { const b = board.getBoundingClientRect(); return (clientX - b.left) / b.width; };
   const hot = (z: Side | null) => [...zones.children].forEach((c, i) => c.classList.toggle('hot', (['left', 'center', 'right'] as Side[])[i] === z));
-  sh.addEventListener('pointerdown', e => { if ((e.target as HTMLElement).closest('button')) return; down = true; moved = false; sx = e.clientX; sh.setPointerCapture(e.pointerId); });
+  sh.addEventListener('pointerdown', e => { if ((e.target as HTMLElement).closest('button') || state === 'p') return; /* en una tarjeta, el clic es de la tarjeta */ down = true; moved = false; sx = e.clientX; sh.setPointerCapture(e.pointerId); });
   sh.addEventListener('pointermove', e => {
     if (!down) return;
     const dx = e.clientX - sx;
-    if (Math.abs(dx) > 5 && !moved) { moved = true; menu = false; sh.classList.add('drag'); zones.classList.add('on'); ctx.hitbox(board); render(); }
+    if (Math.abs(dx) > 5 && !moved && (state === 'c' || state === 'h')) { moved = true; menu = false; sh.classList.add('drag'); zones.classList.add('on'); ctx.hitbox(board); render(); }
     if (moved) { sh.style.transform = `translateX(${dx}px) scale(1.12)`; const r = sh.getBoundingClientRect(); hot(nearestZone(frac(r.left + r.width / 2))); }
   });
   const up = (e: PointerEvent) => {
@@ -69,7 +69,8 @@ export function mountOrbe(board: HTMLElement, ctx: OrbeCtx) {
     const allMuted = s.sessions.length > 0 && s.sessions.every(x => x.muted_until_ms > now);
     let html: string, sig: string, stacked = false;
     const o: MorphOpts = { radius: (_w, h) => h <= 26 ? '12px' : h > 44 ? '14px' : '10px' };
-    if (top && !menu) { html = top.kind === 'question' ? questionCard(top, cfg.island.countdown) : permCard(top, cfg, s.pending, 390); sig = `p${top.id}:${s.pending.length}`; stacked = top.kind !== 'question' && s.pending.length > 1; }
+    // la pregunta no se rehace si llega otro pendiente: lo elegido vive en la tarjeta
+    if (top && !menu) { html = top.kind === 'question' ? questionCard(top, cfg.island.countdown) : permCard(top, cfg, s.pending, 390); sig = top.kind === 'question' ? `pq${top.id}` : `p${top.id}:${s.pending.length}`; stacked = top.kind !== 'question' && s.pending.length > 1; }
     else if (menu) {
       const btn = (ic: string, label: string, act: string, on: boolean) => `<button type="button" class="o-btn" data-act="${act}" data-tip="${label}" aria-label="${label}" aria-pressed="${on}"><span class="ms">${ic}</span></button>`;
       html = `<div class="o-menu">${btn('dark_mode', 'Modo foco', 'focus', s.focus)}${btn('notifications_paused', 'Silenciar 30 min', 'muteall', allMuted)}${btn('done_all', 'Aprobar todo', 'allowall', false)}${btn('open_in_new', 'Abrir Pulse', 'open', false)}</div>`;
@@ -83,6 +84,9 @@ export function mountOrbe(board: HTMLElement, ctx: OrbeCtx) {
     }
     else { const k = orbDot(s); html = bead(k); sig = 'c' + k; }
     sh.dataset.k = sig.startsWith('c') ? 'dot' : 'open';
+    state = sig[0];
+    // es botón solo como punto o resumen; abierto contiene botones propios que el lector de pantalla debe alcanzar
+    if (state === 'c' || state === 'h') { sh.setAttribute('role', 'button'); sh.setAttribute('aria-expanded', 'false'); } else { sh.removeAttribute('role'); sh.removeAttribute('aria-expanded'); }
     sh.classList.toggle('none', sig === 'cnone');
     sh.classList.toggle('stacked', stacked);
     sh.setAttribute('aria-label', `Pulse: ${s.focus ? focusLine(s) : statusLine(s)}`);
@@ -91,11 +95,11 @@ export function mountOrbe(board: HTMLElement, ctx: OrbeCtx) {
     sh.querySelectorAll<HTMLElement>('[data-tip]').forEach(b => {
       b.onmouseenter = b.onfocus = () => { const rr = b.getBoundingClientRect(), br = board.getBoundingClientRect(); tip.textContent = b.dataset.tip!; tip.style.left = (rr.left - br.left + rr.width / 2) + 'px'; tip.style.translate = '-50% 0'; tip.classList.add('on'); };
       b.onmouseleave = b.onblur = () => tip.classList.remove('on');
-      b.addEventListener('click', () => { tip.classList.remove('on'); menu = false; setTimeout(render, 30); });
+      b.onclick = () => { tip.classList.remove('on'); menu = false; setTimeout(render, 30); };
     });
   }
   return {
-    render, openMenu() { menu = true; render(); sh.querySelector<HTMLElement>('.o-btn')?.focus(); },
+    render, openMenu() { menu = true; ctx.islandFocus(true); render(); requestAnimationFrame(() => sh.querySelector<HTMLElement>('.o-btn')?.focus()); },
     light(kind: string) {
       const r = sh.getBoundingClientRect(), b = board.getBoundingClientRect(), c = (COLORS as Record<string, string>)[kind] || COLORS.start;
       beam(board, c, r.left - b.left + r.width / 2, ctx.cfg().island.beam);

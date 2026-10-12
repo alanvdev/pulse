@@ -14,6 +14,8 @@ let notice: Notice | null = null, noticeT = 0;
 let day: DaySummary | null = null, dayAt = 0;
 type Mode = { render(): void; light(kind: string): void; destroy(): void; open?: () => void; openMenu?: () => void };
 let mode: Mode | null = null, modeName = '';
+/** La isla pidió el teclado (paleta, "Otra…", menú del Orbe). Solo entonces lo devuelve sola; un clic del usuario no cuenta. */
+let kbOwned = false;
 
 function hitbox(el: HTMLElement | null) {
   const send = () => { if (!el || !el.isConnected) return setIslandHitbox(null); const r = el.getBoundingClientRect(); setIslandHitbox({ x: r.left, y: r.top, w: r.width, h: r.height }); };
@@ -27,7 +29,7 @@ const ctx: OrbeCtx = {
   refreshDay: () => { if (Date.now() - dayAt < 30_000) return; dayAt = Date.now(); dailySummary().then(d => { day = d; render(); }).catch(() => {}); },
   decide: (id, allow) => { decide(id, allow); }, answer: (id, a) => { answer(id, a); }, skip: id => { skip(id); }, hold: (id, on) => { holdQuestion(id, on); }, allowAll: () => { allowAll(); }, setFocus: on => { setFocus(on); },
   muteSession: (id, minutes) => { muteSession(id, minutes); }, openDashboard: view => { openDashboard(view); },
-  islandFocus: on => { islandFocus(on); }, hitbox,
+  islandFocus: on => { kbOwned = on; islandFocus(on); }, hitbox,
   setSide: side => { cfg = { ...cfg, island: { ...cfg.island, orb_side: side } }; setConfig(cfg); },
 };
 
@@ -39,7 +41,7 @@ function mount() {
 }
 // Si la isla tiene el teclado pero ya no hay nada donde escribir (la pregunta se respondió en otro lado, se acabó el
 // tiempo, se cerró la paleta), se le devuelve a la ventana donde estabas.
-const render = () => { mode?.render(); if (document.hasFocus() && !board.querySelector('.qcard, .pal')) islandFocus(false); };
+const render = () => { mode?.render(); if (kbOwned && document.hasFocus() && !board.querySelector('.qcard, .pal, .o-menu')) { kbOwned = false; islandFocus(false); } };
 
 function show(n: Notice) { notice = n; clearTimeout(noticeT); noticeT = window.setTimeout(() => { notice = null; render(); }, T(n.life)); render(); }
 

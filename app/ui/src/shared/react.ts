@@ -41,6 +41,7 @@ export function useHold(onDone: () => void) {
   const raf = useRef(0), t0 = useRef(0), [p, setP] = useState(0);
   const begin = () => { if (raf.current) return; t0.current = performance.now(); const step = (t: number) => { const x = Math.min(1, (t - t0.current) / 900); setP(x); if (x >= 1) { raf.current = 0; setP(0); onDone(); return; } raf.current = requestAnimationFrame(step); }; raf.current = requestAnimationFrame(step); };
   const end = () => { if (!raf.current) return; cancelAnimationFrame(raf.current); raf.current = 0; setP(0); };
+  useEffect(() => () => cancelAnimationFrame(raf.current), []);   // al desmontar no debe aprobar nada
   return { p, begin, end };
 }
 

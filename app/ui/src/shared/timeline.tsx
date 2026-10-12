@@ -5,7 +5,7 @@ import { ticks } from './day';
 import { hm } from './format';
 import './day.css';
 
-export function Timeline({ day, now, label = 170 }: { day: DaySummary | null; now: number; label?: number }) {
+export function Timeline({ day, now, label = 170, minGap }: { day: DaySummary | null; now: number; label?: number; minGap?: number }) {
   if (!day) return null;
   if (!day.sessions.length) return <p className="empty">Todavía no hay actividad hoy.</p>;
   return <div className="tl" style={{ gridTemplateColumns: `${label}px minmax(0,1fr)` }}>
@@ -15,7 +15,7 @@ export function Timeline({ day, now, label = 170 }: { day: DaySummary | null; no
         {s.lanes.map(([a, b, k], j) => <i key={j} className={`k-${k}`} style={{ left: `${a * 100}%`, width: k === 'e' ? undefined : `${Math.max(.4, (b - a) * 100)}%` }} />)}
       </div>
     </Fragment>)}
-    <span /><div className="tl-ticks mono" aria-hidden="true">{ticks(now).map(([f, l]) => <span key={l} style={{ left: `${f * 100}%` }}>{l}</span>)}</div>
+    <span /><div className="tl-ticks mono" aria-hidden="true">{ticks(now, minGap).map(([f, l]) => <span key={l} style={{ left: `${f * 100}%` }}>{l}</span>)}</div>
   </div>;
 }
 export const TimelineLegend = () => <span className="tl-leg"><i className="k-w" />trabajando<i className="k-p" />esperando tu permiso<i className="k-e" />error</span>;
