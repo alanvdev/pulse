@@ -46,6 +46,7 @@ export function useHold(onDone: () => void) {
 
 /** Aplica `appearance.theme` a esta ventana y lo sigue mientras cambie. */
 export function useTheme(cfg: Config | null) {
-  const pref = cfg?.appearance?.theme;
-  useEffect(() => followTheme(pref), [pref]);
+  const pref = cfg?.appearance?.theme, ready = cfg !== null;
+  // sin config todavía se queda el tema recordado (applyRemembered en main.tsx)
+  useEffect(() => ready ? followTheme(pref) : undefined, [pref, ready]);
 }
