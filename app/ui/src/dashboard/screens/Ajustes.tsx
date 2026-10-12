@@ -23,21 +23,26 @@ export function Ajustes({ cfg, save, section, back }: { cfg: Config; save: (c: C
   const pc = cfg.pulses.events[ev], evName = EVENTS.find(([k]) => k === ev)?.[1] ?? ev;
   const setPc = (v: Partial<PulseCfg>) => set('pulses', { events: { ...cfg.pulses.events, [ev]: { ...pc, ...v } } });
   const fin = finishOf(cfg.pulses);
-  const go = (id: string) => document.getElementById(`aj-${id}`)?.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'start' });
+  const go = (id: string) => { setCur(id); document.getElementById(`aj-${id}`)?.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'start' }); };
 
   useEffect(() => { if (section) document.getElementById(`aj-${section}`)?.scrollIntoView({ block: 'start' }); }, [section]);
-  // la barra marca la sección que está a la vista
+  // la barra marca la sección a la vista: la última cuyo inicio pasó el 40 % de arriba, o la última si ya no hay más que desplazar
   useEffect(() => {
     const root = main.current; if (!root) return;
-    const io = new IntersectionObserver(es => { const v = es.filter(e => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0]; if (v) setCur(v.target.id.slice(3)); }, { root, rootMargin: '0px 0px -60% 0px' });
-    root.querySelectorAll('section[id^="aj-"]').forEach(s => io.observe(s));
-    return () => io.disconnect();
+    const onScroll = () => {
+      const secs = [...root.querySelectorAll<HTMLElement>('section[id^="aj-"]')], top = root.getBoundingClientRect().top + root.clientHeight * .4;
+      const atEnd = root.scrollTop + root.clientHeight >= root.scrollHeight - 2;
+      const v = atEnd ? secs[secs.length - 1] : secs.filter(s => s.getBoundingClientRect().top <= top).pop() ?? secs[0];
+      if (v) setCur(v.id.slice(3));
+    };
+    root.addEventListener('scroll', onScroll, { passive: true });
+    return () => root.removeEventListener('scroll', onScroll);
   }, []);
 
   return <div className="mz">
     <nav className="mz-nav" aria-label="Ajustes">
       <a href="#inicio" className="aj-back" onClick={e => { e.preventDefault(); back(); }}><Icon name="arrow_back" />Volver<small /></a>
-      {SECTIONS.map(([id, ic, l]) => <a key={id} href={`#ajustes/${id}`} aria-current={cur === id ? 'true' : undefined} onClick={e => { e.preventDefault(); go(id); }}><Icon name={ic} />{l}<small /></a>)}
+      {SECTIONS.map(([id, ic, l]) => <a key={id} href={`#ajustes/${id}`} aria-current={cur === id ? 'location' : undefined} onClick={e => { e.preventDefault(); go(id); }}><Icon name={ic} />{l}<small /></a>)}
     </nav>
     <main ref={main} className="mz-main surf aj">
       <div className="aj-col">

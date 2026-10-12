@@ -14,8 +14,8 @@ declare global { interface Window { __pulseRoute?: string } }
 
 /** Ruta actual: la que dejó el núcleo al crear la ventana, la del hash o la que llega por `pulse://route`. */
 function useRoute(): [Route, (r: Route) => void] {
-  const [route, set] = useState<Route>(() => parseRoute(window.__pulseRoute || location.hash));
-  const go = (r: Route) => { set(r); history.replaceState(null, '', '#' + formatRoute(r)); };
+  const [route, set] = useState<Route>(() => { const r = parseRoute(location.hash || window.__pulseRoute); delete window.__pulseRoute; return r; });
+  const go = (r: Route) => { set(x => ({ ...r, n: (x.n ?? 0) + 1 })); history.replaceState(null, '', '#' + formatRoute(r)); };
   useEffect(() => { let off: (() => void) | undefined; onRoute(v => go(parseRoute(v))).then(f => (off = f)); return () => off?.(); }, []);
   return [route, go];
 }
@@ -27,11 +27,11 @@ export function Mosaico() {
   useTheme(cfg);
   const [route, go] = useRoute();
   useEffect(() => {
-    const k = (e: KeyboardEvent) => { if (e.ctrlKey && e.key.toLowerCase() === 'k') { e.preventDefault(); openPalette(); } };
+    const k = (e: KeyboardEvent) => { if (e.ctrlKey && e.key.toLowerCase() === 'k' && !e.repeat) { e.preventDefault(); openPalette(); } };
     window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k);
   }, []);
   if (!cfg) return null;
-  if (route.screen === 'ajustes') return <Ajustes cfg={cfg} save={save} section={route.arg} back={() => go({ screen: 'inicio' })} />;
+  if (route.screen === 'ajustes') return <Ajustes key={route.n} cfg={cfg} save={save} section={route.arg} back={() => go({ screen: 'inicio' })} />;
   const screen = route.screen;
   const link = (s: Screen, ic: string, l: string, count?: number) => <a key={s} href={`#${s}`} aria-current={screen === s ? 'page' : undefined} onClick={e => { e.preventDefault(); go({ screen: s }); }}><Icon name={ic} />{l}<small>{count || ''}</small></a>;
   return <div className="mz">
@@ -43,7 +43,7 @@ export function Mosaico() {
     </nav>
     <main className="mz-main surf">
       {screen === 'inicio' && <Inicio snap={snap} cfg={cfg} day={day} now={now} go={go} />}
-      {screen === 'sesiones' && <Sesiones snap={snap} cfg={cfg} now={now} arg={route.arg} />}
+      {screen === 'sesiones' && <Sesiones key={route.n} snap={snap} cfg={cfg} now={now} arg={route.arg} />}
       {screen === 'hoy' && <Hoy day={day} now={now} />}
       {screen === 'bitacora' && <Bitacora snap={snap} />}
     </main>

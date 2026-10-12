@@ -15,3 +15,5 @@ export const LOG_ICON: Record<string, [string, string]> = {
   done: ['check', 'var(--done)'], idle: ['hourglass', 'var(--tx2)'], plan: ['assignment', 'var(--tx2)'], error: ['error', 'var(--err)'],
   'subagent-start': ['account_tree', 'var(--sub)'], 'subagent-stop': ['account_tree', 'var(--sub)'], 'session-start': ['login', 'var(--tx3)'], 'session-end': ['logout', 'var(--tx3)'],
 };
+/** Igual a logbook::TODAY_LIMIT: si llegan tantos, la lista está cortada. */
+export const LOG_LIMIT = 5000;

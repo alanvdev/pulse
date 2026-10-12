@@ -14,6 +14,16 @@ pub fn append_resolve(session_id: &str, project: &str, id: u64, allow: Option<bo
     if let Ok(mut f) = OpenOptions::new().create(true).append(true).open(&p) { let _ = writeln!(f, "{line}"); }
 }
 
+/// Tope de eventos de hoy para la Bitácora (un día normal tiene unos pocos miles de líneas).
+pub const TODAY_LIMIT: usize = 5000;
+
+/// `at_ms` de una línea sin interpretar todo el JSON: la mayoría de las líneas son de otros días.
+fn quick_at(l: &str) -> Option<i64> {
+    let i = l.find("\"at_ms\":")? + 8;
+    let rest = &l[i..];
+    rest[..rest.find(|c: char| !(c.is_ascii_digit() || c == '-')).unwrap_or(rest.len())].parse().ok()
+}
+
 /// Un evento de hoy para la Bitácora de Mosaico.
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct LogItem { pub at_ms: i64, pub session_id: String, pub project: String, pub kind: String, pub text: String }
@@ -44,6 +54,7 @@ fn describe(e: &serde_json::Value) -> Option<(String, String)> {
 /// Eventos entre `from_ms` y `to_ms`, del más nuevo al más viejo, hasta `limit`. Las líneas que no se entienden se saltan.
 pub fn parse_events(lines: impl Iterator<Item = String>, from_ms: i64, to_ms: i64, limit: usize) -> Vec<LogItem> {
     let mut out: Vec<LogItem> = lines.filter_map(|l| {
+        if quick_at(&l).is_some_and(|at| at < from_ms || at > to_ms) { return None; }
         let v: serde_json::Value = serde_json::from_str(&l).ok()?;
         let at = v["at_ms"].as_i64()?;
         if at < from_ms || at > to_ms { return None; }
@@ -88,5 +99,9 @@ mod tests { use super::*;
         let v = parse_events(vec![line(1, r#"{"kind":"question","questions":[{"question":"¿Qué base?"}]}"#), line(2, r#"{"kind":"rara"}"#)].into_iter(), 0, 5, 5);
         assert_eq!(v.len(), 1);
         assert_eq!(v[0].text, "Pregunta: ¿Qué base?");
+    }
+    #[test] fn quick_date_check_reads_at_ms() {
+        assert_eq!(quick_at(&line(1234, r#"{"kind":"done"}"#)), Some(1234));
+        assert_eq!(quick_at("basura"), None);
     }
 }

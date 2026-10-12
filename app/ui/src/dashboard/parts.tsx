@@ -1,5 +1,5 @@
 // Piezas de Mosaico: bloque "Necesita tu respuesta" y tabla de sesiones (filas de 48 px).
-import type { ReactNode } from 'react';
+import { useEffect, type KeyboardEvent as RKeyboardEvent, type ReactNode } from 'react';
 import { decide, skip, type Config, type Pending, type Session, type Snapshot } from '../shared/bridge';
 import { clock } from '../shared/format';
 import { useHold } from '../shared/react';
@@ -10,6 +10,20 @@ const secsLeft = (p: Pending, now: number) => `${Math.max(0, Math.ceil((p.paused
 
 export function PendingBlock({ p, cfg, now, more }: { p: Pending; cfg: Config; now: number; more: number }) {
   const danger = p.danger && cfg.island.hold, hold = useHold(() => decide(p.id, true));
+  // N deniega, Y permite; en uno delicado, Y (o Enter/Espacio sobre el botón) se mantiene
+  useEffect(() => {
+    if (p.kind !== 'permission') return;
+    const down = (e: KeyboardEvent) => {
+      if (e.repeat || e.ctrlKey || e.altKey || e.metaKey || (e.target as HTMLElement).matches('input, textarea')) return;
+      const k = e.key.toLowerCase();
+      if (k === 'n') decide(p.id, false);
+      if (k === 'y') { if (danger) hold.begin(); else decide(p.id, true); }
+    };
+    const up = (e: KeyboardEvent) => { if (e.key.toLowerCase() === 'y') hold.end(); };
+    window.addEventListener('keydown', down); window.addEventListener('keyup', up);
+    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); };
+  }, [p.id, p.kind, danger]); // eslint-disable-line react-hooks/exhaustive-deps
+  const keyHold = (on: boolean) => (e: RKeyboardEvent) => { if (!danger || (e.key !== 'Enter' && e.key !== ' ')) return; e.preventDefault(); if (on && !e.repeat) hold.begin(); if (!on) hold.end(); };
   return <div className="mz-pend">
     <Icon name={p.kind === 'question' ? 'help' : 'front_hand'} />
     <div className="mz-pend-b">
@@ -21,7 +35,8 @@ export function PendingBlock({ p, cfg, now, more }: { p: Pending; cfg: Config; n
       ? <Button solo size="lg" onClick={() => skip(p.id)}>Responder en la terminal</Button>
       : <><Button solo size="lg" keys={['N']} onClick={() => decide(p.id, false)}>Denegar</Button>
         <Button pri size="lg" keys={['Y']} hold={hold.p} onClick={() => { if (!danger) decide(p.id, true); }}
-          onPointerDown={e => { if (danger) { e.preventDefault(); hold.begin(); } }} onPointerUp={hold.end} onPointerLeave={hold.end}>{danger ? 'Mantener' : 'Permitir'}</Button></>}
+          onPointerDown={e => { if (danger) { e.preventDefault(); hold.begin(); } }} onPointerUp={hold.end} onPointerLeave={hold.end} onPointerCancel={hold.end}
+          onKeyDown={keyHold(true)} onKeyUp={keyHold(false)}>{danger ? 'Mantener' : 'Permitir'}</Button></>}
     </div>
   </div>;
 }
