@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Final · Comando, puntos al pasar el mouse</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300..700&amp;family=Zen+Kaku+Gothic+New:wght@300;400;500;700&amp;display=swap">
+<style>
+@font-face{font-family:"Geist";src:url("/_blob/f35dbd8b46e23635dd508151e7cbca82") format("woff2");font-weight:100 900}
+@font-face{font-family:"Geist Mono";src:url("/_blob/a618062a7292d0dcb26d435664e18fce") format("woff2");font-weight:100 900}
+body{margin:0}
+.cap{font-size:12px;color:var(--tx3)}
+.cap b{color:var(--tx2);font-weight:600}
+.strip{position:relative;height:var(--h);border-radius:10px;overflow:hidden;background:var(--desk)}
+.dot{width:7px;height:7px;border-radius:50%;box-sizing:border-box;flex:none}
+.d-need{background:var(--perm);box-shadow:0 0 0 3px var(--permring)}
+.d-work{background:var(--tx)}
+.d-calm{border:1.5px solid var(--done)}
+.box{position:absolute;z-index:1;left:50%;top:12px;transform:translateX(-50%);box-sizing:border-box;background:var(--surface);border:1px solid var(--line);box-shadow:inset 0 1px 0 var(--hi),0 24px 48px -16px var(--shadow);overflow:hidden}
+.k{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:4px;background:var(--key);border:1px solid var(--line);font-size:10.5px;color:var(--tx3);font-family:'Geist',sans-serif}
+.srow{display:grid;grid-template-columns:7px 120px minmax(0,1fr) auto;gap:12px;align-items:center;height:36px;padding:0 12px;border-radius:7px;font-size:13px}
+.srow.need{background:var(--sel)}
+.mono{font-family:'Geist Mono',monospace;font-size:12px;letter-spacing:0}
+.arrow{position:absolute;left:50%;width:1px;background:var(--line2)}
+</style>
+</helmet>
+<div style="{{vars}} width:640px;height:700px;box-sizing:border-box;padding:24px;background:var(--canvas);font-family:var(--font);color:var(--tx);display:flex;flex-direction:column;gap:8px">
+
+  <div class="cap"><b>1 · Reposo.</b> Un punto por sesión mientras Claude trabaja.</div>
+  <div class="strip" style="--h:56px">
+    <div class="box" style="display:flex;gap:7px;align-items:center;height:24px;padding:0 10px;border-radius:8px"><span class="dot d-need"></span><span class="dot d-work"></span><span class="dot d-calm"></span></div>
+  </div>
+
+  <div class="cap" style="margin-top:6px"><b>2 · Al entrar el mouse (a mitad del movimiento).</b> La cápsula se estira hacia abajo con el mismo resorte de la isla y cada punto viaja a la que será su fila. Nada desaparece: los puntos son las filas.</div>
+  <div class="strip" style="--h:120px">
+    <div class="box" style="width:230px;height:84px;border-radius:10px">
+      <span class="dot d-need" style="position:absolute;left:18px;top:14px"></span>
+      <span class="dot d-work" style="position:absolute;left:18px;top:38px"></span>
+      <span class="dot d-calm" style="position:absolute;left:18px;top:62px"></span>
+      <span style="position:absolute;left:38px;top:9px;font-size:13px;opacity:.5">hyperops-api</span>
+      <span style="position:absolute;left:38px;top:33px;font-size:13px;opacity:.3">pulse</span>
+      <span style="position:absolute;left:38px;top:57px;font-size:13px;opacity:.15">landing-vastem</span>
+    </div>
+  </div>
+
+  <div class="cap" style="margin-top:6px"><b>3 · Resumen.</b> Los textos aparecen escalonados (40 ms entre filas). La sesión que te necesita va primero y se puede responder desde aquí. Al salir el mouse, se cierra en 250 ms.</div>
+  <div class="strip" style="--h:250px">
+    <div class="box" style="width:470px;border-radius:14px">
+      <div style="display:flex;flex-direction:column;gap:2px;padding:8px">
+        <div class="srow need"><span class="dot d-need"></span><span style="font-weight:500">hyperops-api</span><span class="mono" style="color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Permiso · npm run migrate</span><span class="k">↵</span></div>
+        <div class="srow"><span class="dot d-work"></span><span>pulse</span><span class="mono" style="color:var(--tx3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Edit orbe.ts · 2 subagentes</span><span class="mono" style="color:var(--tx3)">6:40</span></div>
+        <div class="srow"><span class="dot d-calm"></span><span>landing-vastem</span><span style="color:var(--tx3);font-size:12.5px">terminó hace 3 min</span><span class="mono" style="color:var(--tx3)">6:12</span></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;height:40px;padding:0 16px;border-top:1px solid var(--line);background:var(--barbg);font-size:12px;color:var(--tx3)">
+        <span>Hoy 3 h 12 min · te esperó 14 min</span>
+        <span style="margin-left:auto;display:flex;align-items:center;gap:6px">Paleta <span class="k">Ctrl</span><span class="k">Alt</span><span class="k">Espacio</span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="cap" style="margin-top:6px">Clic en una fila: la sesión que espera abre su tarjeta de permiso; las demás abren Mosaico en esa sesión. Con <span class="k">Esc</span> o al salir el mouse, vuelve a ser puntos.</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"tema":{"editor":"enum","options":["oscuro","claro"],"default":"oscuro"},"eventos":{"editor":"enum","options":["solo permiso","apagados","acento"],"default":"apagados"},"letra":{"editor":"enum","options":["Geist","Hanken Grotesk","Zen Kaku Gothic"],"default":"Hanken Grotesk"},"$preview":{"width":640,"height":700}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = {
+      oscuro: { canvas:'#070807', desk:'#151815', surface:'#111311', barbg:'#0e100e', line:'rgba(234,237,234,.08)', line2:'rgba(234,237,234,.16)', hi:'rgba(234,237,234,.05)', shadow:'rgba(0,0,0,.72)', key:'rgba(234,237,234,.04)', sel:'rgba(234,237,234,.07)', tx:'#eaedea', tx2:'#9ea39e', tx3:'#6c716c', perm:'#e3b05c', done:'#8fc3a0', err:'#e08a7e' },
+      claro: { canvas:'#dde1dd', desk:'#cfd5ce', surface:'#f6f8f5', barbg:'#f1f3f0', line:'rgba(31,36,32,.09)', line2:'rgba(31,36,32,.18)', hi:'#ffffff', shadow:'rgba(31,36,32,.16)', key:'#eef1ed', sel:'rgba(31,36,32,.06)', tx:'#1f2420', tx2:'#545a54', tx3:'#7a807a', perm:'#9a6512', done:'#2f6e4a', err:'#a8473a' }
+    };
+    const t = { ...P[this.props.tema ?? 'oscuro'] }, ev = this.props.eventos ?? 'apagados';
+    if (ev !== 'apagados') { t.done = t.tx3; t.err = t.tx; }
+    if (ev === 'acento') t.perm = t.tx;
+    t.permring = `color-mix(in srgb, ${t.perm} 22%, transparent)`;
+    t.font = { 'Geist': "'Geist',sans-serif", 'Hanken Grotesk': "'Hanken Grotesk',sans-serif", 'Zen Kaku Gothic': "'Zen Kaku Gothic New',sans-serif" }[this.props.letra ?? 'Hanken Grotesk'];
+    return { vars: Object.entries(t).map(([k, v]) => `--${k}:${v};`).join('') };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Final · Avisos</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300..700&amp;family=Zen+Kaku+Gothic+New:wght@300;400;500;700&amp;display=swap">
+<style>
+@font-face{font-family:"Geist";src:url("/_blob/f35dbd8b46e23635dd508151e7cbca82") format("woff2");font-weight:100 900}
+@font-face{font-family:"Geist Mono";src:url("/_blob/a618062a7292d0dcb26d435664e18fce") format("woff2");font-weight:100 900}
+@font-face{font-family:"Material Symbols Rounded";src:url("/_blob/2f2c5a9cef1f2e96d8fc8ec6cc9b4b04") format("woff2");font-weight:100 700}
+body{margin:0}
+.ms{font-family:"Material Symbols Rounded";font-variation-settings:"wght" 300;font-style:normal;line-height:1;text-transform:none;white-space:nowrap;font-feature-settings:"liga";display:inline-block;width:1em;overflow:hidden;font-size:17px}
+.row{display:grid;grid-template-columns:minmax(0,1fr) 56px;gap:12px;align-items:center}
+.strip{position:relative;height:60px;border-radius:10px;background:var(--desk);display:grid;place-items:center;overflow:hidden}
+.pill{position:relative;display:flex;align-items:center;gap:10px;height:38px;max-width:520px;padding:0 16px 0 13px;box-sizing:border-box;border-radius:10px;background:var(--surface);border:1px solid var(--line);box-shadow:inset 0 1px 0 var(--hi),0 16px 36px -14px var(--shadow);font-size:13px;white-space:nowrap;overflow:hidden}
+.pill .t{overflow:hidden;text-overflow:ellipsis}
+.pill b{font-weight:500}
+.life{position:absolute;left:12px;right:12px;bottom:0;height:1px;background:var(--line2)}
+.life i{display:block;height:100%;width:65%;background:var(--tx3)}
+.mono{font-family:'Geist Mono',monospace;font-size:12px;color:var(--tx2)}
+.dur{font-size:12px;color:var(--tx3);text-align:right;font-variant-numeric:tabular-nums}
+h2{margin:10px 0 2px;font-size:12px;font-weight:600;color:var(--tx2)}
+</style>
+</helmet>
+<div style="{{vars}} width:640px;min-height:1000px;box-sizing:border-box;padding:24px;background:var(--canvas);font-family:var(--font);color:var(--tx);display:flex;flex-direction:column;gap:8px">
+  <div style="font-size:12px;color:var(--tx3);margin-bottom:4px">Cada aviso baja a la isla, dura lo que dice a la derecha y se va. La línea fina de abajo es su tiempo. El icono dice qué pasó; el color solo lo confirma.</div>
+
+  <sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+    <h2>{{g.name}}</h2>
+    <sc-for list="{{g.items}}" as="a" hint-placeholder-count="4">
+      <div class="row">
+        <div class="strip"><div class="pill"><span class="ms" style="color:{{a.c}}">{{a.icon}}</span><span class="t"><b>{{a.who}}</b> <span style="color:var(--tx2)">{{a.what}}</span> <span class="mono">{{a.extra}}</span></span><span class="life"><i></i></span></div></div>
+        <span class="dur">{{a.dur}}</span>
+      </div>
+    </sc-for>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"tema":{"editor":"enum","options":["oscuro","claro"],"default":"oscuro"},"eventos":{"editor":"enum","options":["solo permiso","apagados","acento"],"default":"apagados"},"letra":{"editor":"enum","options":["Geist","Hanken Grotesk","Zen Kaku Gothic"],"default":"Hanken Grotesk"},"$preview":{"width":640,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = {
+      oscuro: { canvas:'#070807', desk:'#151815', surface:'#111311', line:'rgba(234,237,234,.08)', line2:'rgba(234,237,234,.14)', hi:'rgba(234,237,234,.05)', shadow:'rgba(0,0,0,.72)', tx:'#eaedea', tx2:'#9ea39e', tx3:'#6c716c', perm:'#e3b05c', done:'#8fc3a0', err:'#e08a7e' },
+      claro: { canvas:'#dde1dd', desk:'#cfd5ce', surface:'#f6f8f5', line:'rgba(31,36,32,.09)', line2:'rgba(31,36,32,.16)', hi:'#ffffff', shadow:'rgba(31,36,32,.16)', tx:'#1f2420', tx2:'#545a54', tx3:'#7a807a', perm:'#9a6512', done:'#2f6e4a', err:'#a8473a' }
+    };
+    const t = { ...P[this.props.tema ?? 'oscuro'] }, ev = this.props.eventos ?? 'apagados';
+    if (ev !== 'apagados') { t.done = t.tx2; t.err = t.tx; }
+    if (ev === 'acento') t.perm = t.tx;
+    t.font = { 'Geist': "'Geist',sans-serif", 'Hanken Grotesk': "'Hanken Grotesk',sans-serif", 'Zen Kaku Gothic': "'Zen Kaku Gothic New',sans-serif" }[this.props.letra ?? 'Hanken Grotesk'];
+    const a = (icon, c, who, what, extra, dur) => ({ icon, c, who, what, extra, dur });
+    return {
+      vars: Object.entries(t).map(([k, v]) => `--${k}:${v};`).join(''),
+      groups: [
+        { name: 'Lo que hace Claude', items: [
+          a('check', 'var(--done)', 'landing-vastem', 'terminó', '6m 12s', '2,8 s'),
+          a('error', 'var(--err)', 'hyperops-api', 'falló', 'npm test (exit 1)', '2,8 s'),
+          a('assignment', 'var(--tx2)', 'pulse', 'terminó un plan, revísalo en la terminal', '', '4,5 s'),
+          a('help', 'var(--tx2)', 'pulse', 'te pregunta en la terminal:', '¿Sigo con las pruebas?', '4,5 s')
+        ] },
+        { name: 'Lo que respondiste', items: [
+          a('check', 'var(--done)', 'Permitido', '', 'npm run migrate -- --env staging', '1,3 s'),
+          a('close', 'var(--err)', 'Denegado', '', 'git push --force', '1,3 s'),
+          a('send', 'var(--tx2)', 'Respuesta enviada:', 'Postgres en Docker', '', '1,8 s'),
+          a('terminal', 'var(--tx2)', 'Respóndela en la terminal', '', '', '1,8 s')
+        ] },
+        { name: 'Cuando nadie respondió en la isla', items: [
+          a('terminal', 'var(--tx2)', 'Respondido en la terminal', '', '', '1,6 s'),
+          a('schedule', 'var(--perm)', 'Sin respuesta:', 'Claude te pregunta en la terminal', '', '2,2 s')
+        ] }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Final · Botones</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300..700&amp;display=swap">
+<style>
+@font-face{font-family:"Geist";src:url("/_blob/f35dbd8b46e23635dd508151e7cbca82") format("woff2");font-weight:100 900}
+@font-face{font-family:"Geist Mono";src:url("/_blob/a618062a7292d0dcb26d435664e18fce") format("woff2");font-weight:100 900}
+body{margin:0}
+.opt{display:flex;flex-direction:column;gap:12px;padding:18px 20px;border-radius:12px;background:var(--surface);border:1px solid var(--line)}
+.opt h2{margin:0;font-size:13px;font-weight:600}
+.opt p{margin:0;font-size:12px;color:var(--tx3)}
+.bar{display:flex;align-items:center;gap:8px;height:46px;padding:0 10px 0 16px;border-radius:10px;background:var(--barbg);border:1px solid var(--line)}
+.row{display:flex;gap:8px}
+.k{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:4px;font-size:10.5px;font-family:'Geist',sans-serif;background:var(--key);border:1px solid var(--line);color:var(--tx3)}
+button{font:inherit;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;position:relative;overflow:hidden}
+/* 1 sobrio */
+.a{height:30px;padding:0 12px;border-radius:8px;border:1px solid var(--line2);background:transparent;color:var(--tx);font-size:12.5px}
+.a.p{background:var(--tx);border-color:transparent;color:var(--surface);font-weight:600}
+.a.p .k{background:transparent;border-color:var(--onbtn);color:var(--surface)}
+/* 2 elevacion */
+.b{height:30px;padding:0 12px;border-radius:7px;border:0;background:var(--el1);color:var(--tx2);font-size:12.5px;box-shadow:inset 0 1px 0 var(--hi),0 1px 2px var(--sh)}
+.b.p{background:var(--el2);color:var(--tx);font-weight:600;box-shadow:inset 0 1px 0 var(--hi2),0 0 0 1px var(--line),0 2px 6px var(--sh)}
+/* 3 solo texto */
+.c{height:28px;padding:0 9px;border-radius:6px;border:0;background:transparent;color:var(--tx2);font-size:12.5px}
+.c.p{background:var(--sel);color:var(--tx);font-weight:600}
+/* 4 recto */
+.d{height:30px;padding:0 12px;border-radius:4px;border:1px solid var(--line2);background:var(--el1);color:var(--tx);font-size:12.5px}
+.d.p{background:var(--tx);border-color:transparent;color:var(--surface);font-weight:600}
+.d.p .k{background:transparent;border-color:var(--onbtn);color:var(--surface)}
+.hold{position:absolute;left:0;bottom:0;height:2px;width:42%;background:var(--perm)}
+</style>
+</helmet>
+<div style="{{vars}} width:640px;min-height:900px;box-sizing:border-box;padding:24px;background:var(--canvas);font-family:'Hanken Grotesk',sans-serif;color:var(--tx);display:flex;flex-direction:column;gap:14px">
+
+  <section class="opt">
+    <h2>1 · Sobrio, esquina de 8 px</h2>
+    <p>Como E: borde fino el secundario, relleno del color del texto el principal.</p>
+    <div class="bar"><span style="font-size:12px;color:var(--tx3);margin-right:auto">Pulse</span><button type="button" class="a">Denegar <span class="k">N</span></button><button type="button" class="a p"><span class="hold"></span>Mantener <span class="k">Y</span></button></div>
+    <div class="row"><button type="button" class="a" style="flex:1;height:34px">Denegar</button><button type="button" class="a p" style="flex:1.4;height:34px">Mantén para permitir</button></div>
+  </section>
+
+  <section class="opt">
+    <h2>2 · Elevación</h2>
+    <p>Sin bordes ni relleno fuerte: cada botón es una superficie apenas levantada. El principal sube un poco más.</p>
+    <div class="bar"><span style="font-size:12px;color:var(--tx3);margin-right:auto">Pulse</span><button type="button" class="b">Denegar <span class="k">N</span></button><button type="button" class="b p"><span class="hold"></span>Mantener <span class="k">Y</span></button></div>
+    <div class="row"><button type="button" class="b" style="flex:1;height:34px">Denegar</button><button type="button" class="b p" style="flex:1.4;height:34px">Mantén para permitir</button></div>
+  </section>
+
+  <section class="opt">
+    <h2>3 · Solo texto, como Raycast</h2>
+    <p>En la barra de acciones no hay botón visible: texto y teclas. El principal solo tiene un fondo tenue.</p>
+    <div class="bar"><span style="font-size:12px;color:var(--tx3);margin-right:auto">Pulse</span><button type="button" class="c">Denegar <span class="k">Ctrl</span><span class="k">Alt</span><span class="k">N</span></button><button type="button" class="c p"><span class="hold"></span>Mantener <span class="k">Ctrl</span><span class="k">Alt</span><span class="k">Y</span></button></div>
+    <div class="row"><button type="button" class="c" style="flex:1;height:34px;border:1px solid var(--line)">Denegar</button><button type="button" class="c p" style="flex:1.4;height:34px">Mantén para permitir</button></div>
+  </section>
+
+  <section class="opt">
+    <h2>4 · Recto, esquina de 4 px</h2>
+    <p>Más seco y técnico, cercano a los controles de Windows.</p>
+    <div class="bar"><span style="font-size:12px;color:var(--tx3);margin-right:auto">Pulse</span><button type="button" class="d">Denegar <span class="k">N</span></button><button type="button" class="d p"><span class="hold"></span>Mantener <span class="k">Y</span></button></div>
+    <div class="row"><button type="button" class="d" style="flex:1;height:34px">Denegar</button><button type="button" class="d p" style="flex:1.4;height:34px">Mantén para permitir</button></div>
+  </section>
+
+  <p style="margin:0;font-size:12px;color:var(--tx3)">La línea ámbar bajo "Mantener" es el avance del 0,9 s de mantener presionado.</p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"tema":{"editor":"enum","options":["oscuro","claro"],"default":"oscuro"},"$preview":{"width":640,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const dark = (this.props.tema ?? 'oscuro') === 'oscuro';
+    const t = dark ? {
+      canvas:'#070807', surface:'#111311', barbg:'#0e100e', line:'rgba(234,237,234,.08)', line2:'rgba(234,237,234,.16)', key:'rgba(234,237,234,.04)', sel:'rgba(234,237,234,.07)', onbtn:'rgba(10,11,10,.3)',
+      el1:'#1a1d1a', el2:'#252925', hi:'rgba(234,237,234,.06)', hi2:'rgba(234,237,234,.12)', sh:'rgba(0,0,0,.5)', tx:'#eaedea', tx2:'#9ea39e', tx3:'#6c716c', perm:'#e3b05c'
+    } : {
+      canvas:'#dde1dd', surface:'#f6f8f5', barbg:'#f1f3f0', line:'rgba(31,36,32,.09)', line2:'rgba(31,36,32,.18)', key:'#eef1ed', sel:'rgba(31,36,32,.06)', onbtn:'rgba(246,248,245,.4)',
+      el1:'#ffffff', el2:'#ffffff', hi:'rgba(255,255,255,1)', hi2:'rgba(255,255,255,1)', sh:'rgba(31,36,32,.14)', tx:'#1f2420', tx2:'#545a54', tx3:'#7a807a', perm:'#9a6512'
+    };
+    return { vars: Object.entries(t).map(([k, v]) => `--${k}:${v};`).join('') };
+  }
+}
+</script>
+</body>
+</html>

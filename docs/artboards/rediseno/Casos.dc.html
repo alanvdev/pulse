@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Final · Isla, casos límite</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300..700&amp;family=Zen+Kaku+Gothic+New:wght@300;400;500;700&amp;display=swap">
+<style>
+@font-face{font-family:"Geist";src:url("/_blob/f35dbd8b46e23635dd508151e7cbca82") format("woff2");font-weight:100 900}
+@font-face{font-family:"Geist Mono";src:url("/_blob/a618062a7292d0dcb26d435664e18fce") format("woff2");font-weight:100 900}
+@font-face{font-family:"Material Symbols Rounded";src:url("/_blob/2f2c5a9cef1f2e96d8fc8ec6cc9b4b04") format("woff2");font-weight:100 700}
+body{margin:0}
+.ms{font-family:"Material Symbols Rounded";font-variation-settings:"wght" 300;font-style:normal;line-height:1;text-transform:none;white-space:nowrap;font-feature-settings:"liga";display:inline-block;width:1em;overflow:hidden;font-size:16px}
+.mono{font-family:'Geist Mono',monospace;letter-spacing:0}
+.col{display:flex;flex-direction:column;gap:8px;min-width:0}
+.cap{font-size:12px;color:var(--tx3);margin-top:8px}
+.cap b{color:var(--tx2);font-weight:600}
+.strip{position:relative;height:var(--h);border-radius:10px;overflow:hidden;background:var(--desk)}
+.dot{width:7px;height:7px;border-radius:50%;box-sizing:border-box;flex:none}
+.card{position:absolute;z-index:1;left:50%;top:14px;transform:translateX(-50%);box-sizing:border-box;border-radius:14px;background:var(--surface);border:1px solid var(--line);box-shadow:inset 0 1px 0 var(--hi),0 28px 56px -16px var(--shadow);overflow:hidden}
+.right{left:auto;right:16px;transform:none}
+.body{display:flex;flex-direction:column;gap:11px;padding:16px 18px 14px}
+.head{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--tx2)}
+.head b{color:var(--tx);font-weight:500}
+.cmd{font-family:'Geist Mono',monospace;font-size:13px;padding:11px 13px;border-radius:8px;background:var(--raised)}
+.bar{display:flex;align-items:center;gap:6px;height:46px;padding:0 8px 0 18px;border-top:1px solid var(--line);background:var(--barbg);font-size:12px;color:var(--tx3)}
+.k{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:4px;background:var(--key);border:1px solid var(--line);font-size:10.5px;color:var(--tx3);font-family:'Geist',sans-serif}
+.btn{position:relative;overflow:hidden;display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 9px;border-radius:6px;border:0;background:transparent;color:var(--tx2);font:inherit;font-size:12.5px}
+.btn.pri{background:var(--sel);color:var(--tx);font-weight:600}
+.btn:disabled{opacity:.45}
+.hold{position:absolute;left:0;bottom:0;height:2px;background:var(--perm)}
+.pill{position:absolute;z-index:1;left:50%;top:14px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;height:40px;padding:0 16px 0 14px;box-sizing:border-box;border-radius:10px;background:var(--surface);border:1px solid var(--line);box-shadow:inset 0 1px 0 var(--hi),0 20px 44px -16px var(--shadow);font-size:13px;white-space:nowrap}
+.opt{display:grid;grid-template-columns:18px minmax(0,1fr);gap:10px;align-items:start;padding:9px 10px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--tx);font:inherit;font-size:13px;text-align:left;width:100%;box-sizing:border-box}
+.opt small{display:block;font-size:12px;color:var(--tx3);margin-top:1px}
+.opt[aria-pressed="true"]{background:var(--sel);border-color:var(--line2)}
+.rad{width:14px;height:14px;margin-top:2px;border-radius:50%;border:1.5px solid var(--tx3);box-sizing:border-box}
+.opt[aria-pressed="true"] .rad{border:4px solid var(--tx)}
+.chk{width:14px;height:14px;margin-top:2px;border-radius:4px;border:1.5px solid var(--tx3);box-sizing:border-box;display:grid;place-items:center}
+.opt[aria-pressed="true"] .chk{background:var(--tx);border-color:var(--tx);color:var(--surface)}
+.tag{font-size:11px;padding:1px 6px;border-radius:4px;background:var(--raised);color:var(--tx2)}
+</style>
+</helmet>
+<div style="{{vars}} width:1280px;min-height:1640px;box-sizing:border-box;padding:28px;background:var(--canvas);font-family:var(--font);color:var(--tx);display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px;align-content:start">
+
+  <div class="col">
+    <div class="cap" style="margin-top:0"><b>Varios permisos a la vez.</b> Se responde uno; detrás se ve que hay más y quién sigue.</div>
+    <div class="strip" style="--h:262px">
+      <div class="card" style="top:30px;width:440px;height:60px;opacity:.5"></div>
+      <div class="card" style="top:22px;width:460px;height:60px;opacity:.75"></div>
+      <div class="card" style="width:480px">
+        <div class="body">
+          <div class="head"><span class="dot" style="background:var(--perm);box-shadow:0 0 0 3px var(--permring)"></span><b>hyperops-api</b>quiere ejecutar<span style="margin-left:auto" class="mono">1 de 3 · 24s</span></div>
+          <div class="cmd">npm run migrate -- --env staging</div>
+          <div style="font-size:12px;color:var(--tx3)">Siguiente: pulse quiere ejecutar <span class="mono">git push --force</span></div>
+        </div>
+        <div class="bar">Pulse<button type="button" class="btn" style="margin-left:auto">Denegar <span class="k">Ctrl</span><span class="k">Alt</span><span class="k">N</span></button><button type="button" class="btn pri"><span class="hold" style="width:42%"></span>Mantener <span class="k">Ctrl</span><span class="k">Alt</span><span class="k">Y</span></button></div>
+      </div>
+    </div>
+
+    <div class="cap"><b>Comando largo.</b> Se ven tres líneas; el resto se desplaza dentro del bloque.</div>
+    <div class="strip" style="--h:250px">
+      <div class="card" style="width:480px">
+        <div class="body">
+          <div class="head"><span class="dot" style="background:var(--perm);box-shadow:0 0 0 3px var(--permring)"></span><b>landing-vastem</b>quiere ejecutar<span style="margin-left:auto" class="mono">19s</span></div>
+          <div class="cmd" style="position:relative;max-height:62px;overflow:hidden;line-height:1.55;white-space:pre-wrap;word-break:break-all">docker compose -f docker-compose.prod.yml run --rm web python manage.py migrate --database=replica --settings=config.settings.production &amp;&amp; python manage.py collectstatic --noinput<span style="position:absolute;left:0;right:0;bottom:0;height:22px;background:linear-gradient(transparent,var(--raised))"></span></div>
+        </div>
+        <div class="bar">Desplaza para ver todo<button type="button" class="btn" style="margin-left:auto">Denegar <span class="k">N</span></button><button type="button" class="btn pri">Permitir <span class="k">Y</span></button></div>
+      </div>
+    </div>
+
+    <div class="cap"><b>Claude pregunta, una opción.</b> Un clic responde. "Otra…" abre un campo de texto.</div>
+    <div class="strip" style="--h:372px">
+      <div class="card" style="width:480px">
+        <div class="body">
+          <div class="head"><span class="dot" style="background:var(--perm);box-shadow:0 0 0 3px var(--permring)"></span><b>pulse</b>te pregunta<span class="tag" style="margin-left:auto">Base de datos</span></div>
+          <div style="font-size:14.5px;font-weight:500">¿Qué base de datos uso para las pruebas?</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <button type="button" class="opt" aria-pressed="false"><span class="rad"></span><span>SQLite en memoria<small>Rápida, se borra al terminar</small></span></button>
+            <button type="button" class="opt" aria-pressed="true"><span class="rad"></span><span>Postgres en Docker<small>Igual que producción</small></span></button>
+            <button type="button" class="opt" aria-pressed="false"><span class="rad"></span><span>Otra…</span></button>
+          </div>
+        </div>
+        <div class="bar">1 a 3 para elegir<button type="button" class="btn" style="margin-left:auto">En la terminal <span class="k">Esc</span></button></div>
+      </div>
+    </div>
+
+    <div class="cap"><b>Claude pregunta, varias opciones.</b> Se marcan y se envían juntas.</div>
+    <div class="strip" style="--h:318px">
+      <div class="card" style="width:480px">
+        <div class="body">
+          <div class="head"><span class="dot" style="background:var(--perm);box-shadow:0 0 0 3px var(--permring)"></span><b>pulse</b>te pregunta<span style="margin-left:auto;font-size:12px;color:var(--tx3)">Puedes elegir varias</span></div>
+          <div style="font-size:14.5px;font-weight:500">¿Qué agrego al modo foco?</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <button type="button" class="opt" aria-pressed="true"><span class="chk"><span class="ms" style="font-size:11px;font-variation-settings:'wght' 600">check</span></span><span>Detectar llamadas</span></button>
+            <button type="button" class="opt" aria-pressed="true"><span class="chk"><span class="ms" style="font-size:11px;font-variation-settings:'wght' 600">check</span></span><span>Horario</span></button>
+            <button type="button" class="opt" aria-pressed="false"><span class="chk"></span><span>Pantalla completa</span></button>
+          </div>
+        </div>
+        <div class="bar">2 elegidas<button type="button" class="btn" style="margin-left:auto">En la terminal <span class="k">Esc</span></button><button type="button" class="btn pri">Enviar <span class="k">Ctrl</span><span class="k">↵</span></button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="cap" style="margin-top:0"><b>Saliste del modo foco.</b> Lo que pasó mientras tanto, junto, y se va solo en 4 s.</div>
+    <div class="strip" style="--h:230px">
+      <div class="card" style="width:400px">
+        <div class="body" style="gap:9px">
+          <div class="head"><span class="ms" style="font-size:16px;color:var(--tx2)">dark_mode</span><b>Mientras estabas en foco</b><span style="margin-left:auto" class="mono">3</span></div>
+          <div style="display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:10px;align-items:center;font-size:13px"><span class="ms" style="color:var(--done)">check</span><span>landing-vastem</span><span style="color:var(--tx3);font-size:12px">terminó · 10:42</span></div>
+          <div style="display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:10px;align-items:center;font-size:13px"><span class="ms" style="color:var(--err)">error</span><span>hyperops-api</span><span style="color:var(--tx3);font-size:12px">falló una herramienta · 10:47</span></div>
+          <div style="display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:10px;align-items:center;font-size:13px"><span class="ms" style="color:var(--tx2)">hourglass</span><span>pulse</span><span style="color:var(--tx3);font-size:12px">te espera · 10:51</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cap"><b>Comando delicado, a medio mantener.</b> La línea ámbar avanza; si sueltas antes, vuelve a cero.</div>
+    <div class="strip" style="--h:96px">
+      <div class="pill" style="height:46px;padding:0 6px 0 16px;gap:12px"><span class="dot" style="background:var(--perm);box-shadow:0 0 0 3px var(--permring)"></span><span><b style="font-weight:500">hyperops-api</b> <span class="mono" style="font-size:12px;color:var(--tx2)">npm run migrate</span></span><button type="button" class="btn pri"><span class="hold" style="width:72%"></span>Mantener <span class="k">Ctrl</span><span class="k">Alt</span><span class="k">Y</span></button></div>
+    </div>
+
+    <div class="cap"><b>Orbe con varios permisos.</b> El punto se abre en la tarjeta del lado donde está y muestra la cola.</div>
+    <div class="strip" style="--h:206px">
+      <div class="card right" style="width:380px">
+        <div class="body">
+          <div class="head"><span class="dot" style="background:var(--perm);box-shadow:0 0 0 3px var(--permring)"></span><b>hyperops-api</b><span style="margin-left:auto" class="mono">1 de 3 · 24s</span></div>
+          <div class="cmd">npm run migrate -- --env staging</div>
+        </div>
+        <div class="bar">Delicado<button type="button" class="btn" style="margin-left:auto">Denegar</button><button type="button" class="btn pri">Mantener <span class="k">Y</span></button></div>
+      </div>
+    </div>
+
+    <div class="cap"><b>Orbe en modo foco.</b> El punto cambia a una luna; los avisos se guardan para después.</div>
+    <div class="strip" style="--h:76px">
+      <div class="pill" style="left:auto;right:16px;transform:none;height:34px;padding:0 14px 0 10px;gap:8px"><span class="ms" style="font-size:15px;color:var(--tx2)">dark_mode</span><span>En foco</span><span style="color:var(--tx3)">· 3 guardados</span></div>
+    </div>
+
+    <div class="cap"><b>Orbe arrastrándose.</b> Se suelta a la izquierda, al centro o a la derecha; las zonas se marcan al arrastrar.</div>
+    <div class="strip" style="--h:86px">
+      <div style="position:absolute;left:12px;right:12px;top:12px;bottom:12px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+        <span style="border:1px dashed var(--line2);border-radius:8px"></span><span style="border:1px dashed var(--tx3);border-radius:8px;background:var(--sel)"></span><span style="border:1px dashed var(--line2);border-radius:8px"></span>
+      </div>
+      <div style="position:absolute;left:52%;top:26px;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--surface);border:1px solid var(--line2);box-shadow:0 12px 24px -6px var(--shadow);transform:scale(1.12)"><span class="dot" style="background:var(--tx)"></span></div>
+    </div>
+
+    <div class="cap"><b>Sin sesiones.</b> Comando: no hay nada arriba. Orbe: el anillo en calma, casi transparente.</div>
+    <div class="strip" style="--h:64px">
+      <div style="position:absolute;right:20px;top:20px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;opacity:.55"><span class="dot" style="border:1.5px solid var(--tx3)"></span></div>
+    </div>
+
+    <div class="cap"><b>Paleta sin resultados.</b></div>
+    <div class="strip" style="--h:140px">
+      <div class="card" style="width:440px;padding:8px">
+        <div style="display:flex;align-items:center;gap:10px;height:42px;padding:0 14px;border-radius:10px;background:var(--raised)"><span class="ms" style="color:var(--tx3)">search</span><span style="font-size:14px">reiniciar</span><span class="k" style="margin-left:auto">Esc</span></div>
+        <div style="padding:14px 14px 8px;font-size:13px;color:var(--tx3)">Nada coincide. Prueba con "foco", "silenciar" o el nombre de un proyecto.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"tema":{"editor":"enum","options":["oscuro","claro"],"default":"oscuro"},"eventos":{"editor":"enum","options":["solo permiso","apagados","acento"],"default":"apagados"},"letra":{"editor":"enum","options":["Geist","Hanken Grotesk","Zen Kaku Gothic"],"default":"Hanken Grotesk"},"$preview":{"width":1280,"height":1640}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = {
+      oscuro: { canvas:'#070807', desk:'#151815', surface:'#111311', raised:'#181b18', barbg:'#0e100e', line:'rgba(234,237,234,.08)', line2:'rgba(234,237,234,.16)', hi:'rgba(234,237,234,.05)', shadow:'rgba(0,0,0,.72)', key:'rgba(234,237,234,.04)', sel:'rgba(234,237,234,.07)', tx:'#eaedea', tx2:'#9ea39e', tx3:'#6c716c', perm:'#e3b05c', done:'#8fc3a0', err:'#e08a7e' },
+      claro: { canvas:'#dde1dd', desk:'#cfd5ce', surface:'#f6f8f5', raised:'#ebeeea', barbg:'#f1f3f0', line:'rgba(31,36,32,.09)', line2:'rgba(31,36,32,.18)', hi:'#ffffff', shadow:'rgba(31,36,32,.16)', key:'#eef1ed', sel:'rgba(31,36,32,.06)', tx:'#1f2420', tx2:'#545a54', tx3:'#7a807a', perm:'#9a6512', done:'#2f6e4a', err:'#a8473a' }
+    };
+    const t = { ...P[this.props.tema ?? 'oscuro'] }, ev = this.props.eventos ?? 'apagados';
+    if (ev !== 'apagados') { t.done = t.tx2; t.err = t.tx; }
+    if (ev === 'acento') t.perm = t.tx;
+    t.permring = `color-mix(in srgb, ${t.perm} 22%, transparent)`;
+    t.font = { 'Geist': "'Geist',sans-serif", 'Hanken Grotesk': "'Hanken Grotesk',sans-serif", 'Zen Kaku Gothic': "'Zen Kaku Gothic New',sans-serif" }[this.props.letra ?? 'Hanken Grotesk'];
+    return { vars: Object.entries(t).map(([k, v]) => `--${k}:${v};`).join('') };
+  }
+}
+</script>
+</body>
+</html>

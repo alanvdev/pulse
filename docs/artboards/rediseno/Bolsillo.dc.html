@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Final · Bolsillo</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300..700&amp;family=Zen+Kaku+Gothic+New:wght@300;400;500;700&amp;display=swap">
+<style>
+@font-face{font-family:"Geist";src:url("/_blob/f35dbd8b46e23635dd508151e7cbca82") format("woff2");font-weight:100 900}
+@font-face{font-family:"Geist Mono";src:url("/_blob/a618062a7292d0dcb26d435664e18fce") format("woff2");font-weight:100 900}
+@font-face{font-family:"Material Symbols Rounded";src:url("/_blob/2f2c5a9cef1f2e96d8fc8ec6cc9b4b04") format("woff2");font-weight:100 700}
+body{margin:0}
+.ms{font-family:"Material Symbols Rounded";font-variation-settings:"wght" 300;font-style:normal;line-height:1;text-transform:none;white-space:nowrap;font-feature-settings:"liga";display:inline-block;width:1em;overflow:hidden;font-size:16px}
+.k{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 4px;box-sizing:border-box;border-radius:4px;background:var(--key);border:1px solid var(--line);font-size:10.5px;color:var(--tx3)}
+.s{display:grid;grid-template-columns:16px minmax(0,1fr) auto;gap:12px;align-items:center;padding:11px 4px}
+.s + .s{border-top:1px solid var(--line)}
+.s .ms{color:var(--tx2)}
+.tab{height:26px;padding:0 10px;border:0;border-radius:6px;background:transparent;color:var(--tx3);font:inherit;font-size:12px}
+.tab[aria-current="true"]{background:var(--sel);color:var(--tx)}
+.q{display:flex;align-items:center;gap:7px;height:28px;padding:0 10px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--tx3);font:inherit;font-size:12px}
+.q[aria-pressed="true"]{color:var(--tx);background:var(--sel)}
+.q .ms{font-size:14px}
+</style>
+</helmet>
+<div style="{{vars}} position:relative;width:500px;height:700px;overflow:hidden;background:var(--desk);font-family:var(--font);color:var(--tx);letter-spacing:-.005em">
+
+  <section aria-label="Bolsillo" style="position:absolute;right:12px;bottom:60px;width:380px;height:580px;box-sizing:border-box;border-radius:14px;background:var(--surface);border:1px solid var(--line);box-shadow:inset 0 1px 0 var(--hi),0 24px 48px -12px var(--shadow);display:flex;flex-direction:column;overflow:hidden">
+    <div style="flex:1;min-height:0;overflow:auto;padding:20px 18px 12px;display:flex;flex-direction:column;gap:20px">
+      <header>
+        <div style="font-size:12px;color:var(--tx3)">3 sesiones</div>
+        <div style="font-size:20px;font-weight:500;letter-spacing:-.02em;margin-top:2px">Una te necesita</div>
+      </header>
+
+      <div style="display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:10px;background:var(--raised);border:1px solid var(--line)">
+        <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--tx2)"><span style="width:6px;height:6px;border-radius:50%;background:var(--perm);box-shadow:0 0 0 3px var(--permring)"></span><span style="color:var(--tx)">hyperops-api</span>quiere ejecutar<span style="margin-left:auto;font-family:'Geist Mono',monospace;font-size:11.5px;color:var(--tx3)">24s</span></div>
+        <div style="font-family:'Geist Mono',monospace;font-size:13px">npm run migrate -- --env staging</div>
+        <div style="display:flex;gap:8px;margin-top:2px">
+          <button type="button" style="flex:1;height:32px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--tx2);font:inherit;font-size:13px">Denegar <span class="k" style="margin-left:4px">N</span></button>
+          <button type="button" style="flex:1;height:32px;border-radius:6px;border:0;background:var(--sel);color:var(--tx);font:inherit;font-size:13px;font-weight:600">Mantener <span class="k" style="margin-left:4px">Y</span></button>
+        </div>
+      </div>
+
+      <div>
+        <div class="s"><span class="ms">progress_activity</span><span style="min-width:0"><span style="display:block;font-size:13.5px">pulse</span><span style="display:block;font-family:'Geist Mono',monospace;font-size:11.5px;color:var(--tx3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Edit app/ui/src/island/orbe.ts</span></span><span style="font-family:'Geist Mono',monospace;font-size:11.5px;color:var(--tx3)">6:40</span></div>
+        <div class="s"><span class="ms" style="color:var(--done)">check</span><span><span style="display:block;font-size:13.5px">landing-vastem</span><span style="display:block;font-size:12px;color:var(--tx3)">Terminó hace 3 min</span></span><span style="font-family:'Geist Mono',monospace;font-size:11.5px;color:var(--tx3)">6:12</span></div>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:auto">
+        <button type="button" class="q" aria-pressed="false"><span class="ms">dark_mode</span>Foco</button>
+        <button type="button" class="q" aria-pressed="true"><span class="ms">volume_up</span>Sonidos</button>
+        <button type="button" class="q" aria-pressed="true"><span class="ms">blur_on</span>Pulsos</button>
+        <button type="button" class="q" aria-pressed="true"><span class="ms">keyboard</span>Teclado</button>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:4px;height:44px;padding:0 8px 0 8px;border-top:1px solid var(--line);background:var(--barbg)">
+      <button type="button" class="tab" aria-current="true">Ahora</button>
+      <button type="button" class="tab">Hoy</button>
+      <button type="button" class="tab">Ajustes</button>
+      <span style="margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--tx2)">Abrir Pulse <span class="k">Ctrl</span><span class="k">O</span></span>
+    </div>
+  </section>
+
+  <div style="position:absolute;left:0;right:0;bottom:0;height:48px;background:var(--taskbar);border-top:1px solid var(--line);display:flex;align-items:center;justify-content:flex-end;gap:4px;padding:0 10px;font-family:'Segoe UI',sans-serif">
+    <span style="width:40px;height:40px;border-radius:4px;display:grid;place-items:center;background:var(--sel)"><svg width="16" height="16" viewBox="0 0 16 16" role="img" aria-label="Pulse en la bandeja"><circle cx="8" cy="8" r="5.2" fill="none" stroke="var(--tx)" stroke-width="2.4"></circle><circle cx="12.4" cy="3.6" r="2.4" fill="var(--perm)"></circle></svg></span>
+    <span style="display:flex;flex-direction:column;align-items:flex-end;font-size:12px;line-height:1.3;padding:0 8px"><span>11:42 p. m.</span><span>11/10/2026</span></span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"tema":{"editor":"enum","options":["oscuro","claro"],"default":"oscuro"},"eventos":{"editor":"enum","options":["solo permiso","apagados","acento"],"default":"apagados"},"letra":{"editor":"enum","options":["Geist","Hanken Grotesk","Zen Kaku Gothic"],"default":"Hanken Grotesk"},"$preview":{"width":500,"height":700}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = {
+      oscuro: { canvas:'#070807', desk:'#151815', taskbar:'#0b0c0b', side:'#090a09', bg:'#0a0b0a', surface:'#111311', raised:'#171a17', grp:'#141614', well:'#0d0f0d', barbg:'#0d0f0d', line:'rgba(234,237,234,.08)', line2:'rgba(234,237,234,.16)', hi:'rgba(234,237,234,.05)', shadow:'rgba(0,0,0,.72)', key:'rgba(234,237,234,.04)', sel:'rgba(234,237,234,.06)', off:'rgba(234,237,234,.12)', knob:'#9ea39e', track:'rgba(234,237,234,.06)', work:'rgba(234,237,234,.55)', onbtn:'rgba(10,11,10,.35)', tx:'#eaedea', tx2:'#9ea39e', tx3:'#6c716c', acc:'#7fa98c', onacc:'#0a0b0a', perm:'#e3b05c', done:'#8fc3a0', err:'#e08a7e' },
+      claro: { canvas:'#dde1dd', desk:'#cfd5ce', taskbar:'#eef1ed', side:'#eef1ed', bg:'#e6e9e6', surface:'#f6f8f5', raised:'#eef1ed', grp:'#f1f3f0', well:'#e9ece8', barbg:'#f1f3f0', line:'rgba(31,36,32,.09)', line2:'rgba(31,36,32,.18)', hi:'#ffffff', shadow:'rgba(31,36,32,.16)', key:'#eef1ed', sel:'rgba(31,36,32,.05)', off:'rgba(31,36,32,.14)', knob:'#ffffff', track:'rgba(31,36,32,.07)', work:'rgba(31,36,32,.45)', onbtn:'rgba(246,248,245,.45)', tx:'#1f2420', tx2:'#545a54', tx3:'#7a807a', acc:'#335e47', onacc:'#f6f8f5', perm:'#9a6512', done:'#2f6e4a', err:'#a8473a' }
+    };
+    const t = { ...P[this.props.tema ?? 'oscuro'] }, ev = this.props.eventos ?? 'apagados';
+    if (ev !== 'apagados') { t.done = t.tx; t.err = t.tx; }
+    if (ev === 'acento') t.perm = t.acc;
+    t.permring = `color-mix(in srgb, ${t.perm} 22%, transparent)`;
+    t.font = { 'Geist': "'Geist',sans-serif", 'Hanken Grotesk': "'Hanken Grotesk',sans-serif", 'Zen Kaku Gothic': "'Zen Kaku Gothic New',sans-serif" }[this.props.letra ?? 'Hanken Grotesk'];
+    return { vars: Object.entries(t).map(([k, v]) => `--${k}:${v};`).join('') };
+  }
+}
+</script>
+</body>
+</html>

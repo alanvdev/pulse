@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Final · Ajustes</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300..700&amp;family=Zen+Kaku+Gothic+New:wght@300;400;500;700&amp;display=swap">
+<style>
+@font-face{font-family:"Geist";src:url("/_blob/f35dbd8b46e23635dd508151e7cbca82") format("woff2");font-weight:100 900}
+@font-face{font-family:"Material Symbols Rounded";src:url("/_blob/2f2c5a9cef1f2e96d8fc8ec6cc9b4b04") format("woff2");font-weight:100 700}
+body{margin:0}
+.ms{font-family:"Material Symbols Rounded";font-variation-settings:"wght" 300;font-style:normal;line-height:1;text-transform:none;white-space:nowrap;font-feature-settings:"liga";display:inline-block;width:1em;overflow:hidden;font-size:16px}
+.dot{width:8px;height:8px;border-radius:50%;box-sizing:border-box;flex:none}
+.nav a{display:grid;grid-template-columns:18px minmax(0,1fr);gap:10px;align-items:center;height:32px;padding:0 10px;border-radius:7px;color:var(--tx2);text-decoration:none;font-size:13px}
+.nav a .ms{color:var(--tx3)}
+.nav a[aria-current="true"]{background:var(--sel);color:var(--tx)}
+.nav a[aria-current="true"] .ms{color:var(--acc)}
+h2{margin:0 0 10px 4px;font-size:14px;font-weight:500;letter-spacing:-.01em}
+.box{border:1px solid var(--line);border-radius:20px;background:var(--raised);overflow:hidden}
+.r{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:center;min-height:58px;padding:10px 20px;box-sizing:border-box}
+.r + .r{border-top:1px solid var(--line)}
+.r b{display:block;font-size:13.5px;font-weight:400}
+.r small{display:block;font-size:12.5px;color:var(--tx3);margin-top:2px}
+.sw{appearance:none;-webkit-appearance:none;position:relative;width:38px;height:22px;margin:0;border-radius:11px;background:var(--off);cursor:pointer}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--knob);transition:transform .22s cubic-bezier(.16,1,.3,1)}
+.sw:checked{background:var(--acc)}
+.sw:checked::after{transform:translateX(16px);background:var(--onacc)}
+.seg{display:inline-flex;padding:3px;gap:2px;border-radius:8px;background:var(--well);border:1px solid var(--line)}
+.seg button{height:28px;padding:0 11px;border:0;border-radius:6px;background:transparent;color:var(--tx3);font:inherit;font-size:12.5px}
+.seg button[aria-pressed="true"]{background:var(--sel2);color:var(--tx)}
+.sl{display:inline-flex;align-items:center;gap:12px}
+.sl input{-webkit-appearance:none;appearance:none;width:170px;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--acc) var(--v),var(--off) var(--v));margin:0}
+.sl input::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--tx);border:3px solid var(--raised)}
+.sl span{min-width:36px;text-align:right;font-size:12.5px;color:var(--tx2);font-variant-numeric:tabular-nums}
+.ev{display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;border:1px solid var(--line);border-radius:6px;background:transparent;color:var(--tx2);font:inherit;font-size:12.5px}
+.swc{width:24px;height:24px;padding:0;border-radius:6px;border:0;box-shadow:inset 0 0 0 1px rgba(0,0,0,.18)}
+.swc[aria-pressed="true"]{box-shadow:0 0 0 2px var(--raised),0 0 0 3.5px var(--tx)}
+.ev[aria-pressed="true"]{background:var(--surface);color:var(--tx);border-color:var(--line2)}
+</style>
+</helmet>
+<div style="{{vars}} min-height:1900px;background:var(--side);font-family:var(--font);color:var(--tx);display:flex;flex-wrap:wrap">
+
+  <nav class="nav" aria-label="Ajustes" style="flex:0 0 236px;box-sizing:border-box;padding:14px 12px;display:flex;flex-direction:column;gap:3px">
+    <a href="#" style="margin-bottom:12px;color:var(--tx3)"><span class="ms">arrow_back</span>Volver</a>
+    <a href="#" aria-current="true"><span class="ms">wb_iridescent</span>Isla</a>
+    <a href="#"><span class="ms">blur_on</span>Pulsos</a>
+    <a href="#"><span class="ms">volume_up</span>Sonidos</a>
+    <a href="#"><span class="ms">dark_mode</span>Modo foco</a>
+    <a href="#"><span class="ms">keyboard</span>Teclado</a>
+    <a href="#"><span class="ms">contrast</span>Apariencia</a>
+  </nav>
+
+  <main style="flex:999 1 560px;min-width:0;margin:10px 10px 10px 0;border-radius:22px;background:var(--surface);border:1px solid var(--line)">
+    <div style="max-width:720px;margin:0 auto;padding:48px 32px 64px;display:flex;flex-direction:column;gap:36px">
+      <h1 style="margin:0;font-size:26px;font-weight:500;letter-spacing:-.03em">Ajustes</h1>
+
+      <section>
+        <h2>Isla</h2>
+        <div class="box">
+          <div class="r"><span><b>Modo</b><small>Comando: avisos breves y paleta. Orbe: un punto que se expande.</small></span><span class="seg"><button type="button" aria-pressed="true">Comando</button><button type="button">Orbe</button></span></div>
+          <div class="r"><span><b>Lugar del Orbe</b><small>Solo en modo Orbe. También puedes arrastrarlo.</small></span><span class="seg"><button type="button">Izquierda</button><button type="button">Centro</button><button type="button" aria-pressed="true">Derecha</button></span></div>
+          <div class="r"><span><b>Puntos mientras Claude trabaja</b><small>En Comando: uno por sesión, arriba al centro</small></span><input class="sw" type="checkbox" checked aria-label="Puntos mientras Claude trabaja"></div>
+          <div class="r"><span><b>Tiempo para responder</b><small>Después, Claude pregunta en la terminal. Pulse nunca decide solo.</small></span><span class="sl"><input type="range" min="10" max="120" value="30" style="--v:18%" aria-label="Segundos para responder"><span>30 s</span></span></div>
+          <div class="r"><span><b>Cuenta regresiva</b></span><input class="sw" type="checkbox" checked aria-label="Cuenta regresiva"></div>
+          <div class="r"><span><b>Haz de luz al llegar un aviso</b></span><input class="sw" type="checkbox" checked aria-label="Haz de luz"></div>
+          <div class="r"><span><b>Atajos globales</b><small>Ctrl+Alt+Y permite, Ctrl+Alt+N deniega, Ctrl+Alt+Espacio abre la paleta</small></span><input class="sw" type="checkbox" checked aria-label="Atajos globales"></div>
+          <div class="r"><span><b>Mantener presionado en comandos delicados</b><small>git push --force, rm -rf, migrate</small></span><input class="sw" type="checkbox" checked aria-label="Mantener presionado"></div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Pulsos en los bordes</h2>
+        <div class="box">
+          <div class="r"><span><b>Pulsos</b></span><input class="sw" type="checkbox" checked aria-label="Pulsos"></div>
+          <div class="r"><span><b>Dónde</b></span><span class="seg"><button type="button" aria-pressed="true">Monitor activo</button><button type="button">Todos</button></span></div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;padding:14px 20px;border-top:1px solid var(--line)">
+            <sc-for list="{{events}}" as="e" hint-placeholder-count="6">
+              <button type="button" class="ev" aria-pressed="{{e.on}}"><span class="dot" style="background:{{e.color}}"></span>{{e.name}}</button>
+            </sc-for>
+          </div>
+          <div class="r"><span><b>Forma del permiso</b><small>La forma también comunica, no solo el color</small></span><span class="seg"><button type="button">Respira</button><button type="button" aria-pressed="true">Latido</button><button type="button">Ola</button><button type="button">Lateral</button></span></div>
+          <div class="r"><span><b>Color del permiso</b><small>Paleta apagada; cualquier color sirve para cualquier evento</small></span><span style="display:flex;gap:9px"><sc-for list="{{swatches}}" as="w" hint-placeholder-count="7"><button type="button" class="swc" aria-label="{{w.name}}" aria-pressed="{{w.on}}" style="background:{{w.c}}"></button></sc-for></span></div>
+          <div class="r"><span><b>Intensidad</b></span><span class="sl"><input type="range" value="90" style="--v:90%" aria-label="Intensidad"><span>90</span></span></div>
+          <div class="r"><span><b>Grosor</b></span><span class="sl"><input type="range" min="40" max="220" value="150" style="--v:61%" aria-label="Grosor"><span>150</span></span></div>
+          <div class="r"><span><b>Duración</b></span><span class="sl"><input type="range" min="300" max="3000" value="1100" style="--v:30%" aria-label="Duración"><span>1,1 s</span></span></div>
+          <div class="r"><span><b>Deja el brillo encendido mientras espera</b></span><input class="sw" type="checkbox" checked aria-label="Brillo persistente"></div>
+          <div class="r"><span><b>Acabado</b><small>Línea nítida, esquinas, ajuste en fondos claros y grano</small></span><span class="seg"><button type="button" aria-pressed="true">Completo</button><button type="button">Suave</button></span></div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Sonidos</h2>
+        <div class="box">
+          <div class="r"><span><b>Sonidos</b></span><input class="sw" type="checkbox" checked aria-label="Sonidos"></div>
+          <div class="r"><span><b>Volumen</b></span><span class="sl"><input type="range" value="80" style="--v:80%" aria-label="Volumen"><span>80</span></span></div>
+          <div class="r"><span><b>Suenan</b><small>Subagente está en silencio</small></span><span class="seg"><button type="button" aria-pressed="true">Empieza</button><button type="button" aria-pressed="true">Permiso</button><button type="button" aria-pressed="true">Terminó</button><button type="button" aria-pressed="true">Espera</button><button type="button" aria-pressed="true">Error</button><button type="button">Subagente</button></span></div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Modo foco</h2>
+        <div class="box">
+          <div class="r"><span><b>Activar solo</b><small>Si lo apagas a mano, vuelve cuando cambie lo que lo activó</small></span><input class="sw" type="checkbox" checked aria-label="Activar solo"></div>
+          <div class="r"><span><b>En llamadas</b></span><input class="sw" type="checkbox" checked aria-label="En llamadas"></div>
+          <div class="r"><span><b>En pantalla completa o presentación</b></span><input class="sw" type="checkbox" checked aria-label="En pantalla completa"></div>
+          <div class="r"><span><b>En un horario</b><small>09:00 a 11:00, todos los días</small></span><input class="sw" type="checkbox" aria-label="En un horario"></div>
+          <sc-for list="{{rules}}" as="r" hint-placeholder-count="6">
+            <div class="r"><span><b>{{r.name}}</b></span><span class="seg"><button type="button" aria-pressed="{{r.n}}">Normal</button><button type="button" aria-pressed="{{r.m}}">Sin sonido</button><button type="button" aria-pressed="{{r.x}}">Nada</button><button type="button" aria-pressed="{{r.d}}">Después</button></span></div>
+          </sc-for>
+        </div>
+      </section>
+
+      <section>
+        <h2>Teclado y apariencia</h2>
+        <div class="box">
+          <div class="r"><span><b>Razer Chroma</b><small>F1 a F3 se encienden con la sesión que te espera</small></span><input class="sw" type="checkbox" checked aria-label="Razer Chroma"></div>
+          <div class="r"><span><b>Brillo de fondo</b></span><span class="sl"><input type="range" value="20" style="--v:20%" aria-label="Brillo de fondo"><span>20</span></span></div>
+          <div class="r"><span><b>Tema</b></span><span class="seg"><button type="button" aria-pressed="true">Oscuro</button><button type="button">Como Windows</button><button type="button">Claro</button></span></div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"tema":{"editor":"enum","options":["oscuro","claro"],"default":"oscuro"},"eventos":{"editor":"enum","options":["solo permiso","apagados","acento"],"default":"apagados"},"letra":{"editor":"enum","options":["Geist","Hanken Grotesk","Zen Kaku Gothic"],"default":"Hanken Grotesk"},"$preview":{"width":1280,"height":1900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = {
+      oscuro: { sub:'#8fb0d6', sel2:"rgba(234,237,234,.08)", side:'#090a09', surface:'#111311', raised:'#151815', well:'#0d0f0d', line:'rgba(234,237,234,.08)', line2:'rgba(234,237,234,.18)', sel:'rgba(127,169,140,.11)', off:'rgba(234,237,234,.12)', knob:'#9ea39e', shadow2:'rgba(0,0,0,.45)', tx:'#eaedea', tx2:'#9ea39e', tx3:'#6c716c', acc:'#7fa98c', onacc:'#0a0b0a', perm:'#e3b05c', done:'#8fc3a0', err:'#e08a7e' },
+      claro: { sub:'#4a6f94', sel2:"rgba(31,36,32,.07)", side:'#e9ece8', surface:'#f6f8f5', raised:'#fafbf9', well:'#eef1ed', line:'rgba(31,36,32,.09)', line2:'rgba(31,36,32,.2)', sel:'rgba(51,94,71,.09)', off:'rgba(31,36,32,.14)', knob:'#ffffff', shadow2:'rgba(31,36,32,.12)', tx:'#1f2420', tx2:'#545a54', tx3:'#7a807a', acc:'#335e47', onacc:'#f6f8f5', perm:'#9a6512', done:'#2f6e4a', err:'#a8473a' }
+    };
+    const t = { ...P[this.props.tema ?? 'oscuro'] }, ev = this.props.eventos ?? 'apagados';
+    if (ev !== 'apagados') { t.done = t.tx2; t.err = t.tx; }
+    if (ev === 'acento') t.perm = t.acc;
+Object.assign(t, (this.props.tema ?? 'oscuro') === 'oscuro' ? { acc:'#eaedea', accpress:'#b9bdb9', onacc:'#111311', sel:'rgba(234,237,234,.06)' } : { acc:'#1f2420', accpress:'#3d443e', onacc:'#f6f8f5', sel:'rgba(31,36,32,.05)' });
+    t.font = { 'Geist': "'Geist',sans-serif", 'Hanken Grotesk': "'Hanken Grotesk',sans-serif", 'Zen Kaku Gothic': "'Zen Kaku Gothic New',sans-serif" }[this.props.letra ?? 'Hanken Grotesk'];
+    const dark = (this.props.tema ?? 'oscuro') === 'oscuro';
+    const sw = dark ? [['Ámbar','#e3b05c'],['Verde','#8fc3a0'],['Coral','#e08a7e'],['Azul','#8fb0d6'],['Lavanda','#b4a6d9'],['Arena','#d6c49a'],['Gris','#b3bab5']] : [['Ámbar','#9a6512'],['Verde','#2f6e4a'],['Coral','#a8473a'],['Azul','#4a6f94'],['Lavanda','#6b5a9e'],['Arena','#8a7440'],['Gris','#6c726d']];
+    const rule = (name, k) => ({ name, n: k === 'n', m: k === 'm', x: k === 'x', d: k === 'd' });
+    return {
+      vars: Object.entries(t).map(([k, v]) => `--${k}:${v};`).join(''),
+      swatches: sw.map(([name, c], i) => ({ name, c, on: i === 0 })),
+      events: [
+        { name: 'Empieza', color: 'var(--tx2)', on: false }, { name: 'Permiso', color: 'var(--perm)', on: true }, { name: 'Terminó', color: 'var(--done)', on: false },
+        { name: 'Te espera', color: 'var(--tx3)', on: false }, { name: 'Error', color: 'var(--err)', on: false }, { name: 'Subagente', color: 'var(--sub)', on: false }
+      ],
+      rules: [rule('Empieza', 'x'), rule('Permiso', 'n'), rule('Terminó', 'd'), rule('Te espera', 'd'), rule('Error', 'm'), rule('Subagente', 'x')]
+    };
+  }
+}
+</script>
+</body>
+</html>

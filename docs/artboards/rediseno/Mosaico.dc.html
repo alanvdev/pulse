@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Final · Mosaico</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300..700&amp;family=Zen+Kaku+Gothic+New:wght@300;400;500;700&amp;display=swap">
+<style>
+@font-face{font-family:"Geist";src:url("/_blob/f35dbd8b46e23635dd508151e7cbca82") format("woff2");font-weight:100 900}
+@font-face{font-family:"Geist Mono";src:url("/_blob/a618062a7292d0dcb26d435664e18fce") format("woff2");font-weight:100 900}
+@font-face{font-family:"Material Symbols Rounded";src:url("/_blob/2f2c5a9cef1f2e96d8fc8ec6cc9b4b04") format("woff2");font-weight:100 700}
+body{margin:0}
+.ms{font-family:"Material Symbols Rounded";font-variation-settings:"wght" 300;font-style:normal;line-height:1;text-transform:none;white-space:nowrap;font-feature-settings:"liga";display:inline-block;width:1em;overflow:hidden;font-size:16px}
+.mono{font-family:'Geist Mono',monospace;letter-spacing:0}
+.dot{width:8px;height:8px;border-radius:50%;box-sizing:border-box;flex:none}
+.k{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;box-sizing:border-box;border-radius:7px;background:var(--key);border:1px solid var(--line);font-size:11px;color:var(--tx3);font-family:'Geist',sans-serif}
+.nav a{display:grid;grid-template-columns:18px minmax(0,1fr) auto;gap:10px;align-items:center;height:32px;padding:0 10px;border-radius:7px;color:var(--tx2);text-decoration:none;font-size:13px}
+.nav a .ms{color:var(--tx3)}
+.nav a[aria-current="page"]{background:var(--sel);color:var(--tx)}
+.nav a[aria-current="page"] .ms{color:var(--acc)}
+.nav a small{font-size:11.5px;color:var(--tx3)}
+h2{margin:0;font-size:13px;font-weight:500;color:var(--tx2)}
+.row{display:grid;grid-template-columns:18px 170px minmax(0,1fr) 80px auto;gap:16px;align-items:center;height:48px;padding:0 18px;font-size:13.5px}
+.row + .row{border-top:1px solid var(--line)}
+.lane{position:relative;height:8px;border-radius:4px;background:var(--track)}
+.lane i{position:absolute;top:0;bottom:0;border-radius:4px}
+</style>
+</helmet>
+<div style="{{vars}} min-height:860px;background:var(--side);font-family:var(--font);color:var(--tx);display:flex;flex-wrap:wrap">
+
+  <nav class="nav" aria-label="Secciones" style="flex:0 0 236px;box-sizing:border-box;padding:14px 12px;display:flex;flex-direction:column;gap:3px">
+    <div style="display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;margin-bottom:10px">
+      <span style="display:flex;gap:3px" aria-hidden="true"><span class="dot" style="width:6px;height:6px;background:var(--perm)"></span><span class="dot" style="width:6px;height:6px;background:var(--tx)"></span><span class="dot" style="width:6px;height:6px;border:1.2px solid var(--tx3)"></span></span>
+      <span style="font-size:14px;font-weight:500">Pulse</span>
+      <span class="k" style="margin-left:auto">Ctrl K</span>
+    </div>
+    <a href="#" aria-current="page"><span class="ms">home</span>Inicio<small></small></a>
+    <a href="#"><span class="ms">stacks</span>Sesiones<small>3</small></a>
+    <a href="#"><span class="ms">schedule</span>Hoy<small></small></a>
+    <a href="#"><span class="ms">history</span>Bitácora<small></small></a>
+    <div style="flex:1"></div>
+    <a href="#"><span class="ms">settings</span>Ajustes<small></small></a>
+  </nav>
+
+  <main style="flex:999 1 560px;min-width:0;margin:10px 10px 10px 0;border-radius:22px;background:var(--surface);border:1px solid var(--line);box-sizing:border-box;padding:26px 30px 30px;display:flex;flex-direction:column;gap:26px">
+    <header style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <h1 style="margin:0;font-size:24px;font-weight:500;letter-spacing:-.025em">Inicio</h1>
+      <span style="font-size:13px;color:var(--tx3)">3 h 12 min de trabajo hoy · te esperó 14 min</span>
+    </header>
+
+    <section style="display:flex;flex-direction:column;gap:10px">
+      <h2>Necesita tu respuesta</h2>
+      <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:center;padding:18px 20px;border-radius:20px;background:var(--raised)">
+        <span class="ms" style="font-size:20px;color:var(--perm)">front_hand</span>
+        <div style="flex:1 1 360px;min-width:0;display:flex;flex-direction:column;gap:6px">
+          <div style="font-size:13px;color:var(--tx2)"><span style="color:var(--tx);font-weight:500">hyperops-api</span> quiere ejecutar · <span class="mono" style="font-size:12px;color:var(--perm)">24s</span></div>
+          <div class="mono" style="font-size:14.5px">npm run migrate -- --env staging</div>
+          <div style="font-size:12.5px;color:var(--tx3)">Aplica las migraciones pendientes en staging. Comando delicado.</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button type="button" style="height:36px;padding:0 14px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--tx2);font:inherit;font-size:13px;display:flex;align-items:center;gap:8px">Denegar <span class="k">N</span></button>
+          <button type="button" style="height:36px;padding:0 14px;border-radius:6px;border:0;background:var(--sel);color:var(--tx);font:inherit;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px">Mantener <span class="k">Y</span></button>
+        </div>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:10px">
+      <h2>Sesiones</h2>
+      <div style="border-radius:20px;border:1px solid var(--line);overflow:hidden">
+        <div class="row"><span class="ms" style="color:var(--perm)">front_hand</span><span>hyperops-api</span><span class="mono" style="font-size:12px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Permiso · npm run migrate -- --env staging</span><span class="mono" style="font-size:12px;color:var(--tx3)">2:14</span><span class="k">F1</span></div>
+        <div class="row"><span class="ms" style="color:var(--tx2)">progress_activity</span><span>pulse</span><span class="mono" style="font-size:12px;color:var(--tx2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Edit app/ui/src/island/orbe.ts · 2 subagentes</span><span class="mono" style="font-size:12px;color:var(--tx3)">6:40</span><span class="k">F2</span></div>
+        <div class="row"><span class="ms" style="color:var(--done)">check</span><span>landing-vastem</span><span style="font-size:12.5px;color:var(--tx3)">Terminó hace 3 min</span><span class="mono" style="font-size:12px;color:var(--tx3)">6:12</span><span class="k">F3</span></div>
+      </div>
+    </section>
+
+    <section style="display:flex;flex-direction:column;gap:10px">
+      <div style="display:flex;align-items:baseline;gap:14px"><h2>Hoy</h2><span style="margin-left:auto;display:flex;align-items:center;gap:6px;font-size:12px;color:var(--tx3)"><span class="dot" style="width:6px;height:6px;background:var(--work)"></span>trabajando<span class="dot" style="width:6px;height:6px;background:var(--perm);margin-left:10px"></span>esperando tu permiso</span></div>
+      <div style="display:grid;grid-template-columns:170px minmax(0,1fr);gap:14px 16px;align-items:center;padding:18px 20px;border-radius:20px;border:1px solid var(--line);font-size:12.5px;color:var(--tx2)">
+        <span>hyperops-api</span><div class="lane"><i style="left:8%;width:14%;background:var(--work)"></i><i style="left:22.5%;width:3%;background:var(--perm)"></i><i style="left:61%;width:22%;background:var(--work)"></i><i style="left:83.5%;width:2%;background:var(--perm)"></i></div>
+        <span>pulse</span><div class="lane"><i style="left:30%;width:26%;background:var(--work)"></i><i style="left:70%;width:28%;background:var(--work)"></i></div>
+        <span>landing-vastem</span><div class="lane"><i style="left:44%;width:12%;background:var(--work)"></i><i style="left:56.5%;width:6%;background:var(--perm)"></i><i style="left:88%;width:7%;background:var(--work)"></i></div>
+        <span></span><div class="mono" style="display:flex;justify-content:space-between;font-size:11px;color:var(--tx3)"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:42</span></div>
+      </div>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"tema":{"editor":"enum","options":["oscuro","claro"],"default":"oscuro"},"eventos":{"editor":"enum","options":["solo permiso","apagados","acento"],"default":"apagados"},"letra":{"editor":"enum","options":["Geist","Hanken Grotesk","Zen Kaku Gothic"],"default":"Hanken Grotesk"},"$preview":{"width":1280,"height":860}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = {
+      oscuro: { canvas:'#070807', desk:'#151815', taskbar:'#0b0c0b', side:'#090a09', bg:'#0a0b0a', surface:'#111311', raised:'#181b18', grp:'#141614', barbg:'#0e100e', line:'rgba(234,237,234,.08)', line2:'rgba(234,237,234,.16)', hi:'rgba(234,237,234,.05)', shadow:'rgba(0,0,0,.72)', key:'rgba(234,237,234,.04)', sel:'rgba(127,169,140,.11)', off:'rgba(234,237,234,.12)', knob:'#9ea39e', track:'rgba(234,237,234,.06)', work:'rgba(234,237,234,.55)', onbtn:'rgba(10,11,10,.3)', tx:'#eaedea', tx2:'#9ea39e', tx3:'#6c716c', acc:'#7fa98c', accpress:'#5f8a6d', onacc:'#0a0b0a', perm:'#e3b05c', done:'#8fc3a0', err:'#e08a7e' },
+      claro: { canvas:'#dde1dd', desk:'#cfd5ce', taskbar:'#eef1ed', side:'#e9ece8', bg:'#e6e9e6', surface:'#f6f8f5', raised:'#ebeeea', grp:'#f1f3f0', barbg:'#f1f3f0', line:'rgba(31,36,32,.09)', line2:'rgba(31,36,32,.18)', hi:'#ffffff', shadow:'rgba(31,36,32,.16)', key:'#eef1ed', sel:'rgba(51,94,71,.09)', off:'rgba(31,36,32,.14)', knob:'#ffffff', track:'rgba(31,36,32,.07)', work:'rgba(31,36,32,.45)', onbtn:'rgba(246,248,245,.4)', tx:'#1f2420', tx2:'#545a54', tx3:'#7a807a', acc:'#335e47', accpress:'#22452f', onacc:'#f6f8f5', perm:'#9a6512', done:'#2f6e4a', err:'#a8473a' }
+    };
+    const t = { ...P[this.props.tema ?? 'oscuro'] }, ev = this.props.eventos ?? 'apagados';
+    if (ev !== 'apagados') { t.done = t.tx3; t.err = t.tx; }
+    if (ev === 'acento') t.perm = t.acc;
+Object.assign(t, (this.props.tema ?? 'oscuro') === 'oscuro' ? { acc:'#eaedea', accpress:'#b9bdb9', onacc:'#111311', sel:'rgba(234,237,234,.06)' } : { acc:'#1f2420', accpress:'#3d443e', onacc:'#f6f8f5', sel:'rgba(31,36,32,.05)' });
+    t.permring = `color-mix(in srgb, ${t.perm} 22%, transparent)`;
+    t.font = { 'Geist': "'Geist',sans-serif", 'Hanken Grotesk': "'Hanken Grotesk',sans-serif", 'Zen Kaku Gothic': "'Zen Kaku Gothic New',sans-serif" }[this.props.letra ?? 'Hanken Grotesk'];
+    return { vars: Object.entries(t).map(([k, v]) => `--${k}:${v};`).join('') };
+  }
+}
+</script>
+</body>
+</html>

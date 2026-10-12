@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Final · En pantalla: error</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@300..700&amp;family=Zen+Kaku+Gothic+New:wght@300;400;500;700&amp;display=swap">
+<style>
+@font-face{font-family:"Geist";src:url("/_blob/f35dbd8b46e23635dd508151e7cbca82") format("woff2");font-weight:100 900}
+@font-face{font-family:"Geist Mono";src:url("/_blob/a618062a7292d0dcb26d435664e18fce") format("woff2");font-weight:100 900}
+@font-face{font-family:"Material Symbols Rounded";src:url("/_blob/2f2c5a9cef1f2e96d8fc8ec6cc9b4b04") format("woff2");font-weight:100 700}
+body{margin:0}
+.win{position:absolute;border-radius:8px;background:var(--win);border:1px solid var(--winline);box-shadow:0 30px 60px -20px rgba(0,0,0,.6);overflow:hidden}
+.win::before{content:"";display:block;height:32px;background:var(--wintop);border-bottom:1px solid var(--winline)}
+.edge{position:absolute;inset:0;pointer-events:none}
+.k{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:4px;background:var(--key);border:1px solid var(--line);font-size:10.5px;color:var(--tx3);font-family:'Geist',sans-serif}
+.btn{position:relative;overflow:hidden;display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 9px;border-radius:6px;border:0;background:transparent;color:var(--tx2);font:inherit;font-size:12.5px}
+.btn.pri{background:var(--sel);color:var(--tx);font-weight:600}
+.note{position:absolute;left:28px;bottom:68px;display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-radius:8px;background:rgba(0,0,0,.55);color:#d9ddd9;font-size:12px;line-height:1.45;max-width:360px}
+.note b{color:#fff;font-weight:600}
+</style>
+</helmet>
+<div style="{{vars}} position:relative;width:1440px;height:900px;overflow:hidden;background:radial-gradient(120% 90% at 70% 10%,var(--desk2),var(--desk) 60%);font-family:var(--font);color:var(--tx)">
+  <div class="win" style="left:120px;top:110px;width:760px;height:560px"></div>
+  <div class="win" style="left:640px;top:200px;width:660px;height:480px;opacity:.9"></div>
+
+  <div class="edge" style="background:linear-gradient(to right,var(--c) 0,var(--c) 2px,color-mix(in srgb,var(--c) 45%,transparent) 6px,color-mix(in srgb,var(--c) 16%,transparent) 70px,transparent 200px)"></div>
+
+  <div style="position:absolute;z-index:2;top:14px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;height:40px;padding:0 16px 0 14px;border-radius:10px;background:var(--surface);border:1px solid var(--line);box-shadow:inset 0 1px 0 var(--hi),0 20px 44px -16px rgba(0,0,0,.7);font-size:13px;white-space:nowrap;overflow:hidden"><span style="font-family:'Material Symbols Rounded';font-variation-settings:'wght' 300;font-feature-settings:'liga';font-size:17px;line-height:1;color:var(--c)">error</span><span><b style="font-weight:500">hyperops-api</b> <span style="color:var(--tx2)">falló</span> <span style="font-family:'Geist Mono',monospace;font-size:12px;color:var(--tx3)">npm test (exit 1)</span></span><span style="position:absolute;left:12px;right:12px;bottom:0;height:1px;background:var(--line)"><span style="display:block;height:100%;width:65%;background:var(--tx3)"></span></span></div>
+
+  <div class="note"><b>Error</b><span>Bordes: un destello doble en el lado de la sesión (0,65 s), sin quedarse.</span><span>Isla: una línea con el proyecto y qué falló, 2,8 s.</span><span>En modo foco: se ve pero no suena. Sonido: tono corto.</span></div>
+
+  <div style="position:absolute;left:0;right:0;bottom:0;height:48px;background:var(--taskbar);border-top:1px solid var(--line);display:flex;align-items:center;justify-content:flex-end;gap:4px;padding:0 10px;font-family:'Segoe UI',sans-serif;color:var(--tx)">
+    <span style="width:40px;height:40px;border-radius:4px;display:grid;place-items:center;background:var(--sel)"><svg width="16" height="16" viewBox="0 0 16 16" role="img" aria-label="Pulse en la bandeja"><circle cx="4" cy="8" r="2" fill="var(--tx)"></circle><circle cx="8.5" cy="8" r="2" fill="var(--tx)"></circle><circle cx="13" cy="8" r="1.6" fill="none" stroke="var(--tx3)" stroke-width="1"></circle></svg></span>
+    <span style="display:flex;flex-direction:column;align-items:flex-end;font-size:12px;line-height:1.3;padding:0 8px"><span>11:42 p. m.</span><span>11/10/2026</span></span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"tema":{"editor":"enum","options":["oscuro","claro"],"default":"oscuro"},"letra":{"editor":"enum","options":["Geist","Hanken Grotesk","Zen Kaku Gothic"],"default":"Hanken Grotesk"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const P = {
+      oscuro: { desk:'#0b0d0b', desk2:'#1a1f1b', win:'#141714', wintop:'#191c19', winline:'rgba(234,237,234,.06)', taskbar:'rgba(14,16,14,.94)', surface:'#111311', raised:'#181b18', barbg:'#0e100e', line:'rgba(234,237,234,.08)', hi:'rgba(234,237,234,.05)', key:'rgba(234,237,234,.04)', sel:'rgba(234,237,234,.07)', tx:'#eaedea', tx2:'#9ea39e', tx3:'#6c716c', c:'#e08a7e' },
+      claro: { desk:'#c9d0c8', desk2:'#e2e7e1', win:'#f3f5f2', wintop:'#e9ece8', winline:'rgba(31,36,32,.08)', taskbar:'rgba(238,241,237,.94)', surface:'#f6f8f5', raised:'#ebeeea', barbg:'#f1f3f0', line:'rgba(31,36,32,.09)', hi:'#ffffff', key:'#eef1ed', sel:'rgba(31,36,32,.06)', tx:'#1f2420', tx2:'#545a54', tx3:'#7a807a', c:'#b55446' }
+    };
+    const t = { ...P[this.props.tema ?? 'oscuro'] };
+    t.font = { 'Geist': "'Geist',sans-serif", 'Hanken Grotesk': "'Hanken Grotesk',sans-serif", 'Zen Kaku Gothic': "'Zen Kaku Gothic New',sans-serif" }[this.props.letra ?? 'Hanken Grotesk'];
+    return { vars: Object.entries(t).map(([k, v]) => `--${k}:${v};`).join('') };
+  }
+}
+</script>
+</body>
+</html>
