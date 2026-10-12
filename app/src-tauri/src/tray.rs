@@ -1,4 +1,4 @@
-use tauri::{image::Image, menu::{MenuBuilder, MenuItemBuilder}, tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}, AppHandle};
+use tauri::{image::Image, tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent}, AppHandle, PhysicalPosition};
 use crate::state::{Session, SessionState};
 use std::sync::Mutex;
 pub const TRAY_ID: &str = "pulse";
@@ -47,14 +47,12 @@ pub fn dots_rgba(size: u32, dots: &[TrayDot]) -> Vec<u8> {
 fn icon(dots: &[TrayDot]) -> Image<'static> { Image::new_owned(dots_rgba(32, dots), 32, 32) }
 /// Último ícono puesto: no se redibuja si no cambió (broadcast llega con cada evento).
 static LAST: Mutex<Vec<TrayDot>> = Mutex::new(Vec::new());
-/// `on_left_click` abre/cierra Bolsillo (se conecta en la Task 5).
-pub fn create(app: &AppHandle, on_left_click: fn(&AppHandle)) -> tauri::Result<()> {
-    let open = MenuItemBuilder::with_id("dashboard", "Abrir tablero").build(app)?;
-    let quit = MenuItemBuilder::with_id("quit", "Salir de Pulse").build(app)?;
-    let menu = MenuBuilder::new(app).items(&[&open, &quit]).build()?;
-    TrayIconBuilder::with_id(TRAY_ID).icon(icon(&tray_dots(&[]))).tooltip("Pulse · sin sesiones").menu(&menu).show_menu_on_left_click(false)
-        .on_menu_event(|app, e| match e.id().as_ref() { "quit" => app.exit(0), "dashboard" => crate::windows::open_dashboard(app), _ => {} })
-        .on_tray_icon_event(move |t, e| if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = e { on_left_click(t.app_handle()) })
+/// Clic izquierdo: Bolsillo. Clic derecho: el flyout (no hay menú nativo).
+pub fn create(app: &AppHandle, on_left_click: fn(&AppHandle), on_right_click: fn(&AppHandle, PhysicalPosition<f64>)) -> tauri::Result<()> {
+    TrayIconBuilder::with_id(TRAY_ID).icon(icon(&tray_dots(&[]))).tooltip("Pulse · sin sesiones")
+        .on_tray_icon_event(move |t, e| if let TrayIconEvent::Click { button, button_state: MouseButtonState::Up, position, .. } = e {
+            match button { MouseButton::Left => on_left_click(t.app_handle()), MouseButton::Right => on_right_click(t.app_handle(), position), _ => {} }
+        })
         .build(app)?;
     Ok(())
 }

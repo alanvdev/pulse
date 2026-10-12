@@ -89,11 +89,12 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(shortcuts::plugin())
         .manage(AppState { store: Mutex::new(Store::new(now_ms())), config: Mutex::new(config::load()), waiters: Mutex::new(HashMap::new()), next_id: AtomicU64::new(0), player: sound::Player::start() })
-        .invoke_handler(tauri::generate_handler![commands::get_snapshot, commands::get_config, commands::set_config, commands::decide, commands::answer, commands::skip, commands::hold_question, commands::allow_all, commands::set_focus, commands::mute_session, commands::daily_summary, commands::set_island_hitbox, commands::island_focus, commands::open_dashboard, commands::toggle_panel])
+        .invoke_handler(tauri::generate_handler![commands::get_snapshot, commands::get_config, commands::set_config, commands::decide, commands::answer, commands::skip, commands::hold_question, commands::allow_all, commands::set_focus, commands::mute_session, commands::daily_summary, commands::set_island_hitbox, commands::island_focus, commands::open_dashboard, commands::toggle_panel, commands::flyout_fit, commands::flyout_hide, commands::open_palette, commands::quit])
         .setup(move |app| {
             let h = app.handle().clone();
-            tray::create(&h, windows::toggle_panel)?;
+            tray::create(&h, windows::toggle_panel, windows::toggle_flyout)?;
             windows::create_all(&h)?;
+            windows::create_flyout(&h)?;
             let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
             tauri::async_runtime::spawn(server::serve(first, pulse_protocol::PIPE_NAME.to_string(), tx));
             let h1 = h.clone();

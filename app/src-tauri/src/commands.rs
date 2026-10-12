@@ -38,4 +38,9 @@ use tauri::{AppHandle, Emitter, State};
 #[tauri::command] pub fn island_focus(app: AppHandle, on: bool) { crate::windows::island_keyboard(&app, on); }
 // Async: en Windows, crear una ventana desde un comando síncrono bloquea el hilo principal.
 #[tauri::command] pub async fn toggle_panel(app: AppHandle) { crate::windows::toggle_panel(&app) }
-#[tauri::command] pub async fn open_dashboard(app: AppHandle) { crate::windows::open_dashboard(&app) }
+#[tauri::command] pub async fn open_dashboard(app: AppHandle, view: Option<String>) { crate::windows::open_dashboard(&app, view.as_deref()) }
+#[tauri::command] pub fn flyout_fit(app: AppHandle, height: f64) { crate::windows::fit_flyout(&app, height) }
+#[tauri::command] pub fn flyout_hide(app: AppHandle) { crate::windows::hide_flyout(&app) }
+/// Lo mismo que Ctrl+Alt+Espacio: la isla abre su paleta (Comando) o su menú (Orbe).
+#[tauri::command] pub fn open_palette(app: AppHandle) { let _ = app.emit("pulse://palette", ()); }
+#[tauri::command] pub fn quit(app: AppHandle) { crate::chroma::shutdown(); app.exit(0); }

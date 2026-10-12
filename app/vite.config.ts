@@ -8,6 +8,7 @@ export default defineConfig({
   server: { port: 5173, strictPort: true },
   build: { outDir: '../dist', emptyOutDir: true, target: 'es2022', rollupOptions: { input: {
     overlay: resolve(__dirname, 'ui/overlay.html'), island: resolve(__dirname, 'ui/island.html'),
-    panel: resolve(__dirname, 'ui/panel.html'), dashboard: resolve(__dirname, 'ui/dashboard.html') } } },
+    panel: resolve(__dirname, 'ui/panel.html'), dashboard: resolve(__dirname, 'ui/dashboard.html'),
+    flyout: resolve(__dirname, 'ui/flyout.html') } } },
   test: { root: '.', include: ['ui/src/**/*.test.ts'] },
 });

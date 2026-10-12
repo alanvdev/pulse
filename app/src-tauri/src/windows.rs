@@ -68,11 +68,12 @@ pub fn create_island(app: &AppHandle) -> tauri::Result<()> {
     } });
     Ok(())
 }
-fn work_area_right_bottom() -> (f64, f64) {
+/// Área de trabajo del monitor principal (sin la barra de tareas), en píxeles físicos: (izq, arriba, der, abajo).
+fn work_area() -> (f64, f64, f64, f64) {
     use windows_sys::Win32::{Foundation::RECT, UI::WindowsAndMessaging::{SystemParametersInfoW, SPI_GETWORKAREA}};
     let mut r: RECT = unsafe { std::mem::zeroed() };
     unsafe { SystemParametersInfoW(SPI_GETWORKAREA, 0, &mut r as *mut _ as _, 0) };
-    (r.right as f64, r.bottom as f64)
+    (r.left as f64, r.top as f64, r.right as f64, r.bottom as f64)
 }
 /// Momento en que el panel se ocultó por perder el foco: el clic en la bandeja que lo provocó no debe volver a abrirlo.
 static PANEL_HIDDEN_AT: std::sync::atomic::AtomicI64 = std::sync::atomic::AtomicI64::new(0);
@@ -107,7 +108,7 @@ pub fn toggle_panel(app: &AppHandle) {
     if win.is_visible().unwrap_or(false) { let _ = win.hide(); return; }
     if crate::now_ms() - PANEL_HIDDEN_AT.load(std::sync::atomic::Ordering::SeqCst) < 300 { return; }
     let scale = win.scale_factor().unwrap_or(1.0);
-    let (r, b) = work_area_right_bottom();
+    let (_, _, r, b) = work_area();
     let _ = win.set_position(tauri::LogicalPosition::new(r / scale - 380.0 - 12.0, b / scale - 540.0 - 12.0));
     let _ = win.show(); let _ = win.set_focus();
 }
@@ -119,8 +120,75 @@ fn create_panel(app: &AppHandle) -> tauri::Result<tauri::WebviewWindow> {
     w.on_window_event(move |e| if let tauri::WindowEvent::Focused(false) = e { if w2.is_visible().unwrap_or(false) { PANEL_HIDDEN_AT.store(crate::now_ms(), std::sync::atomic::Ordering::SeqCst); } let _ = w2.hide(); });
     Ok(w)
 }
-pub fn open_dashboard(app: &AppHandle) {
-    if let Some(w) = app.get_webview_window("dashboard") { let _ = w.unminimize(); let _ = w.show(); let _ = w.set_focus(); return; }
+/// Abre Mosaico; `view` es la ruta dentro de Mosaico ("ajustes", "sesiones/<id>", ...).
+pub fn open_dashboard(app: &AppHandle, view: Option<&str>) {
+    use tauri::Emitter;
+    if let Some(w) = app.get_webview_window("dashboard") {
+        if let Some(v) = view { let _ = app.emit_to("dashboard", "pulse://route", v); }
+        let _ = w.unminimize(); let _ = w.show(); let _ = w.set_focus(); return;
+    }
+    let route = serde_json::to_string(view.unwrap_or("")).unwrap_or_else(|_| "\"\"".into());
     let _ = WebviewWindowBuilder::new(app, "dashboard", WebviewUrl::App("dashboard.html".into()))
+        .initialization_script(&format!("window.__pulseRoute = {route};"))
         .title("Pulse").inner_size(1120.0, 760.0).min_inner_size(720.0, 520.0).center().build();
+}
+
+/// Flyout del clic derecho: 300 px de menú con 12 px de margen transparente alrededor para su sombra.
+pub const FLYOUT_W: f64 = 324.0;
+static FLYOUT_HIDDEN_AT: std::sync::atomic::AtomicI64 = std::sync::atomic::AtomicI64::new(0);
+/// X lógica del último clic derecho en la bandeja: el flyout se centra sobre ella.
+static FLYOUT_CLICK_X: Mutex<f64> = Mutex::new(0.0);
+
+/// Esquina superior izquierda del flyout (lógica): centrado sobre el clic, encima de la barra de tareas y dentro del área de trabajo.
+pub fn flyout_origin(click_x: f64, size: (f64, f64), work: (f64, f64, f64, f64)) -> (f64, f64) {
+    let ((w, h), (l, t, r, b)) = (size, work);
+    ((click_x - w / 2.0).clamp(l, (r - w).max(l)), (b - h).max(t))
+}
+/// Se crea al arrancar, oculto, para que el primer clic derecho sea instantáneo.
+pub fn create_flyout(app: &AppHandle) -> tauri::Result<()> {
+    let w = WebviewWindowBuilder::new(app, "flyout", WebviewUrl::App("flyout.html".into()))
+        .transparent(true).decorations(false).always_on_top(true).skip_taskbar(true).resizable(false).shadow(false)
+        .inner_size(FLYOUT_W, 420.0).visible(false).build()?;
+    let w2 = w.clone();
+    w.on_window_event(move |e| if let tauri::WindowEvent::Focused(false) = e {
+        if w2.is_visible().unwrap_or(false) { FLYOUT_HIDDEN_AT.store(crate::now_ms(), std::sync::atomic::Ordering::SeqCst); }
+        let _ = w2.hide();
+    });
+    Ok(())
+}
+fn place_flyout(win: &tauri::WebviewWindow) {
+    let scale = win.scale_factor().unwrap_or(1.0);
+    let Ok(size) = win.inner_size() else { return };
+    let (l, t, r, b) = work_area();
+    let (x, y) = flyout_origin(*FLYOUT_CLICK_X.lock().unwrap(), (size.width as f64 / scale, size.height as f64 / scale), (l / scale, t / scale, r / scale, b / scale));
+    let _ = win.set_position(tauri::LogicalPosition::new(x, y));
+}
+pub fn toggle_flyout(app: &AppHandle, click: tauri::PhysicalPosition<f64>) {
+    use tauri::Emitter;
+    let Some(win) = app.get_webview_window("flyout") else { return };
+    if win.is_visible().unwrap_or(false) { let _ = win.hide(); return; }
+    // el clic en la bandeja que le quitó el foco no debe volver a abrirlo
+    if crate::now_ms() - FLYOUT_HIDDEN_AT.load(std::sync::atomic::Ordering::SeqCst) < 300 { return; }
+    *FLYOUT_CLICK_X.lock().unwrap() = click.x / win.scale_factor().unwrap_or(1.0);
+    place_flyout(&win);
+    let _ = app.emit_to("flyout", "pulse://flyout-open", ());
+    let _ = win.show(); let _ = win.set_focus();
+}
+/// La interfaz avisa su alto (cambia con la fila "Responder permiso"); se recoloca para que el borde de abajo no se mueva.
+pub fn fit_flyout(app: &AppHandle, height: f64) {
+    let Some(win) = app.get_webview_window("flyout") else { return };
+    let _ = win.set_size(tauri::LogicalSize::new(FLYOUT_W, height.ceil()));
+    place_flyout(&win);
+}
+pub fn hide_flyout(app: &AppHandle) { if let Some(w) = app.get_webview_window("flyout") { let _ = w.hide(); } }
+
+#[cfg(test)]
+mod tests { use super::*;
+    #[test] fn flyout_sits_above_the_click_inside_the_work_area() {
+        let work = (0.0, 0.0, 1920.0, 1032.0);
+        assert_eq!(flyout_origin(1700.0, (324.0, 400.0), work), (1538.0, 632.0));   // centrado sobre el clic
+        assert_eq!(flyout_origin(1900.0, (324.0, 400.0), work), (1596.0, 632.0));   // no se sale por la derecha
+        assert_eq!(flyout_origin(40.0, (324.0, 400.0), work), (0.0, 632.0));        // ni por la izquierda
+        assert_eq!(flyout_origin(500.0, (324.0, 2000.0), work), (338.0, 0.0));      // ni por arriba
+    }
 }

@@ -36,5 +36,11 @@ export const muteSession = (sessionId: string, minutes: number) => invoke('mute_
 export const dailySummary = () => invoke<DaySummary>('daily_summary');
 export const setIslandHitbox = (rect: { x: number; y: number; w: number; h: number } | null) => invoke('set_island_hitbox', { rect });
 export const islandFocus = (on: boolean) => invoke('island_focus', { on });
-export const openDashboard = () => invoke('open_dashboard');
+export const openDashboard = (view?: string) => invoke('open_dashboard', { view: view ?? null });
+export const flyoutFit = (height: number) => invoke('flyout_fit', { height });
+export const flyoutHide = () => invoke('flyout_hide');
+export const openPalette = () => invoke('open_palette');
+export const quit = () => invoke('quit');
+export const onFlyoutOpen = (f: () => void) => listen('pulse://flyout-open', () => f());
+export const onRoute = (f: (view: string) => void) => listen<string>('pulse://route', e => f(e.payload));
 export const togglePanel = () => invoke('toggle_panel');

@@ -1,4 +1,4 @@
-import type { SessionState } from './bridge';
+import type { SessionState, Snapshot } from './bridge';
 // Colores de los eventos en la versión oscura (spec §2.2). La isla siempre es oscura; los pulsos toman los suyos de config.
 export const COLORS = { start: '#eaedea', permission: '#e3b05c', done: '#8fc3a0', idle: '#9ea39e', error: '#e08a7e', subagent: '#8fb0d6', focus: '#9ea39e', calm: '#7d827d' } as const;
 export const LBL: Record<SessionState, string> = { Idle: 'en calma', Done: 'terminó', Working: 'trabajando', IdleWait: 'te espera', Waiting: 'pide permiso' };
@@ -31,3 +31,16 @@ export function since(ms: number): string { const s = Math.max(0, Math.floor(ms 
 /** Hora local "09:05". */
 export function hhmm(atMs: number): string { const d = new Date(atMs); return `${p2(d.getHours())}:${p2(d.getMinutes())}`; }
 export const esc = (s: unknown) => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+/** Cuántas sesiones hay, cuántas te necesitan (permiso, pregunta o te esperan) y cuántas trabajan. */
+export function counts(s: Snapshot) {
+  return { total: s.sessions.length, need: s.sessions.filter(x => x.state === 'Waiting' || x.state === 'IdleWait').length, working: s.sessions.filter(x => x.state === 'Working').length };
+}
+/** "1 te necesita · 2 trabajan", "Todo en calma", "Sin sesiones" (flyout y Orbe). */
+export function statusLine(s: Snapshot): string {
+  const c = counts(s);
+  if (!c.total) return 'Sin sesiones';
+  const parts = [c.need ? `${c.need} te necesita${c.need > 1 ? 'n' : ''}` : '', c.working ? `${c.working} trabaja${c.working > 1 ? 'n' : ''}` : ''].filter(Boolean);
+  return parts.length ? parts.join(' · ') : 'Todo en calma';
+}
+/** Punto que resume a todas: te necesita > trabaja > en calma. */
+export function topDot(s: Snapshot): DotKind { const c = counts(s); return c.need ? 'halo' : c.working ? 'fill' : 'calm'; }

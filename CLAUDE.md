@@ -16,7 +16,7 @@ pwsh scripts/uninstall.ps1             # restore settings.json from the backup
 
 - Claude Code hook → `pulse.exe` (`crates/pulse-cli`) → named pipe `\\.\pipe\pulse` → app (`app/src-tauri`). Types and hook translation live in `crates/pulse-protocol`.
 - The core keeps the state and sends it to every window over two events: `pulse://state` (full snapshot) and `pulse://fx` (one-off effect). Windows call the core through `app/ui/src/shared/bridge.ts`.
-- Edges (`overlay`) and the island: TypeScript with no framework. Bolsillo (`panel`) and Mosaico (`dashboard`): React 18 + Tailwind 4.
+- Edges (`overlay`) and the island: TypeScript with no framework. Bolsillo (`panel`), the tray right-click flyout (`flyout`) and Mosaico (`dashboard`): React 18 + Tailwind 4.
 - User data in `~/.claude/pulse/` (`config.json`, `log.jsonl`).
 
 ## Rules that break Claude Code if you break them
