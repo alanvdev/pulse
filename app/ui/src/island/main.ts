@@ -1,5 +1,5 @@
 import { listen } from '@tauri-apps/api/event';
-import { allowAll, answer, decide, skip, getConfig, getSnapshot, islandFocus, muteSession, onConfig, onFx, onState, openDashboard, setConfig, setFocus, setIslandHitbox, type Config, type Fx, type Snapshot } from '../shared/bridge';
+import { allowAll, answer, decide, holdQuestion, skip, getConfig, getSnapshot, islandFocus, muteSession, onConfig, onFx, onState, openDashboard, setConfig, setFocus, setIslandHitbox, type Config, type Fx, type Snapshot } from '../shared/bridge';
 import { SP_MOVE, SP_OPEN, T } from '../shared/motion';
 import { mountComando } from './comando';
 import { mountOrbe, type OrbeCtx } from './orbe';
@@ -21,7 +21,7 @@ function hitbox(el: HTMLElement | null) {
 
 const ctx: OrbeCtx = {
   snap: () => snap, cfg: () => cfg, transient: () => tr,
-  decide: (id, allow) => { decide(id, allow); }, answer: (id, a) => { answer(id, a); }, skip: id => { skip(id); }, allowAll: () => { allowAll(); }, setFocus: on => { setFocus(on); },
+  decide: (id, allow) => { decide(id, allow); }, answer: (id, a) => { answer(id, a); }, skip: id => { skip(id); }, hold: (id, on) => { holdQuestion(id, on); }, allowAll: () => { allowAll(); }, setFocus: on => { setFocus(on); },
   muteSession: (id, minutes) => { muteSession(id, minutes); }, openDashboard: () => { openDashboard(); },
   islandFocus: on => { islandFocus(on); }, hitbox,
   setSide: side => { cfg = { ...cfg, island: { ...cfg.island, orb_side: side } }; setConfig(cfg); },

@@ -4,6 +4,9 @@ use serde::Serialize;
 
 fn first_question(q: &serde_json::Value) -> String { q.get(0).and_then(|x| x.get("question")).and_then(|x| x.as_str()).unwrap_or("Claude te hace una pregunta").to_string() }
 
+/// Tope absoluto para una pregunta en la isla (aunque esté en pausa): `pulse ask` espera un poco más y el hook de Claude Code, más.
+pub const QUESTION_MAX_MS: i64 = (pulse_protocol::QUESTION_MAX_WAIT_S as i64 - 10) * 1000;
+
 pub const IDLE_EXIT_MS: i64 = 5 * 60_000;
 pub const STALE_SESSION_MS: i64 = 2 * 3_600_000;
 const FEED_MAX: usize = 40;
@@ -19,7 +22,8 @@ impl Cue { pub fn key(self) -> &'static str { match self { Cue::Start => "start"
 #[derive(Debug, Clone, Serialize)]
 pub struct Session { pub id: String, pub project: String, #[serde(skip)] pub cwd: String, pub slot: u8, pub state: SessionState, pub last: String, pub subagents: u32, pub since_ms: i64, pub last_event_ms: i64, pub actions: u32, pub muted_until_ms: i64 }
 #[derive(Debug, Clone, Serialize)]
-pub struct Pending { pub id: u64, pub kind: String, pub session_id: String, pub project: String, pub tool: String, pub command: String, pub description: String, pub danger: bool, pub at_ms: i64, pub timeout_ms: i64, pub questions: Option<serde_json::Value> }
+/// `deadline_ms`: cuándo se va a la terminal. Las preguntas se pausan mientras las contestas (`paused`, con `left_ms` restantes).
+pub struct Pending { pub id: u64, pub kind: String, pub session_id: String, pub project: String, pub tool: String, pub command: String, pub description: String, pub danger: bool, pub at_ms: i64, pub timeout_ms: i64, pub deadline_ms: i64, pub paused: bool, pub left_ms: i64, pub questions: Option<serde_json::Value> }
 #[derive(Debug, Clone, Serialize)]
 pub struct FeedItem { pub session_id: String, pub project: String, pub text: String, pub at_ms: i64 }
 #[derive(Debug, Clone, Serialize)]
@@ -85,7 +89,7 @@ impl Store {
     }
 
     pub fn add_pending(&mut self, id: u64, e: &Envelope, timeout_ms: i64) {
-        let base = |kind: &str, tool: &str, command: String, description: String, danger: bool, questions: Option<serde_json::Value>| Pending { id, kind: kind.into(), session_id: e.session_id.clone(), project: e.project.clone(), tool: tool.into(), command, description, danger, at_ms: e.at_ms, timeout_ms, questions };
+        let base = |kind: &str, tool: &str, command: String, description: String, danger: bool, questions: Option<serde_json::Value>| Pending { id, kind: kind.into(), session_id: e.session_id.clone(), project: e.project.clone(), tool: tool.into(), command, description, danger, at_ms: e.at_ms, timeout_ms, deadline_ms: e.at_ms + timeout_ms, paused: false, left_ms: timeout_ms, questions };
         match &e.event {
             PulseEvent::Permission { tool, command, description } => self.pending.push(base("permission", tool, command.clone(), description.clone(), is_dangerous(command), None)),
             PulseEvent::Question { questions } => self.pending.push(base("question", "AskUserQuestion", first_question(questions), String::new(), false, Some(questions.clone()))),
@@ -122,7 +126,14 @@ impl Store {
     }
 
     pub fn expire(&mut self, now_ms: i64) -> Vec<u64> {
-        self.pending.iter().filter(|p| now_ms - p.at_ms >= p.timeout_ms).map(|p| p.id).collect()
+        self.pending.iter().filter(|p| (!p.paused && now_ms >= p.deadline_ms) || (p.kind == "question" && now_ms - p.at_ms >= QUESTION_MAX_MS)).map(|p| p.id).collect()
+    }
+
+    /// Pausa (o reanuda) la cuenta regresiva de una pregunta mientras la contestas en la isla.
+    pub fn pause(&mut self, id: u64, on: bool, now_ms: i64) {
+        let Some(p) = self.pending.iter_mut().find(|p| p.id == id && p.kind == "question") else { return };
+        if on && !p.paused { p.left_ms = (p.deadline_ms - now_ms).max(0); p.paused = true; }
+        if !on && p.paused { p.deadline_ms = now_ms + p.left_ms; p.paused = false; }
     }
 
     pub fn set_focus(&mut self, manual: Option<bool>, auto: bool) -> Vec<Deferred> {
@@ -226,6 +237,23 @@ mod tests {
         assert!(s.first_permission().is_none(), "Ctrl+Alt+Y/N no deben contestar preguntas");
         let e = perm("a", 1, "ls"); s.apply(&e); s.add_pending(6, &e, 30_000);
         assert_eq!(s.first_permission().unwrap().id, 6);
+    }
+    #[test] fn question_countdown_pauses_while_answering() {
+        let mut s = Store::default();
+        let q = question("a", 0, true);
+        s.apply(&q); s.add_pending(5, &q, 60_000);
+        assert_eq!(s.snapshot().pending[0].deadline_ms, 60_000);
+        s.pause(5, true, 20_000);                         // entras a la tarjeta a los 20 s: quedan 40 s
+        assert!(s.expire(90_000).is_empty());             // en pausa no expira
+        s.pause(5, false, 100_000);                       // sales a los 100 s: vuelven a quedar 40 s
+        assert_eq!(s.snapshot().pending[0].deadline_ms, 140_000);
+        assert!(s.expire(139_999).is_empty());
+        assert_eq!(s.expire(140_000), vec![5]);
+        // tope absoluto: aunque sigas en pausa, se va a la terminal antes de que Claude Code corte el hook
+        let q2 = question("b", 0, true); s.apply(&q2); s.add_pending(6, &q2, 60_000);
+        s.pause(6, true, 1_000);
+        assert!(s.expire(QUESTION_MAX_MS - 1).iter().all(|id| *id != 6));
+        assert!(s.expire(QUESTION_MAX_MS).contains(&6));
     }
     #[test] fn questions_and_plans_in_the_terminal_only_notify() {
         let mut s = Store::default();

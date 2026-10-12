@@ -11,6 +11,8 @@ use tauri::{AppHandle, Emitter, Manager, State};
 }
 #[tauri::command] pub fn decide(app: AppHandle, id: u64, allow: bool) { resolve(&app, id, if allow { Decision::Allow } else { Decision::Deny }); }
 #[tauri::command] pub fn answer(app: AppHandle, id: u64, answers: serde_json::Value) { crate::answer(&app, id, answers); }
+/// Pausa la cuenta regresiva de una pregunta mientras la contestas en la isla.
+#[tauri::command] pub fn hold_question(app: AppHandle, st: State<AppState>, id: u64, on: bool) { st.store.lock().unwrap().pause(id, on, now_ms()); broadcast(&app); }
 /// Deja la pregunta para la terminal (no decide nada).
 #[tauri::command] pub fn skip(app: AppHandle, id: u64) { crate::resolve_as(&app, id, Decision::None, "skip"); }
 #[tauri::command] pub fn allow_all(app: AppHandle, st: State<AppState>) {

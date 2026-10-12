@@ -6,6 +6,8 @@ pub const PROTOCOL_VERSION: u32 = 1;
 pub const ASK_TIMEOUT_S: u64 = 30;
 /// Cuánto espera la isla una respuesta a una pregunta de Claude antes de dejarla en la terminal.
 pub const QUESTION_TIMEOUT_S: u64 = 60;
+/// Lo más que `pulse ask` espera una pregunta, contando pausas mientras la contestas. El hook se registra con un poco más.
+pub const QUESTION_MAX_WAIT_S: u64 = 300;
 const MAX_TEXT: usize = 120;
 
 #[derive(Debug, Clone, Default, Deserialize)]

@@ -3,7 +3,7 @@ import { listen } from '@tauri-apps/api/event';
 export type SessionState = 'Idle' | 'Done' | 'Working' | 'IdleWait' | 'Waiting';
 export interface Session { id: string; project: string; slot: number; state: SessionState; last: string; subagents: number; since_ms: number; last_event_ms: number; actions: number; muted_until_ms: number }
 export interface Question { question: string; header?: string; options: { label: string; description?: string }[]; multiSelect?: boolean }
-export interface Pending { id: number; kind: 'permission' | 'question'; questions?: Question[] | null; session_id: string; project: string; tool: string; command: string; description: string; danger: boolean; at_ms: number; timeout_ms: number }
+export interface Pending { id: number; kind: 'permission' | 'question'; questions?: Question[] | null; session_id: string; project: string; tool: string; command: string; description: string; danger: boolean; at_ms: number; timeout_ms: number; deadline_ms: number; paused: boolean; left_ms: number }
 export interface FeedItem { session_id: string; project: string; text: string; at_ms: number }
 export interface Deferred { session_id: string; project: string; kind: string }
 export interface Snapshot { sessions: Session[]; pending: Pending[]; feed: FeedItem[]; focus: boolean; focus_auto: boolean; deferred: Deferred[] }
@@ -28,6 +28,7 @@ export const setConfig = (config: Config) => invoke('set_config', { config });
 export const decide = (id: number, allow: boolean) => invoke('decide', { id, allow });
 export const answer = (id: number, answers: Record<string, string>) => invoke('answer', { id, answers });
 export const skip = (id: number) => invoke('skip', { id });
+export const holdQuestion = (id: number, on: boolean) => invoke('hold_question', { id, on });
 export const allowAll = () => invoke('allow_all');
 export const setFocus = (on: boolean) => invoke('set_focus', { on });
 export const muteSession = (sessionId: string, minutes: number) => invoke('mute_session', { sessionId, minutes });

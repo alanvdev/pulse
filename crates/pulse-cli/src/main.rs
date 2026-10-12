@@ -26,7 +26,7 @@ fn ask() -> Result<(), String> {
         let PulseEvent::Question { questions } = &event else { return Ok(()) };
         let env = Envelope { v: PROTOCOL_VERSION, session_id: input.session_id.clone(), project: project_name(&input.cwd), cwd: input.cwd.clone(), at_ms: now_ms(), ask: true, event: event.clone() };
         let line = serde_json::to_string(&env).map_err(|e| e.to_string())? + "\n";
-        let reply = pipe::request(PIPE_NAME, &line, app_path().as_deref(), Duration::from_secs(QUESTION_TIMEOUT_S + 2)).and_then(|r| serde_json::from_str::<Reply>(&r).ok());
+        let reply = pipe::request(PIPE_NAME, &line, app_path().as_deref(), Duration::from_secs(QUESTION_MAX_WAIT_S)).and_then(|r| serde_json::from_str::<Reply>(&r).ok());
         if let Some(Reply { decision: Decision::Allow, answers: Some(a) }) = reply { println!("{}", answer_output(questions, &a)); }
         return Ok(());
     }
