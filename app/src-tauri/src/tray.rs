@@ -50,8 +50,11 @@ static LAST: Mutex<Vec<TrayDot>> = Mutex::new(Vec::new());
 /// Clic izquierdo: Bolsillo. Clic derecho: el flyout (no hay menú nativo).
 pub fn create(app: &AppHandle, on_left_click: fn(&AppHandle), on_right_click: fn(&AppHandle, PhysicalPosition<f64>)) -> tauri::Result<()> {
     TrayIconBuilder::with_id(TRAY_ID).icon(icon(&tray_dots(&[]))).tooltip("Pulse · sin sesiones")
-        .on_tray_icon_event(move |t, e| if let TrayIconEvent::Click { button, button_state: MouseButtonState::Up, position, .. } = e {
-            match button { MouseButton::Left => on_left_click(t.app_handle()), MouseButton::Right => on_right_click(t.app_handle(), position), _ => {} }
+        .on_tray_icon_event(move |t, e| if let TrayIconEvent::Click { button, button_state: MouseButtonState::Up, position, rect, .. } = e {
+            // el flyout se centra sobre el ícono (no sobre el cursor, que puede estar en otro lado si se abrió con el teclado)
+            let (p, s) = (rect.position.to_physical::<f64>(1.0), rect.size.to_physical::<f64>(1.0));
+            let anchor = if s.width > 0.0 { PhysicalPosition::new(p.x + s.width / 2.0, p.y) } else { position };
+            match button { MouseButton::Left => on_left_click(t.app_handle()), MouseButton::Right => on_right_click(t.app_handle(), anchor), _ => {} }
         })
         .build(app)?;
     Ok(())

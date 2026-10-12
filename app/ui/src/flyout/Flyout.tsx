@@ -42,6 +42,8 @@ export function Flyout() {
 
   // el núcleo ajusta la ventana a lo que mide el menú (más el margen de 12 px para la sombra)
   useLayoutEffect(() => { if (box.current) flyoutFit(box.current.offsetHeight + 24); }, [items.length]);
+  // al abrir, el foco va al menú: el lector de pantalla lo anuncia y las flechas funcionan de inmediato
+  useEffect(() => { if (open) box.current?.focus(); }, [open]);
 
   // flechas entre filas (Enter y Espacio los resuelve el botón enfocado), Esc cierra
   useEffect(() => {
@@ -60,10 +62,10 @@ export function Flyout() {
   if (!cfg) return null;
   let i = -1;
   return <div className="fly-wrap">
-    <div key={open} ref={box} role="menu" aria-label="Pulse" className="fly surf">
-      <div className="fly-head"><b>Pulse</b><span><Dot kind={topDot(snap)} />{statusLine(snap)}</span></div>
-      {groups.map((g, gi) => <div key={gi}>
-        <div className="sep" />
+    <div key={open} ref={box} role="menu" aria-label="Pulse" aria-describedby="fly-status" tabIndex={-1} className="fly surf">
+      <div className="fly-head" role="presentation"><b>Pulse</b><span id="fly-status"><Dot kind={topDot(snap)} />{statusLine(snap)}</span></div>
+      {groups.map((g, gi) => <div key={gi} role="group">
+        <div className="sep" role="separator" />
         {g.map(it => { i++; const toggleRow = it.on !== undefined;
           return <button key={it.id} type="button" className="mi" data-i={i} role={toggleRow ? 'menuitemcheckbox' : 'menuitem'} aria-checked={toggleRow ? it.on : undefined}
             aria-disabled={it.disabled || undefined} onClick={() => { if (!it.disabled) it.run(); }}>

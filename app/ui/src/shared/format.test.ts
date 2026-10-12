@@ -26,6 +26,7 @@ describe('estado en una línea', () => {
   it('cuenta', () => expect(counts(snap('Waiting', 'Working', 'Done'))).toEqual({ total: 3, need: 1, working: 1 }));
   it('el punto del resumen es el más urgente', () => {
     expect(topDot(snap('Working', 'Waiting'))).toBe('halo'); expect(topDot(snap('Done', 'Working'))).toBe('fill'); expect(topDot(snap('Done'))).toBe('calm');
+    expect(topDot(snap('IdleWait'))).toBe('calm');   // como en la bandeja: te espera es anillo gris
   });
 });
 describe('qué hace una sesión', () => {

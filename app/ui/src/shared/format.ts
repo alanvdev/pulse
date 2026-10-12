@@ -42,8 +42,8 @@ export function statusLine(s: Snapshot): string {
   const parts = [c.need ? `${c.need} te necesita${c.need > 1 ? 'n' : ''}` : '', c.working ? `${c.working} trabaja${c.working > 1 ? 'n' : ''}` : ''].filter(Boolean);
   return parts.length ? parts.join(' · ') : 'Todo en calma';
 }
-/** Punto que resume a todas: te necesita > trabaja > en calma. */
-export function topDot(s: Snapshot): DotKind { const c = counts(s); return c.need ? 'halo' : c.working ? 'fill' : 'calm'; }
+/** Punto que resume a todas, con las formas de la bandeja: ámbar solo si hay un permiso o pregunta esperando; "te espera" es anillo gris (spec §2.2). */
+export function topDot(s: Snapshot): DotKind { const c = counts(s); return s.sessions.some(x => x.state === 'Waiting') ? 'halo' : c.working ? 'fill' : 'calm'; }
 /** Qué hace la sesión, para filas de la isla, Bolsillo y Mosaico. `mono`: es un comando o un archivo. */
 export function sessionWhat(s: Session, p: Pending | undefined, now: number): { text: string; mono: boolean } {
   if (p) return { text: `${p.kind === 'question' ? 'Pregunta' : 'Permiso'} · ${p.command}`, mono: true };
