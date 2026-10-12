@@ -68,3 +68,15 @@ export function sessionRows(s: Snapshot, now: number): Row[] {
 export const showDots = (s: Snapshot, c: Config) => c.island.dots && s.sessions.some(x => x.state === 'Working' || x.state === 'Waiting' || x.state === 'IdleWait');
 /** Pie del resumen: horas de trabajo de hoy y cuánto te esperó Claude. */
 export const dayLine = (d: DaySummary | null) => d ? `Hoy ${hm(d.total_work_ms)} · te esperó ${hm(d.total_waited_ms)}` : 'Hoy';
+
+export type Side = 'left' | 'center' | 'right';
+/** Al soltar el Orbe: la zona más cercana según la x (0 a 1) de su centro. */
+export const nearestZone = (x: number): Side => x < 1 / 3 ? 'left' : x > 2 / 3 ? 'right' : 'center';
+/** Forma del Orbe en reposo (spec §3.2): luna en foco, anillo casi transparente sin sesiones; si no, la sesión más urgente. */
+export function orbDot(s: Snapshot): DotKind | 'moon' | 'none' {
+  if (s.focus) return 'moon';
+  if (!s.sessions.length) return 'none';
+  const has = (st: SessionState) => s.sessions.some(x => x.state === st);
+  return s.pending.length || has('Waiting') ? 'halo' : has('Working') ? 'fill' : has('Done') ? 'done' : 'calm';
+}
+export const focusLine = (s: Snapshot) => `En foco · ${s.deferred.length} guardado${s.deferred.length === 1 ? '' : 's'}`;

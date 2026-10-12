@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Config, Fx, Pending, Session, SessionState, Snapshot } from '../shared/bridge';
 import { COLORS } from '../shared/format';
-import { dayLine, digitIndex, qHint, queueInfo, releaseRow, sessionRows, showDots, toNotice, verb } from './model';
+import { dayLine, digitIndex, focusLine, nearestZone, orbDot, qHint, queueInfo, releaseRow, sessionRows, showDots, toNotice, verb } from './model';
 
 const fx = (kind: Fx['kind'], text = '', visual = true): Fx => ({ kind, session_id: 's', project: 'pulse', slot: 0, text, visual, sound: false, monitor: 0 });
 const pend = (id: number, project: string, command: string, tool = 'Bash', kind: Pending['kind'] = 'permission'): Pending =>
@@ -86,5 +86,22 @@ describe('puntos y resumen de Comando', () => {
   it('pie del resumen', () => {
     expect(dayLine(null)).toBe('Hoy');
     expect(dayLine({ sessions: [], total_work_ms: 192 * 60_000, total_waited_ms: 14 * 60_000, actions_by_hour: [] })).toBe('Hoy 3 h 12 min · te esperó 14 min');
+  });
+});
+
+describe('Orbe', () => {
+  it('zona más cercana al soltarlo', () => { expect(nearestZone(.1)).toBe('left'); expect(nearestZone(.5)).toBe('center'); expect(nearestZone(.9)).toBe('right'); });
+  it('el punto resume a todas las sesiones', () => {
+    expect(orbDot(snap([]))).toBe('none');
+    expect(orbDot(snap([ses('a', 'Done'), ses('b', 'Working')]))).toBe('fill');
+    expect(orbDot(snap([ses('a', 'Working'), ses('b', 'Waiting')]))).toBe('halo');
+    expect(orbDot(snap([ses('a', 'Done'), ses('b', 'Idle')]))).toBe('done');
+    expect(orbDot(snap([ses('a', 'IdleWait')]))).toBe('calm');
+    expect(orbDot({ ...snap([ses('a', 'Working')]), focus: true })).toBe('moon');
+  });
+  it('línea del modo foco', () => {
+    const d = (n: number) => Array.from({ length: n }, () => ({ session_id: 's', project: 'p', kind: 'done', at_ms: 0 }));
+    expect(focusLine({ ...snap([]), focus: true, deferred: d(3) })).toBe('En foco · 3 guardados');
+    expect(focusLine({ ...snap([]), focus: true, deferred: d(1) })).toBe('En foco · 1 guardado');
   });
 });
