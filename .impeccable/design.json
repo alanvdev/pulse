@@ -1,0 +1,401 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-12T04:58:06.127Z",
+  "title": "Design System: Pulse",
+  "extensions": {
+    "colorMeta": {
+      "tx": {
+        "role": "primary",
+        "displayName": "Ink",
+        "canonical": "#eaedea",
+        "tonalRamp": [
+          "#0a0b0a",
+          "#111311",
+          "#181b18",
+          "#545a54",
+          "#7d827d",
+          "#9ea39e",
+          "#e6e9e6",
+          "#eaedea"
+        ]
+      },
+      "perm": {
+        "role": "secondary",
+        "displayName": "Permission Amber",
+        "canonical": "#e3b05c",
+        "tonalRamp": [
+          "oklch(15% 0.1 75)",
+          "oklch(25% 0.1 75)",
+          "oklch(35% 0.1 75)",
+          "oklch(45% 0.1 75)",
+          "oklch(55% 0.1 75)",
+          "oklch(65% 0.1 75)",
+          "oklch(80% 0.1 75)",
+          "oklch(95% 0.1 75)"
+        ]
+      },
+      "done": {
+        "role": "secondary",
+        "displayName": "Done Sage",
+        "canonical": "#8fc3a0",
+        "tonalRamp": [
+          "oklch(15% 0.07 155)",
+          "oklch(25% 0.07 155)",
+          "oklch(35% 0.07 155)",
+          "oklch(45% 0.07 155)",
+          "oklch(55% 0.07 155)",
+          "oklch(65% 0.07 155)",
+          "oklch(80% 0.07 155)",
+          "oklch(95% 0.07 155)"
+        ]
+      },
+      "err": {
+        "role": "secondary",
+        "displayName": "Error Coral",
+        "canonical": "#e08a7e",
+        "tonalRamp": [
+          "oklch(15% 0.1 30)",
+          "oklch(25% 0.1 30)",
+          "oklch(35% 0.1 30)",
+          "oklch(45% 0.1 30)",
+          "oklch(55% 0.1 30)",
+          "oklch(65% 0.1 30)",
+          "oklch(80% 0.1 30)",
+          "oklch(95% 0.1 30)"
+        ]
+      },
+      "sub": {
+        "role": "secondary",
+        "displayName": "Subagent Blue",
+        "canonical": "#8fb0d6",
+        "tonalRamp": [
+          "oklch(15% 0.07 250)",
+          "oklch(25% 0.07 250)",
+          "oklch(35% 0.07 250)",
+          "oklch(45% 0.07 250)",
+          "oklch(55% 0.07 250)",
+          "oklch(65% 0.07 250)",
+          "oklch(80% 0.07 250)",
+          "oklch(95% 0.07 250)"
+        ]
+      },
+      "focus": {
+        "role": "tertiary",
+        "displayName": "Focus Lavender",
+        "canonical": "#b4a6d9",
+        "tonalRamp": [
+          "oklch(15% 0.08 295)",
+          "oklch(25% 0.08 295)",
+          "oklch(35% 0.08 295)",
+          "oklch(45% 0.08 295)",
+          "oklch(55% 0.08 295)",
+          "oklch(65% 0.08 295)",
+          "oklch(80% 0.08 295)",
+          "oklch(95% 0.08 295)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Graphite Surface",
+        "canonical": "#111311",
+        "tonalRamp": [
+          "#090a09",
+          "#0a0b0a",
+          "#0d0f0d",
+          "#0e100e",
+          "#111311",
+          "#181b18",
+          "#ebeeea",
+          "#f6f8f5"
+        ]
+      },
+      "surface-light": {
+        "role": "neutral",
+        "displayName": "Graphite Surface (light)",
+        "canonical": "#f6f8f5"
+      },
+      "tx2": {
+        "role": "neutral",
+        "displayName": "Text 2",
+        "canonical": "#9ea39e"
+      },
+      "tx3": {
+        "role": "neutral",
+        "displayName": "Text 3",
+        "canonical": "#7d827d"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Ajustes page title only."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Mosaico screen titles."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Bolsillo's headline figure and Mosaico stat values."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Rows, cards and menus (13 to 14.5px)."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Secondary lines, section headings, times, legends, footers."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Commands, paths, clocks and counts, tabular figures."
+      }
+    },
+    "shadows": [
+      {
+        "name": "floating-surface",
+        "value": "inset 0 0 0 1px var(--line), inset 0 1px 0 var(--hi), 0 24px 48px -12px var(--shadow)",
+        "purpose": "Bolsillo and the Mosaico canvas."
+      },
+      {
+        "name": "island-surface",
+        "value": "inset 0 0 0 1px var(--line), inset 0 1px 0 var(--hi), 0 28px 56px -16px var(--shadow)",
+        "purpose": "The island shell."
+      },
+      {
+        "name": "short-float",
+        "value": "inset 0 0 0 1px var(--line), inset 0 1px 0 var(--hi), 0 6px 12px -4px var(--shadow)",
+        "purpose": "The flyout (12px transparent window margin)."
+      },
+      {
+        "name": "focus-border",
+        "value": "inset 0 0 0 1px color-mix(in srgb, var(--focus) 40%, transparent), inset 0 1px 0 var(--hi), 0 24px 48px -12px var(--shadow)",
+        "purpose": "A floating surface while focus mode is on."
+      },
+      {
+        "name": "shadow-dark",
+        "value": "rgba(0,0,0,.72)",
+        "purpose": "--shadow in the dark theme."
+      },
+      {
+        "name": "shadow-light",
+        "value": "rgba(31,36,32,.16)",
+        "purpose": "--shadow in the light theme."
+      }
+    ],
+    "motion": [
+      {
+        "name": "e-out",
+        "value": "cubic-bezier(.16,1,.3,1)",
+        "purpose": "Entrances, presses, highlights, knob travel."
+      },
+      {
+        "name": "e-in",
+        "value": "cubic-bezier(.7,0,.84,0)",
+        "purpose": "Resolved block fold."
+      },
+      {
+        "name": "spring-open",
+        "value": "spring k260 d23 as linear()",
+        "purpose": "Island grows."
+      },
+      {
+        "name": "spring-close",
+        "value": "spring k340 d38 as linear()",
+        "purpose": "Island shrinks."
+      },
+      {
+        "name": "spring-move",
+        "value": "spring k200 d24 as linear()",
+        "purpose": "Island dots travel to rows."
+      },
+      {
+        "name": "spring-fallback",
+        "value": "cubic-bezier(.32,.72,0,1) 520ms",
+        "purpose": "Without linear() support."
+      },
+      {
+        "name": "press",
+        "value": "scale(.96) .12s e-out",
+        "purpose": "Buttons, chips, segments."
+      },
+      {
+        "name": "row-stagger",
+        "value": ".32s e-out, 30ms per row",
+        "purpose": "Rows entering."
+      },
+      {
+        "name": "row-flash",
+        "value": ".9s ease-out from 16% event color",
+        "purpose": "Row whose session changed to done or waiting."
+      },
+      {
+        "name": "sliding-highlight",
+        "value": ".34s e-out",
+        "purpose": "Active nav item or tab."
+      },
+      {
+        "name": "count-up",
+        "value": "700ms ease-out cubic",
+        "purpose": "Stat figures."
+      },
+      {
+        "name": "screen-fade",
+        "value": ".28s e-out, 6px rise",
+        "purpose": "Screen change."
+      },
+      {
+        "name": "focus-halo",
+        "value": "1.6s in / .7s out",
+        "purpose": "Focus mode on or off."
+      },
+      {
+        "name": "hold",
+        "value": "900ms",
+        "purpose": "Approve a sensitive command."
+      },
+      {
+        "name": "reduced",
+        "value": "120ms opacity only",
+        "purpose": "Replacement for springs and morphs under prefers-reduced-motion."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "mosaico-narrow",
+        "value": "900px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Button (solo texto)",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "Quiet secondary action; hover fills sel.",
+      "html": "<button class=\"ds-btn\">Denegar <span class=\"ds-keys\"><kbd class=\"ds-kbd\">Ctrl</kbd><kbd class=\"ds-kbd\">Alt</kbd><kbd class=\"ds-kbd\">N</kbd></span></button>",
+      "css": ".ds-btn{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 9px;border-radius:6px;border:0;background:transparent;color:var(--tx2,#9ea39e);font:12.5px \"Hanken Grotesk\",system-ui,sans-serif;cursor:pointer;transition:background .15s,color .15s,transform .12s cubic-bezier(.16,1,.3,1)}.ds-btn:hover{background:var(--sel,rgba(234,237,234,.07));color:var(--tx,#eaedea)}.ds-btn:active{transform:scale(.96)}.ds-btn:focus-visible{outline:2px solid var(--tx2,#9ea39e);outline-offset:2px}.ds-keys{display:inline-flex;gap:3px}.ds-kbd{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 4px;border-radius:4px;background:rgba(234,237,234,.04);border:1px solid var(--line,rgba(234,237,234,.08));font:400 10.5px/1 \"Hanken Grotesk\",system-ui,sans-serif;color:var(--tx3,#7d827d)}"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Ink on sel; no brand color. The amber line shows the 900ms hold.",
+      "html": "<button class=\"ds-btn-pri\">Permitir</button>",
+      "css": ".ds-btn-pri{position:relative;overflow:hidden;display:inline-flex;align-items:center;height:28px;padding:0 9px;border-radius:6px;border:0;background:var(--sel,rgba(234,237,234,.07));color:var(--tx,#eaedea);font:600 12.5px \"Hanken Grotesk\",system-ui,sans-serif;cursor:pointer;transition:background .15s,transform .12s cubic-bezier(.16,1,.3,1)}.ds-btn-pri:hover{background:var(--line2,rgba(234,237,234,.16))}.ds-btn-pri:active{transform:scale(.96)}.ds-btn-pri:focus-visible{outline:2px solid var(--tx2,#9ea39e);outline-offset:2px}.ds-btn-pri::after{content:\"\";position:absolute;left:0;bottom:0;width:100%;height:2px;background:var(--perm,#e3b05c);transform-origin:left;transform:scaleX(0);transition:transform .9s linear}.ds-btn-pri:active::after{transform:scaleX(1)}"
+    },
+    {
+      "name": "Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "Toggle with aria-pressed.",
+      "html": "<button class=\"ds-chip\" aria-pressed=\"true\">Sonido</button><button class=\"ds-chip\" aria-pressed=\"false\">Foco</button>",
+      "css": ".ds-chip{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 10px;margin-right:6px;border-radius:6px;border:1px solid var(--line,rgba(234,237,234,.08));background:transparent;color:var(--tx3,#7d827d);font:12px \"Hanken Grotesk\",system-ui,sans-serif;cursor:pointer;transition:color .15s,background .15s,transform .12s}.ds-chip:hover{color:var(--tx2,#9ea39e)}.ds-chip:active{transform:scale(.96)}.ds-chip[aria-pressed=\"true\"]{color:var(--tx,#eaedea);background:var(--sel,rgba(234,237,234,.07));border-color:var(--line2,rgba(234,237,234,.16))}.ds-chip:focus-visible{outline:2px solid var(--tx2,#9ea39e);outline-offset:2px}"
+    },
+    {
+      "name": "Switch",
+      "kind": "input",
+      "refersTo": "switch",
+      "description": "The only pill; ink when on.",
+      "html": "<input type=\"checkbox\" role=\"switch\" class=\"ds-sw\" checked aria-label=\"Sonidos\">",
+      "css": ".ds-sw{appearance:none;position:relative;width:38px;height:22px;margin:0;border-radius:11px;background:var(--off,rgba(234,237,234,.12));cursor:pointer;transition:background .2s}.ds-sw::after{content:\"\";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--knob,#9ea39e);transition:transform .22s cubic-bezier(.16,1,.3,1),width .15s,background .2s}.ds-sw:checked{background:var(--tx,#eaedea)}.ds-sw:checked::after{transform:translateX(16px);background:var(--surface,#111311)}.ds-sw:active::after{width:20px}.ds-sw:checked:active::after{transform:translateX(12px)}.ds-sw:focus-visible{outline:2px solid var(--tx2,#9ea39e);outline-offset:2px}"
+    },
+    {
+      "name": "Segmented",
+      "kind": "custom",
+      "refersTo": "segmented",
+      "description": "Single or multi choice in a well.",
+      "html": "<span class=\"ds-seg\" role=\"group\" aria-label=\"Isla\"><button aria-pressed=\"true\">Comando</button><button aria-pressed=\"false\">Orbe</button></span>",
+      "css": ".ds-seg{display:inline-flex;padding:3px;gap:2px;border-radius:8px;background:var(--well,#0d0f0d);border:1px solid var(--line,rgba(234,237,234,.08))}.ds-seg button{height:28px;padding:0 11px;border:0;border-radius:6px;background:transparent;color:var(--tx3,#7d827d);font:12.5px \"Hanken Grotesk\",system-ui,sans-serif;cursor:pointer}.ds-seg button:hover{color:var(--tx2,#9ea39e)}.ds-seg button[aria-pressed=\"true\"]{background:var(--sel,rgba(234,237,234,.07));color:var(--tx,#eaedea)}.ds-seg button:focus-visible{outline:2px solid var(--tx2,#9ea39e);outline-offset:2px}"
+    },
+    {
+      "name": "Session Dots",
+      "kind": "custom",
+      "description": "Four dot kinds: working, needs you, finished, calm.",
+      "html": "<span class=\"ds-dots\"><span class=\"ds-dot ds-fill\"></span><span class=\"ds-dot ds-halo\"></span><span class=\"ds-dot ds-done\"></span><span class=\"ds-dot ds-calm\"></span></span>",
+      "css": ".ds-dots{display:inline-flex;gap:10px;align-items:center;padding:8px}.ds-dot{display:inline-block;width:7px;height:7px;border-radius:50%;box-sizing:border-box}.ds-fill{background:var(--tx,#eaedea)}.ds-halo{background:var(--perm,#e3b05c);box-shadow:0 0 0 3px color-mix(in srgb,var(--perm,#e3b05c) 22%,transparent)}.ds-done{border:1.5px solid var(--done,#8fc3a0)}.ds-calm{border:1.5px solid var(--tx3,#7d827d)}"
+    },
+    {
+      "name": "Menu Row",
+      "kind": "nav",
+      "refersTo": "menu-item",
+      "description": "Flyout rows, 34px, on a 300px surface.",
+      "html": "<div class=\"ds-fly\"><button class=\"ds-mi\"><span>Abrir Mosaico</span></button><button class=\"ds-mi\"><span>Modo foco</span></button></div>",
+      "css": ".ds-fly{width:300px;padding:5px;border-radius:12px;background:var(--surface,#111311);box-shadow:inset 0 0 0 1px var(--line,rgba(234,237,234,.08)),0 6px 12px -4px rgba(0,0,0,.72)}.ds-mi{display:flex;align-items:center;width:100%;height:34px;padding:0 10px;border:0;border-radius:7px;background:transparent;color:var(--tx,#eaedea);font:13px \"Hanken Grotesk\",system-ui,sans-serif;text-align:left;transition:background .15s,transform .12s}.ds-mi:hover{background:var(--sel,rgba(234,237,234,.07))}.ds-mi:active{transform:scale(.98)}.ds-mi:focus-visible{outline:2px solid var(--tx2,#9ea39e);outline-offset:-2px}"
+    },
+    {
+      "name": "Pending Permission",
+      "kind": "card",
+      "description": "Raised block with command in mono and actions.",
+      "html": "<div class=\"ds-pb\"><div class=\"ds-pb-h\">Permiso · <b>pulse</b></div><div class=\"ds-pb-c\">cargo test --workspace</div><div class=\"ds-pb-a\"><button class=\"ds-a\">Denegar</button><button class=\"ds-a ds-pri\">Permitir</button></div></div>",
+      "css": ".ds-pb{display:flex;flex-direction:column;gap:10px;width:340px;padding:14px;border-radius:10px;background:var(--raised,#181b18);border:1px solid var(--line,rgba(234,237,234,.08));color:var(--tx,#eaedea);font:13px \"Hanken Grotesk\",system-ui,sans-serif}.ds-pb-h{font-size:12.5px;color:var(--tx2,#9ea39e)}.ds-pb-h b{color:var(--tx,#eaedea);font-weight:400}.ds-pb-c{font:13px \"Geist Mono\",ui-monospace,monospace}.ds-pb-a{display:flex;gap:8px}.ds-a{flex:1;height:28px;border-radius:6px;border:1px solid var(--line,rgba(234,237,234,.08));background:transparent;color:var(--tx2,#9ea39e);font:12.5px \"Hanken Grotesk\",system-ui,sans-serif;cursor:pointer}.ds-a:hover{background:var(--sel,rgba(234,237,234,.07));color:var(--tx,#eaedea)}.ds-pri{border:0;background:var(--sel,rgba(234,237,234,.07));color:var(--tx,#eaedea);font-weight:600}.ds-pri:hover{background:var(--line2,rgba(234,237,234,.16))}.ds-a:focus-visible{outline:2px solid var(--tx2,#9ea39e);outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Grafito",
+    "overview": "Pulse is a set of quiet graphite surfaces that sit beside Claude Code and speak only when something happens. The interface itself has no brand color: neutrals in a faintly green-gray graphite carry every surface, every control and every primary action. Color is reserved for the six events (permission amber, done green, error coral, subagent blue, plus neutral light for start and idle) and for one state, focus mode, in lavender. When color appears, it means something.\n\nDensity is that of a desktop utility: 12 to 14 px text, 28 to 48 px rows, tight 6 to 8 px control radii, flat tonal layers with a single soft drop shadow on floating surfaces. Motion is physical (springs for the island, short eased fades and presses everywhere else) and always attached to a state change. Two themes (dark default, light via `data-theme=\"light\"`) share the same token names, so every rule below holds in both; the island and the edge pulses are always dark-tuned.",
+    "keyCharacteristics": [
+      "No brand color; the primary action is ink (text color), never a hue.",
+      "Color only for events and lavender only for focus mode, always paired with an icon, shape or word.",
+      "Session state is read by dot shape first (filled, haloed, ringed), color second.",
+      "Flat tonal layers (side, bg, surface, raised, well) with hairline borders; one soft ambient shadow on floating windows.",
+      "Hanken Grotesk for everything; Geist Mono only for commands, paths, keys of time and numbers.",
+      "Springs and microinteractions exist only to confirm a change; all of them degrade under `prefers-reduced-motion`."
+    ],
+    "rules": [
+      {
+        "name": "The No Brand Color Rule",
+        "body": "The UI has no accent. A sage accent was tried and dropped because it competed with \"terminó\". Primary means ink plus `sel`, in both themes.",
+        "section": "colors"
+      },
+      {
+        "name": "The Color Means an Event Rule",
+        "body": "perm, done, err and sub appear only where that event or its result is being shown. Never use them for decoration, section identity or emphasis.",
+        "section": "colors"
+      },
+      {
+        "name": "The Lavender Means Focus Rule",
+        "body": "focus is used only for focus mode and always next to the moon icon or the word \"foco\".",
+        "section": "colors"
+      },
+      {
+        "name": "The Literal Is Mono Rule",
+        "body": "A command, file, path, clock or duration goes in Geist Mono with tabular figures; prose and labels never do.",
+        "section": "typography"
+      },
+      {
+        "name": "The Weight Ceiling Rule",
+        "body": "Weights are 400 and 500; 600 only for the primary button label and fuzzy-match highlights in the palette. No bold display type, no all caps.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Inside Rule",
+        "body": "Inside a surface, blocks separate by tone and hairline, never by shadow.",
+        "section": "elevation"
+      },
+      {
+        "name": "The No Pill Button Rule",
+        "body": "Buttons, chips and segments use 6px corners. Only the switch (and its knob) is fully rounded.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do make the primary action ink on `sel` (\"solo texto\"), in both themes.",
+      "Do pair every event color with a shape, icon or word: dot kind, pulse shape, island text.",
+      "Do keep text at 4.5:1 or better against the surface it sits on; tx3 is the floor for readable text.",
+      "Do use real `button`, `input` and ARIA roles (`switch`, `radiogroup`, `aria-pressed`, `aria-current`) so every control has a keyboard path; the visible focus outline is 2px tx2 with 2px offset (inset -2px on full-width rows).",
+      "Do read colors from the tokens (`var(--tx)` or the Tailwind theme aliases) so the light theme follows.",
+      "Do give every new animation a reduced-motion fallback in the same stylesheet.",
+      "Do keep UI text in plain Spanish, as shipped."
+    ],
+    "donts": [
+      "Don't add a brand or accent color, or use an event color for decoration.",
+      "Don't use lavender for anything but focus mode.",
+      "Don't make buttons, chips or segments pills; the switch is the only pill.",
+      "Don't put `data-theme` on the island; it is always the dark version.",
+      "Don't wrap `shared/ui.css` in a cascade layer, and don't stack Tailwind utilities on its classes (`btn`, `chip`, `seg`, `sw`, `kbd`): unlayered ui.css wins over Tailwind's utilities layer, so the utility silently does nothing. Add a variant to ui.css or a surface stylesheet instead.",
+      "Don't add shadows inside a surface; separate blocks by tone and hairline.",
+      "Don't animate anything that does not correspond to a state change."
+    ]
+  }
+}
