@@ -10,6 +10,7 @@
 
 <p>
   <img src="https://img.shields.io/badge/Windows-11-111311?style=flat-square&logo=windows11&logoColor=eaedea" alt="Windows 11">
+  <img src="https://img.shields.io/badge/Linux-GNOME-111311?style=flat-square&logo=linux&logoColor=eaedea" alt="Linux con GNOME">
   <img src="https://img.shields.io/badge/Tauri-2-111311?style=flat-square&logo=tauri&logoColor=eaedea" alt="Tauri 2">
   <img src="https://img.shields.io/badge/Rust-111311?style=flat-square&logo=rust&logoColor=eaedea" alt="Rust">
   <img src="https://img.shields.io/badge/React-18-111311?style=flat-square&logo=react&logoColor=eaedea" alt="React 18">
@@ -81,18 +82,43 @@ Para quitarlo:
 pwsh scripts/uninstall.ps1
 ```
 
+### Linux (GNOME)
+
+Probado en Ubuntu 25.10 con GNOME en Wayland. Necesitas [Rust](https://rustup.rs), [Node 20+](https://nodejs.org) y las librerías de Tauri:
+
+```bash
+sudo apt install libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libasound2-dev libxdo-dev pkg-config
+git clone https://github.com/alanvdev/pulse
+cd pulse
+npm install --prefix app
+scripts/install.sh                          # hooks en $CLAUDE_CONFIG_DIR o ~/.claude
+scripts/install.sh ~/.claude ~/.claude-work # o en varias cuentas de Claude Code a la vez
+```
+
+El instalador compila, copia Pulse a `~/.local/share/pulse`, registra los hooks en cada `settings.json` (con un respaldo fechado, y solo toca las entradas que llaman a Pulse) y da de alta los atajos `Ctrl+Alt+Y`, `Ctrl+Alt+N` y `Ctrl+Alt+Espacio` como atajos de GNOME.
+
+Para quitarlo: `scripts/uninstall.sh` (con las mismas carpetas que usaste al instalar). Quita solo las entradas de Pulse y los atajos; tu configuración en `~/.claude/pulse` se queda.
+
+Diferencias con Windows:
+
+- **Corre por XWayland.** Wayland no deja que una app se ponga encima de las demás ni elija dónde va su ventana, y los bordes y la isla lo necesitan. Pulse lo activa solo.
+- **La bandeja abre un menú.** El área de notificación de GNOME no le pasa los clics a la app: el ícono abre un menú con Bolsillo, el menú rápido, la paleta y Mosaico.
+- **Atajos sin "mantener".** Los atajos de GNOME son un golpe de tecla, así que un comando delicado se aprueba manteniendo el botón de la isla.
+- **Modo foco.** Detecta llamadas (cualquier app grabando del micrófono) y tu horario; la pantalla completa no, porque Wayland no deja ver las ventanas de otras apps.
+- **Sin Razer Chroma.** Su SDK solo existe en Windows.
+
 ## Desarrollo
 
 ```powershell
 npm run tauri dev --prefix app   # la app en desarrollo
-pwsh scripts/demo.ps1            # simula eventos de Claude Code (sin argumentos lista los escenarios)
+pwsh scripts/demo.ps1            # simula eventos de Claude Code (sin argumentos lista los escenarios); en Linux: scripts/demo.sh
 cargo test --workspace           # Rust: protocolo, CLI y núcleo
 npm test --prefix app            # lógica de la interfaz
 ```
 
 ```
 crates/pulse-protocol   tipos y traducción de los hooks
-crates/pulse-cli        pulse.exe: lo llama cada hook y habla con la app por \\.\pipe\pulse
+crates/pulse-cli        pulse.exe: lo llama cada hook y habla con la app por \\.\pipe\pulse (en Linux, $XDG_RUNTIME_DIR/pulse.sock)
 app/src-tauri           núcleo: estado, ventanas, bandeja, sonido, modo foco, teclado
 app/ui                  bordes, isla, Bolsillo, menú de la bandeja y Mosaico
 ```

@@ -1,6 +1,6 @@
 # Pulse
 
-Windows desktop app (Tauri v2) that shows what Claude Code is doing outside the terminal. What the product is and who it's for: `PRODUCT.md`. How it looks: `DESIGN.md` once it exists; until then, the current code is the starting point, not a rule.
+Desktop app (Tauri v2) for Windows and Linux (GNOME) that shows what Claude Code is doing outside the terminal. What the product is and who it's for: `PRODUCT.md`. How it looks: `DESIGN.md` once it exists; until then, the current code is the starting point, not a rule.
 
 ## Commands
 
@@ -10,11 +10,13 @@ npm test --prefix app                  # Vitest: UI logic
 npm run tauri dev --prefix app         # app in development (Vite on :5173)
 pwsh scripts/install.ps1               # build, install to %LOCALAPPDATA%\Pulse and register hooks
 pwsh scripts/uninstall.ps1             # restore settings.json from the backup
+scripts/install.sh [config dirs...]    # Linux: build, install to ~/.local/share/pulse, register hooks and GNOME shortcuts
+scripts/uninstall.sh [config dirs...]  # Linux: remove Pulse's hook entries and shortcuts
 ```
 
 ## Architecture
 
-- Claude Code hook → `pulse.exe` (`crates/pulse-cli`) → named pipe `\\.\pipe\pulse` → app (`app/src-tauri`). Types and hook translation live in `crates/pulse-protocol`.
+- Claude Code hook → `pulse.exe` (`crates/pulse-cli`) → named pipe `\\.\pipe\pulse` (Linux: Unix socket `$XDG_RUNTIME_DIR/pulse.sock`) → app (`app/src-tauri`). Types and hook translation live in `crates/pulse-protocol`.
 - The core keeps the state and sends it to every window over two events: `pulse://state` (full snapshot) and `pulse://fx` (one-off effect). Windows call the core through `app/ui/src/shared/bridge.ts`.
 - Edges (`overlay`) and the island: TypeScript with no framework. Bolsillo (`panel`), the tray right-click flyout (`flyout`) and Mosaico (`dashboard`): React 18 + Tailwind 4.
 - User data in `~/.claude/pulse/` (`config.json`, `log.jsonl`).
@@ -29,6 +31,7 @@ pwsh scripts/uninstall.ps1             # restore settings.json from the backup
 ## Conventions
 
 - UI text in Spanish.
+- Platform code goes behind `#[cfg(windows)]` / `#[cfg(not(windows))]` in the same module; on Linux the app runs through XWayland and global shortcuts arrive via `pulse key` (registered as GNOME shortcuts).
 - `prefers-reduced-motion` respected in every window; an event's meaning never depends on color alone.
 - `docs/spec.md` and `docs/plans/` are the history of a finished plan, not rules. `docs/artboards/` were the visual starting point and don't bind visual changes.
 
