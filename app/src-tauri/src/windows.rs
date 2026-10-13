@@ -18,6 +18,7 @@ pub fn create_all(app: &AppHandle) -> tauri::Result<()> {
 }
 
 /// Las ventanas de borde nunca deben quedar como ventana activa (ni robar el foco ni contar como "pantalla completa").
+#[cfg(windows)]
 fn no_activate(w: &tauri::WebviewWindow) {
     use windows_sys::Win32::UI::WindowsAndMessaging::{GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE, WS_EX_NOACTIVATE};
     if let Ok(h) = w.hwnd() {
@@ -26,7 +27,11 @@ fn no_activate(w: &tauri::WebviewWindow) {
     }
 }
 
+#[cfg(not(windows))]
+fn no_activate(w: &tauri::WebviewWindow) { let _ = w.set_focusable(false); }
+
 /// Monitor donde está la ventana en primer plano (para "monitor activo").
+#[cfg(windows)]
 pub fn active_monitor_index(app: &AppHandle) -> usize {
     use windows_sys::Win32::{Graphics::Gdi::{GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST}, UI::WindowsAndMessaging::GetForegroundWindow};
     let Ok(mons) = app.available_monitors() else { return 0 };
@@ -36,6 +41,13 @@ pub fn active_monitor_index(app: &AppHandle) -> usize {
         if GetMonitorInfoW(hmon, &mut mi) == 0 { return 0; }
         mons.iter().position(|m| m.position().x == mi.rcMonitor.left && m.position().y == mi.rcMonitor.top).unwrap_or(0)
     }
+}
+
+/// Linux: una app no sabe qué ventana de otra está activa; se usa el monitor donde está el cursor.
+#[cfg(not(windows))]
+pub fn active_monitor_index(app: &AppHandle) -> usize {
+    let (Ok(mons), Ok(c)) = (app.available_monitors(), app.cursor_position()) else { return 0 };
+    mons.iter().position(|m| { let (p, s) = (m.position(), m.size()); c.x >= p.x as f64 && c.x < (p.x + s.width as i32) as f64 && c.y >= p.y as f64 && c.y < (p.y + s.height as i32) as f64 }).unwrap_or(0)
 }
 
 #[derive(Default)] pub struct Hitbox(pub Mutex<Option<(f64, f64, f64, f64)>>);
@@ -52,6 +64,14 @@ pub fn create_island(app: &AppHandle) -> tauri::Result<()> {
         .resizable(false).shadow(false).position(pos.x as f64 / scale, pos.y as f64 / scale).inner_size(w, h).build()?;
     win.set_ignore_cursor_events(true)?;
     app.manage(Hitbox::default());
+    #[cfg(windows)] poll_island(app);
+    #[cfg(not(windows))] shape_island(app);
+    Ok(())
+}
+
+/// Windows: cada 40 ms la isla deja pasar los clics o no según dónde está el cursor.
+#[cfg(windows)]
+fn poll_island(app: &AppHandle) {
     let a = app.clone();
     tauri::async_runtime::spawn(async move { loop {
         tokio::time::sleep(std::time::Duration::from_millis(40)).await;
@@ -66,27 +86,59 @@ pub fn create_island(app: &AppHandle) -> tauri::Result<()> {
         let fg = unsafe { windows_sys::Win32::UI::WindowsAndMessaging::GetForegroundWindow() } as isize;
         if fg != 0 && !is_ours(fg) { PREV_FOREGROUND.store(fg, std::sync::atomic::Ordering::SeqCst); }
     } });
-    Ok(())
 }
+
+/// Linux: la isla solo recibe clics dentro del rectángulo que reporta la interfaz (región de entrada de la ventana),
+/// o en toda la ventana mientras tiene el teclado. El resto deja pasar los clics a lo que esté debajo.
+#[cfg(not(windows))]
+pub fn shape_island(app: &AppHandle) {
+    use gtk::{cairo::{RectangleInt, Region}, prelude::*};
+    let Some(w) = app.get_webview_window("island") else { return };
+    let hb = *app.state::<Hitbox>().0.lock().unwrap();
+    let all = !ISLAND_IGNORES.load(std::sync::atomic::Ordering::SeqCst);
+    let w2 = w.clone();
+    let _ = w.run_on_main_thread(move || {
+        let Some(gdk) = w2.gtk_window().ok().and_then(|g| g.window()) else { return };
+        let region = match (all, hb) {
+            (true, _) => Region::create_rectangle(&RectangleInt::new(0, 0, i32::MAX / 2, i32::MAX / 2)),
+            (false, Some((x, y, w, h))) => Region::create_rectangle(&RectangleInt::new(x.floor() as i32, y.floor() as i32, w.ceil() as i32 + 1, h.ceil() as i32 + 1)),
+            (false, None) => Region::create(),
+        };
+        gdk.input_shape_combine_region(&region, 0, 0);
+    });
+}
+/// La interfaz movió o cambió el rectángulo de la isla.
+pub fn hitbox_changed(_app: &AppHandle) { #[cfg(not(windows))] shape_island(_app); }
 /// Área de trabajo del monitor principal (sin la barra de tareas), en píxeles físicos: (izq, arriba, der, abajo).
-fn work_area() -> (f64, f64, f64, f64) {
+#[cfg(windows)]
+fn work_area(_app: &AppHandle) -> (f64, f64, f64, f64) {
     use windows_sys::Win32::{Foundation::RECT, UI::WindowsAndMessaging::{SystemParametersInfoW, SPI_GETWORKAREA}};
     let mut r: RECT = unsafe { std::mem::zeroed() };
     unsafe { SystemParametersInfoW(SPI_GETWORKAREA, 0, &mut r as *mut _ as _, 0) };
     (r.left as f64, r.top as f64, r.right as f64, r.bottom as f64)
+}
+/// Linux: sin la barra superior de GNOME ni el dock.
+#[cfg(not(windows))]
+fn work_area(app: &AppHandle) -> (f64, f64, f64, f64) {
+    let Ok(Some(m)) = app.primary_monitor() else { return (0.0, 0.0, 1920.0, 1080.0) };
+    let w = m.work_area();
+    (w.position.x as f64, w.position.y as f64, w.position.x as f64 + w.size.width as f64, w.position.y as f64 + w.size.height as f64)
 }
 /// Momento en que el panel se ocultó por perder el foco: el clic en la bandeja que lo provocó no debe volver a abrirlo.
 static PANEL_HIDDEN_AT: std::sync::atomic::AtomicI64 = std::sync::atomic::AtomicI64::new(0);
 /// Si la isla deja pasar los clics ahora mismo. Lo comparten el ciclo de 40 ms y `island_keyboard`.
 static ISLAND_IGNORES: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
 /// Ventana que tenía el teclado antes de que la isla lo tomara (paleta, "Otra…").
+#[cfg(windows)]
 static PREV_FOREGROUND: std::sync::atomic::AtomicIsize = std::sync::atomic::AtomicIsize::new(0);
+#[cfg(windows)]
 fn is_ours(h: isize) -> bool {
     let mut pid = 0u32;
     unsafe { windows_sys::Win32::UI::WindowsAndMessaging::GetWindowThreadProcessId(h as _, &mut pid) };
     pid == std::process::id()
 }
 /// La isla toma el teclado (`on`) o se lo devuelve a la ventana donde estabas.
+#[cfg(windows)]
 pub fn island_keyboard(app: &AppHandle, on: bool) {
     use windows_sys::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, IsWindow, SetForegroundWindow};
     use std::sync::atomic::Ordering;
@@ -106,13 +158,29 @@ pub fn island_keyboard(app: &AppHandle, on: bool) {
     }
 }
 
+/// Linux: la isla toma el teclado o lo suelta; devolverlo a la ventana anterior queda en manos del escritorio.
+#[cfg(not(windows))]
+pub fn island_keyboard(app: &AppHandle, on: bool) {
+    ISLAND_IGNORES.store(!on, std::sync::atomic::Ordering::SeqCst);
+    shape_island(app);
+    if on { if let Some(w) = app.get_webview_window("island") { let _ = w.set_focus(); } }
+}
+
+/// Esquina superior izquierda de Bolsillo (lógica): en Windows sobre la barra de tareas, abajo a la derecha;
+/// en Linux bajo la barra superior, arriba a la derecha, donde está el ícono.
+fn panel_origin(work: (f64, f64, f64, f64)) -> (f64, f64) {
+    let (_, t, r, b) = work;
+    if cfg!(windows) { (r - 380.0 - 12.0, (b - 580.0 - 12.0).max(t)) } else { (r - 380.0 - 12.0, t + 12.0) }
+}
+
 pub fn toggle_panel(app: &AppHandle) {
     let win = match app.get_webview_window("panel") { Some(w) => w, None => match create_panel(app) { Ok(w) => w, Err(_) => return } };
     if win.is_visible().unwrap_or(false) { let _ = win.hide(); return; }
     if crate::now_ms() - PANEL_HIDDEN_AT.load(std::sync::atomic::Ordering::SeqCst) < 300 { return; }
     let scale = win.scale_factor().unwrap_or(1.0);
-    let (_, t, r, b) = work_area();
-    let _ = win.set_position(tauri::LogicalPosition::new(r / scale - 380.0 - 12.0, (b / scale - 580.0 - 12.0).max(t / scale)));
+    let (l, t, r, b) = work_area(app);
+    let (x, y) = panel_origin((l / scale, t / scale, r / scale, b / scale));
+    let _ = win.set_position(tauri::LogicalPosition::new(x, y));
     let _ = win.show(); let _ = win.set_focus();
 }
 fn create_panel(app: &AppHandle) -> tauri::Result<tauri::WebviewWindow> {
@@ -162,8 +230,10 @@ pub fn create_flyout(app: &AppHandle) -> tauri::Result<()> {
 fn place_flyout(win: &tauri::WebviewWindow) {
     let scale = win.scale_factor().unwrap_or(1.0);
     let Ok(size) = win.inner_size() else { return };
-    let (l, t, r, b) = work_area();
-    let (x, y) = flyout_origin(*FLYOUT_CLICK_X.lock().unwrap(), (size.width as f64 / scale, size.height as f64 / scale), (l / scale, t / scale, r / scale, b / scale));
+    let (l, t, r, b) = work_area(win.app_handle());
+    let (w, h) = (size.width as f64 / scale, size.height as f64 / scale);
+    // Linux: se abre desde el menú del ícono, arriba a la derecha, bajo la barra superior
+    let (x, y) = if cfg!(windows) { flyout_origin(*FLYOUT_CLICK_X.lock().unwrap(), (w, h), (l / scale, t / scale, r / scale, b / scale)) } else { ((r / scale - w).max(l / scale), t / scale) };
     let _ = win.set_position(tauri::LogicalPosition::new(x, y));
 }
 pub fn toggle_flyout(app: &AppHandle, click: tauri::PhysicalPosition<f64>) {

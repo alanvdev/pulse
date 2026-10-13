@@ -11,5 +11,5 @@ path = "src/main.rs"
 pulse-protocol = { path = "../pulse-protocol" }
 serde_json = { workspace = true }
 
-[dev-dependencies]
+[target.'cfg(windows)'.dev-dependencies]
 windows-sys = { version = "0.59", features = ["Win32_System_Pipes", "Win32_Storage_FileSystem", "Win32_Foundation", "Win32_Security", "Win32_System_IO"] }

@@ -56,6 +56,7 @@ pub fn dots_rgba(size: u32, dots: &[TrayDot]) -> Vec<u8> {
 }
 
 /// Si la barra de tareas de Windows está en tema claro (Personalize › SystemUsesLightTheme).
+#[cfg(windows)]
 pub fn taskbar_is_light() -> bool {
     use windows_sys::Win32::System::Registry::{RegGetValueW, HKEY_CURRENT_USER, RRF_RT_REG_DWORD};
     let w = |s: &str| s.encode_utf16().chain([0]).collect::<Vec<u16>>();
@@ -63,6 +64,9 @@ pub fn taskbar_is_light() -> bool {
     let (mut v, mut sz) = (0u32, 4u32);
     unsafe { RegGetValueW(HKEY_CURRENT_USER, key.as_ptr(), name.as_ptr(), RRF_RT_REG_DWORD, std::ptr::null_mut(), &mut v as *mut _ as _, &mut sz) == 0 && v == 1 }
 }
+/// La barra superior de GNOME es oscura en los temas claro y oscuro.
+#[cfg(not(windows))]
+pub fn taskbar_is_light() -> bool { false }
 static LIGHT_BAR: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
 /// Lee otra vez el tema de la barra; `true` si cambió desde la última vez (hay que redibujar el ícono).
 pub fn theme_changed() -> bool { let now = taskbar_is_light(); LIGHT_BAR.swap(now, std::sync::atomic::Ordering::SeqCst) != now }
@@ -70,8 +74,30 @@ fn icon(dots: &[TrayDot]) -> Image<'static> { Image::new_owned(dots_rgba(32, dot
 /// Último ícono puesto: no se redibuja si no cambió (broadcast llega con cada evento).
 static LAST: Mutex<Vec<TrayDot>> = Mutex::new(Vec::new());
 /// Clic izquierdo: Bolsillo. Clic derecho: el flyout (no hay menú nativo).
+/// En Linux el área de notificación no le pasa los clics a la app: cualquier clic abre un menú nativo con lo mismo.
 pub fn create(app: &AppHandle, on_left_click: fn(&AppHandle), on_right_click: fn(&AppHandle, PhysicalPosition<f64>)) -> tauri::Result<()> {
-    TrayIconBuilder::with_id(TRAY_ID).icon(icon(&tray_dots(&[], { theme_changed(); LIGHT_BAR.load(std::sync::atomic::Ordering::SeqCst) }))).tooltip("Pulse · sin sesiones")
+    let builder = TrayIconBuilder::with_id(TRAY_ID).icon(icon(&tray_dots(&[], { theme_changed(); LIGHT_BAR.load(std::sync::atomic::Ordering::SeqCst) }))).tooltip("Pulse · sin sesiones");
+    #[cfg(not(windows))]
+    let builder = {
+        use tauri::menu::{MenuBuilder, MenuItem, PredefinedMenuItem};
+        let menu = MenuBuilder::new(app)
+            .item(&MenuItem::with_id(app, "panel", "Bolsillo", true, None::<&str>)?)
+            .item(&MenuItem::with_id(app, "flyout", "Menú rápido", true, None::<&str>)?)
+            .item(&MenuItem::with_id(app, "palette", "Responder permiso", true, None::<&str>)?)
+            .item(&MenuItem::with_id(app, "dashboard", "Abrir Pulse", true, None::<&str>)?)
+            .item(&PredefinedMenuItem::separator(app)?)
+            .item(&MenuItem::with_id(app, "quit", "Salir", true, None::<&str>)?)
+            .build()?;
+        builder.menu(&menu).on_menu_event(move |a, e| match e.id().as_ref() {
+            "panel" => on_left_click(a),
+            "flyout" => on_right_click(a, PhysicalPosition::new(0.0, 0.0)),
+            "palette" => { use tauri::Emitter; let _ = a.emit("pulse://palette", ()); }
+            "dashboard" => crate::windows::open_dashboard(a, None),
+            "quit" => { crate::chroma::shutdown(); a.exit(0); }
+            _ => {}
+        })
+    };
+    builder
         .on_tray_icon_event(move |t, e| if let TrayIconEvent::Click { button, button_state: MouseButtonState::Up, position, rect, .. } = e {
             // el flyout se centra sobre el ícono (no sobre el cursor, que puede estar en otro lado si se abrió con el teclado)
             let (p, s) = (rect.position.to_physical::<f64>(1.0), rect.size.to_physical::<f64>(1.0));

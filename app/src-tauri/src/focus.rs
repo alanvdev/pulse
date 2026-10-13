@@ -40,6 +40,7 @@ impl Debounce {
 
 /// ¿La ventana activa es de otra app y cubre todo su monitor (video, juego, presentación)?
 /// No se usa SHQueryUserNotificationState: las ventanas de borde de Pulse cubren el monitor y Windows las toma por pantalla completa.
+#[cfg(windows)]
 pub fn other_app_fullscreen() -> bool {
     use windows_sys::Win32::{Foundation::RECT, Graphics::Gdi::{GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST}, UI::WindowsAndMessaging::{GetClassNameW, GetForegroundWindow, GetWindowLongW, GetWindowRect, GetWindowThreadProcessId, IsZoomed, GWL_STYLE}};
     unsafe {
@@ -58,7 +59,12 @@ pub fn other_app_fullscreen() -> bool {
     }
 }
 
+/// Linux (Wayland): una app no puede ver las ventanas de las demás, así que no hay detección de pantalla completa.
+#[cfg(not(windows))]
+pub fn other_app_fullscreen() -> bool { false }
+
 /// Micrófono en uso por otra app: alguna entrada de ConsentStore con LastUsedTimeStop == 0.
+#[cfg(windows)]
 pub fn mic_in_use() -> bool {
     use windows_sys::Win32::System::Registry::*;
     unsafe fn any_active(root: HKEY, path: &str) -> bool {
@@ -85,10 +91,20 @@ pub fn mic_in_use() -> bool {
     unsafe { any_active(HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\microphone") }
 }
 
+/// Linux: alguien graba del micrófono si PipeWire/PulseAudio tiene una captura activa (no pausada) de un micrófono,
+/// sin contar las que graban lo que suena en la PC (fuentes `.monitor`).
+#[cfg(not(windows))]
+pub fn mic_in_use() -> bool {
+    let run = |args: &[&str]| std::process::Command::new("pactl").env("LC_ALL", "C").args(args).output().ok().filter(|o| o.status.success()).and_then(|o| serde_json::from_slice::<serde_json::Value>(&o.stdout).ok());
+    let Some(outputs) = run(&["-f", "json", "list", "source-outputs"]) else { return false };
+    let monitors: Vec<u64> = run(&["-f", "json", "list", "sources"]).and_then(|v| v.as_array().cloned()).unwrap_or_default().iter()
+        .filter(|s| s["name"].as_str().is_some_and(|n| n.ends_with(".monitor"))).filter_map(|s| s["index"].as_u64()).collect();
+    outputs.as_array().is_some_and(|a| a.iter().any(|o| !o["corked"].as_bool().unwrap_or(false) && !o["source"].as_u64().is_some_and(|i| monitors.contains(&i))))
+}
+
 fn local_minutes() -> u32 {
-    let mut t: windows_sys::Win32::Foundation::SYSTEMTIME = unsafe { std::mem::zeroed() };
-    unsafe { windows_sys::Win32::System::SystemInformation::GetLocalTime(&mut t) };
-    t.wHour as u32 * 60 + t.wMinute as u32
+    let now = crate::now_ms();
+    ((now + crate::daylog::utc_offset_ms(now)).rem_euclid(86_400_000) / 60_000) as u32
 }
 
 pub fn start(app: &AppHandle) {

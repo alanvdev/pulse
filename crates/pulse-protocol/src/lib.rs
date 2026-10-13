@@ -4,6 +4,20 @@ use serde_json::{json, Value};
 pub mod owner;
 
 pub const PIPE_NAME: &str = r"\\.\pipe\pulse";
+
+/// Dónde escucha la app: el named pipe en Windows; en Linux un socket Unix en `$XDG_RUNTIME_DIR` (o en el temporal, por usuario).
+pub fn endpoint() -> String {
+    if cfg!(windows) { return PIPE_NAME.to_string(); }
+    match std::env::var("XDG_RUNTIME_DIR") {
+        Ok(d) if !d.is_empty() => format!("{d}/pulse.sock"),
+        _ => std::env::temp_dir().join(format!("pulse-{}.sock", std::env::var("USER").unwrap_or_default())).to_string_lossy().into_owned(),
+    }
+}
+
+/// Un atajo de teclado que llega por `pulse key <acción>`: en Linux los atajos globales los registra el escritorio, no la app.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct KeyPress { pub key: String }
+
 pub const PROTOCOL_VERSION: u32 = 1;
 pub const ASK_TIMEOUT_S: u64 = 30;
 /// Cuánto espera la isla una respuesta a una pregunta de Claude antes de dejarla en la terminal.

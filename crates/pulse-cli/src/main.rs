@@ -15,11 +15,11 @@ fn stamped(i: &HookInput, ask: bool) -> Option<Envelope> { envelope_from_hook(i,
 
 fn read_envelope(ask: bool) -> Result<Option<Envelope>, String> { Ok(stamped(&read_input()?, ask)) }
 
-fn app_path() -> Option<std::path::PathBuf> { std::env::current_exe().ok().map(|p| p.with_file_name("pulse-app.exe")) }
+fn app_path() -> Option<std::path::PathBuf> { std::env::current_exe().ok().map(|p| p.with_file_name(if cfg!(windows) { "pulse-app.exe" } else { "pulse-app" })) }
 
 fn emit() -> Result<(), String> {
     let Some(env) = read_envelope(false)? else { return Ok(()) };
-    pipe::send_line(PIPE_NAME, &(serde_json::to_string(&env).map_err(|e| e.to_string())? + "\n"), app_path().as_deref())
+    pipe::send_line(&endpoint(), &(serde_json::to_string(&env).map_err(|e| e.to_string())? + "\n"), app_path().as_deref())
 }
 
 fn ask() -> Result<(), String> {
@@ -29,7 +29,7 @@ fn ask() -> Result<(), String> {
         let PulseEvent::Question { questions } = &event else { return Ok(()) };
         let env = Envelope { v: PROTOCOL_VERSION, session_id: input.session_id.clone(), project: project_name(&input.cwd), cwd: input.cwd.clone(), at_ms: now_ms(), ask: true, owner: owner::find(), event: event.clone() };
         let line = serde_json::to_string(&env).map_err(|e| e.to_string())? + "\n";
-        let reply = pipe::request(PIPE_NAME, &line, app_path().as_deref(), Duration::from_secs(QUESTION_MAX_WAIT_S)).and_then(|r| serde_json::from_str::<Reply>(&r).ok());
+        let reply = pipe::request(&endpoint(), &line, app_path().as_deref(), Duration::from_secs(QUESTION_MAX_WAIT_S)).and_then(|r| serde_json::from_str::<Reply>(&r).ok());
         if let Some(Reply { decision: Decision::Allow, answers: Some(a) }) = reply { println!("{}", answer_output(questions, &a)); }
         return Ok(());
     }
@@ -37,21 +37,28 @@ fn ask() -> Result<(), String> {
     // Preguntas y planes que llegan como permiso: solo avisar a la isla; se responden en la terminal.
     if matches!(env.event, PulseEvent::Question { .. } | PulseEvent::Plan) {
         env.ask = false;
-        return pipe::send_line(PIPE_NAME, &(serde_json::to_string(&env).map_err(|e| e.to_string())? + "\n"), app_path().as_deref());
+        return pipe::send_line(&endpoint(), &(serde_json::to_string(&env).map_err(|e| e.to_string())? + "\n"), app_path().as_deref());
     }
     let line = serde_json::to_string(&env).map_err(|e| e.to_string())? + "\n";
-    let reply = pipe::request(PIPE_NAME, &line, app_path().as_deref(), Duration::from_secs(ASK_TIMEOUT_S + 2));
+    let reply = pipe::request(&endpoint(), &line, app_path().as_deref(), Duration::from_secs(ASK_TIMEOUT_S + 2));
     let decision = reply.and_then(|r| serde_json::from_str::<Reply>(&r).ok()).map(|r| r.decision).unwrap_or(Decision::None);
     if let Some(out) = permission_output(decision) { println!("{out}"); }
     Ok(())
+}
+
+/// Atajo de teclado (`allow`, `deny`, `palette`): en Linux lo lanza el escritorio. Sin la app abierta no hace nada.
+fn key(action: Option<String>) -> Result<(), String> {
+    let key = action.filter(|a| matches!(a.as_str(), "allow" | "deny" | "palette")).ok_or("uso: pulse key allow | deny | palette")?;
+    pipe::send_line(&endpoint(), &(serde_json::to_string(&KeyPress { key }).map_err(|e| e.to_string())? + "\n"), None)
 }
 
 fn main() {
     let r = match std::env::args().nth(1).as_deref() {
         Some("emit") => emit(),
         Some("ask") => ask(),
+        Some("key") => key(std::env::args().nth(2)),
         Some("--version") => { println!("pulse {}", env!("CARGO_PKG_VERSION")); Ok(()) }
-        _ => Err("uso: pulse emit | pulse ask  (leen el JSON del hook por stdin)".into()),
+        _ => Err("uso: pulse emit | pulse ask  (leen el JSON del hook por stdin) | pulse key <acción>".into()),
     };
     if let Err(e) = r { eprintln!("pulse: {e}"); }
     std::process::exit(0);

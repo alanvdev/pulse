@@ -72,7 +72,45 @@ mod imp {
     }
 }
 
-#[cfg(not(windows))]
+/// Linux: lo mismo leyendo `/proc`. El instalador nativo se llama `claude`; la versión de npm corre en `node`.
+/// `started` es el arranque del proceso en ticks desde el inicio del sistema (campo 22 de `/proc/<pid>/stat`).
+#[cfg(target_os = "linux")]
+mod imp {
+    use super::Owner;
+    const NAMES: [&str; 2] = ["claude", "node"];
+
+    /// (pid del padre, nombre, arranque) leídos de `/proc/<pid>/stat`.
+    pub(super) fn stat(pid: u32) -> Option<(u32, String, u64)> {
+        let s = std::fs::read_to_string(format!("/proc/{pid}/stat")).ok()?;
+        // el nombre va entre paréntesis y puede traer espacios: se corta en el último ')'
+        let (open, close) = (s.find('(')?, s.rfind(')')?);
+        let name = s[open + 1..close].to_string();
+        let rest: Vec<&str> = s[close + 1..].split_whitespace().collect();
+        // rest[0] = estado (campo 3), rest[1] = ppid (campo 4), rest[19] = starttime (campo 22)
+        if rest.first() == Some(&"Z") { return None; }   // zombi: ya terminó
+        Some((rest.get(1)?.parse().ok()?, name, rest.get(19)?.parse().ok()?))
+    }
+
+    pub fn find() -> Owner {
+        let mut pid = std::process::id();
+        for _ in 0..16 {
+            let Some((parent, _, _)) = stat(pid) else { break };
+            pid = parent;
+            match stat(pid) {
+                Some((_, name, started)) if NAMES.contains(&name.as_str()) => return Owner { pid, started },
+                Some(_) => {}
+                None => break,
+            }
+        }
+        Owner::default()
+    }
+
+    pub fn is_alive(o: Owner) -> bool {
+        match stat(o.pid) { None => false, Some((_, _, t)) => o.started == 0 || t == o.started }
+    }
+}
+
+#[cfg(not(any(windows, target_os = "linux")))]
 mod imp {
     use super::Owner;
     pub fn find() -> Owner { Owner::default() }
@@ -96,6 +134,21 @@ mod tests {
         let pid = child.id();
         child.wait().unwrap();
         drop(child);   // suelta el handle: así Windows libera el pid
+        assert!(!is_alive(Owner { pid, started: 1 }));
+    }
+    #[test] fn unknown_owner_counts_as_alive() { assert!(is_alive(Owner::default())); }
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod linux_tests {
+    use super::*;
+    #[test] fn this_process_is_alive_and_a_finished_one_is_not() {
+        let me = Owner { pid: std::process::id(), started: imp::stat(std::process::id()).unwrap().2 };
+        assert!(is_alive(me));
+        assert!(!is_alive(Owner { started: me.started + 1, ..me }), "otro proceso con el mismo pid");
+        let mut child = std::process::Command::new("true").spawn().unwrap();
+        let pid = child.id();
+        child.wait().unwrap();
         assert!(!is_alive(Owner { pid, started: 1 }));
     }
     #[test] fn unknown_owner_counts_as_alive() { assert!(is_alive(Owner::default())); }

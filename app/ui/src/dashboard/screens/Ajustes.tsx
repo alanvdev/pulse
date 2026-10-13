@@ -109,7 +109,7 @@ export function Ajustes({ cfg, save, section, back }: { cfg: Config; save: (c: C
         </Section>
 
         <Section id="apariencia" title="Apariencia">
-          <Row title="Tema" sub="Bolsillo, el menú de la bandeja y esta ventana. La isla siempre es oscura."><Seg label="Tema" value={cfg.appearance.theme} options={[['dark', 'Oscuro'], ['system', 'Como Windows'], ['light', 'Claro']]} onChange={theme => set('appearance', { theme })} /></Row>
+          <Row title="Tema" sub="Bolsillo, el menú de la bandeja y esta ventana. La isla siempre es oscura."><Seg label="Tema" value={cfg.appearance.theme} options={[['dark', 'Oscuro'], ['system', 'Como el sistema'], ['light', 'Claro']]} onChange={theme => set('appearance', { theme })} /></Row>
         </Section>
       </div>
     </main>

@@ -61,11 +61,25 @@ pub fn today() -> DaySummary {
     summarize(lines.lines().map(str::to_string), start, now)
 }
 
-pub(crate) fn local_midnight_ms(now_ms: i64) -> i64 {
+/// Cuánto hay que sumarle a UTC para tener la hora local, en ms.
+#[cfg(windows)]
+pub(crate) fn utc_offset_ms(_now_ms: i64) -> i64 {
     use windows_sys::Win32::System::Time::{GetTimeZoneInformation, TIME_ZONE_INFORMATION};
     let mut tz: TIME_ZONE_INFORMATION = unsafe { std::mem::zeroed() };
     unsafe { GetTimeZoneInformation(&mut tz) };
-    let offset_ms = -(tz.Bias as i64) * 60_000;   // Bias está en minutos, UTC = local + Bias
+    -(tz.Bias as i64) * 60_000   // Bias está en minutos, UTC = local + Bias
+}
+
+#[cfg(unix)]
+pub(crate) fn utc_offset_ms(now_ms: i64) -> i64 {
+    let t = now_ms.div_euclid(1000) as libc::time_t;
+    let mut tm: libc::tm = unsafe { std::mem::zeroed() };
+    if unsafe { libc::localtime_r(&t, &mut tm) }.is_null() { return 0; }
+    tm.tm_gmtoff as i64 * 1000
+}
+
+pub(crate) fn local_midnight_ms(now_ms: i64) -> i64 {
+    let offset_ms = utc_offset_ms(now_ms);
     let local = now_ms + offset_ms;
     local - local.rem_euclid(86_400_000) - offset_ms
 }

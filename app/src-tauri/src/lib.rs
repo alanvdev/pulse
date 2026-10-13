@@ -104,10 +104,21 @@ fn handle(app: &AppHandle, inc: server::Incoming) {
     broadcast(app);
 }
 
+/// Linux con Wayland: la app corre por XWayland, porque Wayland no deja que una ventana se ponga arriba de las demás
+/// ni elija su lugar (bordes, isla y Bolsillo lo necesitan). Va antes de iniciar GTK y antes de crear hilos.
+#[cfg(target_os = "linux")]
+fn linux_env() {
+    if std::env::var_os("WAYLAND_DISPLAY").is_some() && std::env::var_os("GDK_BACKEND").is_none() { std::env::set_var("GDK_BACKEND", "x11"); }
+}
+
 pub fn run() {
-    let first = match tauri::async_runtime::block_on(async { server::create_first(pulse_protocol::PIPE_NAME) }) { Ok(s) => s, Err(_) => return };
-    tauri::Builder::default()
-        .plugin(shortcuts::plugin())
+    #[cfg(target_os = "linux")] linux_env();
+    let endpoint = pulse_protocol::endpoint();
+    let first = match tauri::async_runtime::block_on(async { server::create_first(&endpoint) }) { Ok(s) => s, Err(_) => return };
+    let builder = tauri::Builder::default();
+    // En Linux los atajos globales los registra el escritorio (scripts/install.sh) y llegan por `pulse key`.
+    #[cfg(windows)] let builder = builder.plugin(shortcuts::plugin());
+    builder
         .manage(AppState { store: Mutex::new(Store::new(now_ms())), config: Mutex::new(config::load()), waiters: Mutex::new(HashMap::new()), next_id: AtomicU64::new(0), player: sound::Player::start() })
         .invoke_handler(tauri::generate_handler![commands::get_snapshot, commands::get_config, commands::set_config, commands::decide, commands::answer, commands::skip, commands::hold_question, commands::allow_all, commands::set_focus, commands::mute_session, commands::forget_sessions, commands::daily_summary, commands::log_today, commands::set_island_hitbox, commands::island_focus, commands::open_dashboard, commands::toggle_panel, commands::flyout_fit, commands::flyout_hide, commands::open_palette, commands::quit])
         .setup(move |app| {
@@ -116,7 +127,12 @@ pub fn run() {
             windows::create_all(&h)?;
             windows::create_flyout(&h)?;
             let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
-            tauri::async_runtime::spawn(server::serve(first, pulse_protocol::PIPE_NAME.to_string(), tx));
+            let (ktx, mut krx) = tokio::sync::mpsc::unbounded_channel::<String>();
+            let _ = server::KEYS.set(ktx);
+            tauri::async_runtime::spawn(server::serve(first, endpoint, tx));
+            let hk = h.clone();
+            // `pulse key` es un golpe de tecla sin "soltar": se manda presionar y soltar, así un comando delicado no se aprueba solo.
+            tauri::async_runtime::spawn(async move { while let Some(k) = krx.recv().await { if let Some(k) = shortcuts::Key::parse(&k) { shortcuts::key(&hk, k, true); shortcuts::key(&hk, k, false); } } });
             let h1 = h.clone();
             tauri::async_runtime::spawn(async move { while let Some(inc) = rx.recv().await { handle(&h1, inc); } });
             let h2 = h.clone();
