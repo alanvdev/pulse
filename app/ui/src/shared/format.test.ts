@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ago, clock, counts, dotKind, dur, headline, hhmm, hm, sessionsLabel, sessionWhat, since, statusLine, topDot } from './format';
+import { ago, answerHint, clock, counts, dotKind, dur, headline, hhmm, hm, sessionsLabel, sessionWhat, since, statusLine, topDot } from './format';
 import type { Pending, Session, SessionState, Snapshot } from './bridge';
 describe('formatos', () => {
   it('tiempo transcurrido en español', () => { expect(ago(4_000)).toBe('4 s'); expect(ago(125_000)).toBe('2 min 05 s'); expect(ago(3_900_000)).toBe('1 h 05 min'); });
@@ -50,4 +50,10 @@ describe('cabecera de Bolsillo', () => {
     expect(headline(snap('Done'))).toBe('Todo en calma');
   });
   it('número de sesiones', () => { expect(sessionsLabel(1)).toBe('1 sesión'); expect(sessionsLabel(3)).toBe('3 sesiones'); });
+});
+describe('answerHint', () => {
+  it('only says "arriba de tu pantalla" while the island has not been moved', () => {
+    expect(answerHint(null)).toContain('arriba de tu pantalla');
+    expect(answerHint([1920, 900])).toBe('Respóndela en la isla.');
+  });
 });

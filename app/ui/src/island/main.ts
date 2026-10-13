@@ -4,10 +4,10 @@ import { SP_MOVE, SP_OPEN, T } from '../shared/motion';
 import { mountComando } from './comando';
 import { mountOrbe, type OrbeCtx } from './orbe';
 import { bindQuestions } from './questions';
-import { toNotice, type Notice } from './model';
+import { growRect, toNotice, type Notice } from './model';
 import { focusEdge } from '../shared/micro';
 import { COLORS } from '../shared/format';
-import { tickSecs } from './shared';
+import { shake, tickSecs } from './shared';
 
 const board = document.getElementById('board')!;
 document.documentElement.style.setProperty('--sp', SP_MOVE.e);
@@ -19,11 +19,27 @@ let mode: Mode | null = null, modeName = '';
 /** La isla pidió el teclado (paleta, "Otra…", menú del Orbe). Solo entonces lo devuelve sola; un clic del usuario no cuenta. */
 let kbOwned = false;
 
+/** Zona de clics: lo que ocupa `el` ahora unido a lo que ocupará al terminar el resorte. morph() ya dejó el tamaño final
+ *  en style.width/height; se ancla como el CSS (arriba fijo; Orbe a la derecha o a la izquierda por su borde, el resto
+ *  centrado). Sin eso, durante los ~600 ms del resorte la zona medía lo de antes y el resumen recién abierto se cerraba
+ *  al bajar el mouse, o el clic en Permitir pasaba a la ventana de abajo. El tablero (arrastre del Orbe) no tiene
+ *  tamaño en style: se manda su rectángulo tal cual. */
+const hitRect = (el: HTMLElement) => growRect(el.getBoundingClientRect(), parseFloat(el.style.width), parseFloat(el.style.height), el.classList.contains('right') ? 'right' : el.classList.contains('left') ? 'left' : 'center');
+// Una sola medición pendiente: la última llamada manda (un envío viejo no reabre la zona tras un hitbox(null)).
+let hbRaf = 0, hbT = 0, hbEl: HTMLElement | null = null;
 function hitbox(el: HTMLElement | null) {
-  const send = () => { if (!el || !el.isConnected) return setIslandHitbox(null); const r = el.getBoundingClientRect(); setIslandHitbox({ x: r.left, y: r.top, w: r.width, h: r.height }); };
-  requestAnimationFrame(send);
-  if (el) setTimeout(send, T(SP_OPEN.d) + 40);   // otra vez cuando el resorte termina
+  hbEl = el;
+  const send = () => { if (!el || !el.isConnected) return setIslandHitbox(null); setIslandHitbox(hitRect(el)); };
+  cancelAnimationFrame(hbRaf); clearTimeout(hbT);
+  hbRaf = requestAnimationFrame(send);
+  if (el) hbT = window.setTimeout(send, T(SP_OPEN.d) + 40);   // otra vez cuando el resorte termina: ajusta al tamaño final
 }
+
+// Linux: la ventana cambia de ancho si cambia el área libre del monitor (dock, otro monitor); el contenido se recoloca y la
+// zona de clics tiene que seguirlo.
+window.addEventListener('resize', () => { if (hbEl) hitbox(hbEl); });
+// la cápsula se ajustó a contenido que creció después de aparecer (ver morph): la zona de clics también
+board.addEventListener('fit', () => { if (hbEl) hitbox(hbEl); });
 
 const ctx: OrbeCtx = {
   snap: () => snap, cfg: () => cfg, notice: () => notice,
@@ -47,9 +63,18 @@ const render = () => { mode?.render(); if (kbOwned && document.hasFocus() && !bo
 
 function show(n: Notice) { notice = n; clearTimeout(noticeT); noticeT = window.setTimeout(() => { notice = null; render(); }, T(n.life)); render(); }
 
+/** Ctrl+Alt+Y sobre un comando delicado en Linux (no se puede mantener): lo dice la propia tarjeta, que tapa los avisos.
+ *  Sin tarjeta a la vista (recogida con Esc), va como aviso. */
+function nudgeHold(n: Notice | null) {
+  const btns = board.querySelectorAll<HTMLElement>('.layer:last-child .btn[data-danger="1"]');
+  if (!btns.length) { if (n) show(n); return; }
+  btns.forEach(b => { const l = b.closest('.card')?.querySelector<HTMLElement>('.bar-l'); if (l) l.textContent = 'Mantén presionado «Mantener»'; shake(b); });
+}
+
 function onEffect(fx: Fx) {
   const later = (f: () => void) => setTimeout(f, T(cfg.island.beam ? 520 : 0));
   const n = toNotice(fx);
+  if (fx.kind === 'notice' && fx.text.startsWith('hold|')) { nudgeHold(n); return; }
   if (fx.kind === 'resolved' || fx.kind === 'notice') { if (n) show(n); return; }
   if (fx.kind === 'release') { mode?.light('focus'); if (n) later(() => show(n)); return; }
   if (!fx.visual) return;
@@ -67,7 +92,7 @@ document.addEventListener('pointerdown', e => { const b = (e.target as HTMLEleme
 
 /* Ctrl + arrastrar: mueve la isla (tarjeta, pastilla u Orbe) a cualquier lugar, en cualquier monitor. Ctrl + doble clic la regresa.
    Va en fase de captura para ganarle al arrastre del Orbe entre lados y a los botones de las tarjetas. */
-let dragging = false, dragMoved = false, dragRaf = 0;
+let dragging = false, dragMoved = false, dragRaf = 0, swallowClick = false;
 board.addEventListener('pointerdown', e => {
   if (!e.ctrlKey || e.button !== 0) return;
   e.preventDefault(); e.stopPropagation();
@@ -82,13 +107,16 @@ board.addEventListener('pointermove', e => {
 const dragEnd = (e: PointerEvent) => {
   if (!dragging) return;
   e.stopPropagation(); dragging = false; document.body.classList.remove('moving');
+  // El clic llega en el mismo evento nativo que este pointerup; el timeout 0 lo deja pasar y luego limpia la marca.
+  swallowClick = true; setTimeout(() => { swallowClick = false; }, 0);
   cancelAnimationFrame(dragRaf); dragRaf = 0;
   if (dragMoved) islandDrag('move').then(() => islandDrag('end')); else islandDrag('end');
 };
 board.addEventListener('pointerup', dragEnd, true);
 board.addEventListener('pointercancel', dragEnd, true);
-// el clic que termina un arrastre no es un clic sobre la tarjeta (no aprueba ni elige nada)
-board.addEventListener('click', e => { if (e.ctrlKey) { e.preventDefault(); e.stopPropagation(); } }, true);
+// El clic que termina un arrastre no es un clic sobre la tarjeta (no aprueba ni elige nada). Se mira el arrastre y no
+// solo Ctrl: lo normal es soltar Ctrl un instante antes que el botón, y ese clic llega sin ctrlKey.
+board.addEventListener('click', e => { if (swallowClick || e.ctrlKey) { swallowClick = false; e.preventDefault(); e.stopPropagation(); } }, true);
 board.addEventListener('dblclick', e => { if (e.ctrlKey) { e.preventDefault(); e.stopPropagation(); islandDrag('reset'); } }, true);
 
 (async () => {

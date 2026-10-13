@@ -66,6 +66,8 @@ export function mountOrbe(board: HTMLElement, ctx: OrbeCtx) {
   const bead = (k: ReturnType<typeof orbDot>) => `<div class="o-bead">${k === 'moon' ? '<span class="ms">dark_mode</span>' : `<span class="dot ${k === 'none' ? 'calm' : k}"></span>`}</div>`;
   function render() {
     const s = ctx.snap(), cfg = ctx.cfg(), n = ctx.notice(), now = Date.now(), top = s.pending[0];
+    // "Lugar del Orbe" cambiado en Mosaico: se mueve ya. morph() no ve un cambio de lado, así que la zona de clics se manda aquí.
+    if (!down && cfg.island.orb_side !== side) { side = cfg.island.orb_side; place(); ctx.hitbox(sh); }
     const allMuted = s.sessions.length > 0 && s.sessions.every(x => x.muted_until_ms > now);
     let html: string, sig: string, stacked = false;
     const o: MorphOpts = { radius: (_w, h) => h <= 26 ? '12px' : h > 44 ? '14px' : '10px' };

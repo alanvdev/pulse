@@ -4,6 +4,7 @@ import { flyoutFit, flyoutHide, muteSession, onFlyoutOpen, openDashboard, openPa
 import { statusLine, topDot } from '../shared/format';
 import { useConfig, useFocusEdge, useFocusHalo, useSnapshot, useTheme } from '../shared/react';
 import { Dot, Icon, Keys } from '../shared/ui';
+import { hasChroma, isLinux } from '../shared/platform';
 import { step } from './menu';
 
 type Item = { id: string; icon: string; label: string; keys?: string[]; on?: boolean; disabled?: boolean; run: () => void };
@@ -33,7 +34,7 @@ export function Flyout() {
       { id: 'focus', icon: 'dark_mode', label: 'Modo foco', on: snap.focus, run: () => setFocus(!snap.focus) },
       { id: 'sounds', icon: cfg.sounds.enabled ? 'volume_up' : 'volume_off', label: 'Sonidos', on: cfg.sounds.enabled, run: () => toggle(cfg, 'sounds') },
       { id: 'pulses', icon: cfg.pulses.enabled ? 'blur_on' : 'blur_off', label: 'Pulsos en los bordes', on: cfg.pulses.enabled, run: () => toggle(cfg, 'pulses') },
-      { id: 'keyboard', icon: 'keyboard', label: 'Teclado', on: cfg.keyboard.enabled, run: () => toggle(cfg, 'keyboard') },
+      ...(hasChroma ? [{ id: 'keyboard', icon: 'keyboard', label: 'Teclado', on: cfg.keyboard.enabled, run: () => toggle(cfg, 'keyboard') }] : []),   // Razer Chroma: solo Windows
     ],
     [
       { id: 'settings', icon: 'settings', label: 'Ajustes', run: () => { openDashboard('ajustes'); close(); } },
@@ -65,7 +66,7 @@ export function Flyout() {
   if (!cfg) return null;
   let i = -1;
   return <div className="fly-wrap">
-    <div key={open} ref={box} role="menu" aria-label="Pulse" aria-describedby="fly-status" tabIndex={-1} className={`fly surf f-host ${snap.focus ? 'in-focus' : ''}`}>
+    <div key={open} ref={box} role="menu" aria-label="Pulse" aria-describedby="fly-status" tabIndex={-1} className={`fly surf f-host ${isLinux ? 'from-top' : ''} ${snap.focus ? 'in-focus' : ''}`}>
       <div className="fly-head" role="presentation"><b>Pulse</b><span id="fly-status"><Dot kind={topDot(snap)} />{statusLine(snap)}</span></div>
       {groups.map((g, gi) => <div key={gi} role="group">
         <div className="sep" role="separator" />

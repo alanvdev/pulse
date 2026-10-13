@@ -1,10 +1,11 @@
 // Piezas de Mosaico: bloque "Necesita tu respuesta" y tabla de sesiones (filas de 48 px).
 import { useEffect, type CSSProperties, type KeyboardEvent as RKeyboardEvent, type ReactNode } from 'react';
 import { decide, skip, type Config, type Pending, type Session, type Snapshot } from '../shared/bridge';
-import { clock } from '../shared/format';
+import { answerHint, clock } from '../shared/format';
 import { useFlash, useHold } from '../shared/react';
 import type { Row } from '../island/model';
 import { isUrgent } from '../shared/micro';
+import { hasChroma } from '../shared/platform';
 import { Button, Icon, StateIcon } from '../shared/ui';
 import { sessionRows, verb } from '../island/model';
 
@@ -31,7 +32,7 @@ export function PendingBlock({ p, cfg, now, more }: { p: Pending; cfg: Config; n
     <div className="mz-pend-b">
       <div className="mz-pend-h"><b>{p.project}</b> {p.kind === 'question' ? 'te pregunta' : verb(p.tool, true)}{cfg.island.countdown && <> · <span className={`mono ${isUrgent(p, now) ? 'urgent' : ''}`}>{secsLeft(p, now)}</span></>}{more > 0 && <span className="tx3"> · {more} más en espera</span>}</div>
       <div className={`mz-pend-c ${p.kind === 'question' ? '' : 'mono'}`}>{p.command}</div>
-      {p.kind === 'question' ? <div className="mz-pend-d">Respóndela en la isla, arriba de tu pantalla.</div> : p.description && <div className="mz-pend-d">{p.description}</div>}
+      {p.kind === 'question' ? <div className="mz-pend-d">{answerHint(cfg.island.pos)}</div> : p.description && <div className="mz-pend-d">{p.description}</div>}
     </div>
     <div className="mz-pend-a">{p.kind === 'question'
       ? <Button solo size="lg" onClick={() => skip(p.id)}>Responder en la terminal</Button>
@@ -47,7 +48,7 @@ export function PendingBlock({ p, cfg, now, more }: { p: Pending; cfg: Config; n
 export function SessionTable({ snap, cfg, now, onOpen, expanded, renderDetail }: { snap: Snapshot; cfg: Config; now: number; onOpen: (id: string) => void; expanded?: string; renderDetail?: (s: Session) => ReactNode }) {
   const rows = sessionRows(snap, now);
   if (!rows.length) return <p className="empty">No hay sesiones de Claude Code abiertas.</p>;
-  const keys = cfg.keyboard.enabled && cfg.keyboard.session_keys;
+  const keys = hasChroma && cfg.keyboard.enabled && cfg.keyboard.session_keys;
   return <div className="mz-table">{rows.map((r, i) => <TableRow key={r.id} r={r} i={i} s={snap.sessions.find(x => x.id === r.id)!} now={now} keys={keys}
     open={expanded === r.id} expandable={!!renderDetail} onOpen={onOpen} detail={renderDetail} />)}</div>;
 }

@@ -93,7 +93,8 @@ export function bindQuestions(root: HTMLElement, find: (id: number) => Pending |
     card.querySelectorAll<HTMLElement>('.q').forEach(q => (q.hidden = Number(q.dataset.q) !== step));
     refresh(card, p); fit(card);
     const input = card.querySelector<HTMLInputElement>(`.qin[data-q="${step}"]`);
-    if (input && !input.hidden) requestAnimationFrame(() => input.focus());
+    // de vuelta a un paso con "Otra…" escrita: el campo recupera el teclado (en Linux la isla lo pide; un clic no basta)
+    if (input && !input.hidden) { if (!document.hasFocus()) ctx.islandFocus(true); requestAnimationFrame(() => input.focus({ preventScroll: true })); }
   };
   const act = (card: HTMLElement, p: Pending, action: Action, delay = 0) => {
     const qs = p.questions ?? [], r = flow(qs, stepOf(card), picksOf(card, qs), action);
@@ -119,7 +120,7 @@ export function bindQuestions(root: HTMLElement, find: (id: number) => Pending |
       // en una sola pregunta de opción única no hay botón; con "Otra…" sí hace falta para mandar lo escrito
       if (qs.length === 1 && !multi) card.querySelector<HTMLElement>('[data-act="next"]')!.hidden = !other;
       if (wasHidden !== input.hidden) fit(card);
-      if (opt.dataset.other && other) { ctx.islandFocus(true); requestAnimationFrame(() => input.focus()); }
+      if (opt.dataset.other && other) { ctx.islandFocus(true); requestAnimationFrame(() => input.focus({ preventScroll: true })); }
       refresh(card, p);
       act(card, p, opt.dataset.other ? 'other' : 'option', 160);   // una pausa breve para ver la opción marcada
       return;
@@ -128,6 +129,12 @@ export function bindQuestions(root: HTMLElement, find: (id: number) => Pending |
     if (a === 'next') act(card, p, 'next');
     if (a === 'back') act(card, p, 'back');
     if (a === 'skip') { ctx.islandFocus(false); ctx.skip(p.id); }
+  });
+  // Linux: GNOME no le da el teclado a una ventana dock por un clic. Al volver a "Otra…" (tras ir a la terminal) se pide,
+  // o lo escrito iría a la terminal. Solo en el campo: en opciones o Permitir el teclado se quedaría en la isla, porque
+  // en Linux no se le puede devolver a otra ventana. Ctrl + clic es el arrastre de la isla.
+  root.addEventListener('pointerdown', e => {
+    if (e.button === 0 && !e.ctrlKey && (e.target as HTMLElement).closest('.qin') && !document.hasFocus()) ctx.islandFocus(true);
   });
   root.addEventListener('input', e => { const card = cardOf(e.target as Element); const p = card && find(Number(card.dataset.qid)); if (card && p) refresh(card, p); });
   root.addEventListener('keydown', e => {
@@ -144,9 +151,11 @@ export function bindQuestions(root: HTMLElement, find: (id: number) => Pending |
   });
   // La cuenta regresiva se pausa mientras tienes el mouse sobre la tarjeta o escribes en ella.
   // Se sigue el mouse con mouseover/mouseout (el estado :hover llega tarde respecto a estos eventos).
+  // "Escribes" es el campo de "Otra…" con la ventana enfocada: un botón de opción se queda como activeElement aunque ya
+  // estés en la terminal, y la pregunta seguiría en pausa hasta su tope en vez de pasar a la terminal a su tiempo.
   let held: number | null = null, hovered: HTMLElement | null = null;
   const sync = () => {
-    const focused = cardOf(document.activeElement ?? document.body);
+    const ae = document.activeElement, focused = document.hasFocus() && ae instanceof HTMLElement && ae.matches('.qin') ? cardOf(ae) : null;
     const card = (hovered?.isConnected ? hovered : null) ?? (focused?.isConnected ? focused : null);
     const want = card ? Number(card.dataset.qid) : null;
     if (want === held) return;
@@ -158,6 +167,11 @@ export function bindQuestions(root: HTMLElement, find: (id: number) => Pending |
   root.addEventListener('mouseout', e => { const to = e.relatedTarget as Element | null; if (!to || !hovered?.contains(to)) { hovered = to ? cardOf(to) : null; sync(); } });
   root.addEventListener('focusin', () => sync());
   root.addEventListener('focusout', () => setTimeout(sync, 0));
+  // al irte de la isla se reanuda (sin mouseout si la zona de clics se encogió bajo el cursor); al volver se revisa
+  window.addEventListener('blur', () => { hovered = null; sync(); });
+  // el cursor sigue encima de la tarjeta tras un blur (Esc en "Otra…"): el primer movimiento vuelve a pausar
+  root.addEventListener('mousemove', e => { if (hovered) return; const c = cardOf(e.target as Element); if (c) { hovered = c; sync(); } });
+  window.addEventListener('focus', sync);
   // Texto y barra de la cuenta regresiva.
   setInterval(() => root.querySelectorAll<HTMLElement>('.qcard').forEach(card => {
     const p = find(Number(card.dataset.qid)); if (!p) return;

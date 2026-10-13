@@ -3,6 +3,7 @@ import type { Config, Pending } from '../shared/bridge';
 import { esc } from '../shared/format';
 import { isUrgent } from '../shared/micro';
 import { reduceMotion, T } from '../shared/motion';
+import { isLinux } from '../shared/platform';
 import { queueInfo, releaseRow, verb, type Notice } from './model';
 
 const rgb = (h: string) => { const n = parseInt(h.slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
@@ -20,7 +21,9 @@ export function fuzzy(text: string, query: string): { ok: boolean; html: string 
 export const keys = (k: string[]) => `<span class="keys">${k.map(x => `<kbd class="kbd">${esc(x)}</kbd>`).join('')}</span>`;
 const secsLeft = (p: Pending, now = Date.now()) => `${Math.max(0, Math.ceil((p.paused ? p.left_ms : p.deadline_ms - now) / 1000))}s`;
 
-/** Tarjeta de permiso (spec §3.1 y §3.3): cabecera, comando (3 líneas, el resto se desplaza), descripción, quién sigue y barra de acciones. */
+/** Tarjeta de permiso (spec §3.1 y §3.3): cabecera, comando (3 líneas, el resto se desplaza), descripción, quién sigue y barra de acciones.
+ *  En Linux el atajo llega como un golpe sin "soltar" (lo registra GNOME) y no se puede mantener: en un comando delicado
+ *  no se muestra Ctrl+Alt+Y, se aprueba manteniendo el botón. */
 export function permCard(p: Pending, cfg: Config, all: Pending[], width = 480) {
   const danger = p.danger && cfg.island.hold, k = cfg.island.keys, q = queueInfo(all);
   return `<div class="card" style="width:${width}px" data-pid="${p.id}">
@@ -32,7 +35,7 @@ export function permCard(p: Pending, cfg: Config, all: Pending[], width = 480) {
     </div>
     <div class="bar"><span class="bar-l">${danger ? 'Delicado' : 'Pulse'}</span>
       <button type="button" class="btn" data-act="deny" data-id="${p.id}" style="margin-left:auto"><span>Denegar</span>${k ? keys(['Ctrl', 'Alt', 'N']) : ''}</button>
-      <button type="button" class="btn pri" data-act="allow" data-id="${p.id}" data-danger="${danger ? 1 : 0}" data-hold><span>${danger ? 'Mantener' : 'Permitir'}</span>${k ? keys(['Ctrl', 'Alt', 'Y']) : ''}</button>
+      <button type="button" class="btn pri" data-act="allow" data-id="${p.id}" data-danger="${danger ? 1 : 0}" data-hold><span>${danger ? 'Mantener' : 'Permitir'}</span>${k && !(danger && isLinux) ? keys(['Ctrl', 'Alt', 'Y']) : ''}</button>
     </div></div>`;
 }
 

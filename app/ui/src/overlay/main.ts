@@ -12,22 +12,24 @@ let cfg: Config;
 // Detección aproximada de fondo claro: se toma de la preferencia del sistema.
 const light = () => matchMedia('(prefers-color-scheme: light)').matches;
 const opts = () => ({ crisp: cfg.pulses.crisp, corners: cfg.pulses.corners, adapt: cfg.pulses.adapt, dither: cfg.pulses.dither, lightBackground: light(), reduce: reduceMotion() });
-const mine = (monitor: number) => cfg.pulses.placement === 'all' || monitor === me;
+// sin monitor (Linux no puede saber cuál usas): en todos
+const mine = (monitor: number | null) => cfg.pulses.placement === 'all' || monitor == null || monitor === me;
 
 let lastSnap: Snapshot | null = null;
+// Las mismas condiciones para encender y para apagar: en foco, con los pulsos apagados o sin "persistente", el brillo
+// que ya estaba se apaga (antes solo se dejaba de encender y seguía respirando en los bordes).
 function syncResiduals(s: Snapshot) {
   lastSnap = s;
-  const want = wantedResiduals(s, Date.now());
+  const pc = (k: string) => cfg.pulses.events[k.split(':')[1]];
+  const active = cfg.pulses.enabled && !s.focus;
+  const want = new Set([...wantedResiduals(s, Date.now())].filter(k => active && !!pc(k)?.persistent));
   for (const k of residualKeys()) if (!want.has(k)) residualOff(k);
-  for (const k of want) {
-    const kind = k.split(':')[1]; const pc = cfg.pulses.events[kind];
-    if (pc?.persistent && cfg.pulses.enabled && !residualKeys().includes(k) && !s.focus) residualOn(k, layer, pc, reduceMotion());
-  }
+  for (const k of want) if (!residualKeys().includes(k)) residualOn(k, layer, pc(k)!, reduceMotion());
 }
 
 (async () => {
   cfg = await getConfig();
-  onConfig(c => (cfg = c));
+  onConfig(c => { cfg = c; if (lastSnap) syncResiduals(lastSnap); });
   onFx(fx => {
     if (!fx.visual || !mine(fx.monitor)) return;
     const pc = cfg.pulses.events[fx.kind === 'release' ? 'idle' : fx.kind]; if (!pc) return;

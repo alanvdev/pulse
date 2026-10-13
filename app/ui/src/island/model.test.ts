@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Config, Fx, Pending, Session, SessionState, Snapshot } from '../shared/bridge';
 import { COLORS } from '../shared/format';
-import { dayLine, digitIndex, focusLine, inactiveIds, nearestZone, orbDot, qHint, queueInfo, releaseRow, sessionRows, showDots, toNotice, verb } from './model';
+import { dayLine, digitIndex, focusLine, growRect, inactiveIds, nearestZone, orbDot, qHint, queueInfo, releaseRow, sessionRows, showDots, toNotice, verb } from './model';
 
 const fx = (kind: Fx['kind'], text = '', visual = true): Fx => ({ kind, session_id: 's', project: 'pulse', slot: 0, text, visual, sound: false, monitor: 0 });
 const pend = (id: number, project: string, command: string, tool = 'Bash', kind: Pending['kind'] = 'permission'): Pending =>
@@ -18,6 +18,7 @@ describe('avisos (spec §3.4)', () => {
   it('plan y pregunta en la terminal', () => {
     expect(n(fx('notice', 'plan|'))).toEqual(['assignment', COLORS.idle, 'pulse', 'terminó un plan, revísalo en la terminal', '', 4500]);
     expect(n(fx('notice', 'question|¿Qué base uso?'))).toEqual(['help', COLORS.idle, 'pulse', 'te pregunta en la terminal: ¿Qué base uso?', '', 4500]);
+    expect(n(fx('notice', 'hold|rm -rf dist'))).toEqual(['touch_app', COLORS.permission, '', 'Es delicado: mantén presionado «Mantener» en la tarjeta', 'rm -rf dist', 3500]);
   });
   it('respuestas', () => {
     expect(n(fx('resolved', 'allow|git push'))).toEqual(['check', COLORS.done, '', 'Permitido', 'git push', 1300]);
@@ -90,6 +91,14 @@ describe('puntos y resumen de Comando', () => {
 });
 
 describe('Orbe', () => {
+  it('zona de clics: la de ahora unida a la final, anclada como el CSS', () => {
+    const r = { left: 100, top: 12, right: 140, bottom: 36 };   // pastilla de 40 × 24 creciendo a 200 × 120
+    expect(growRect(r, 200, 120, 'center')).toEqual({ x: 20, y: 12, w: 200, h: 120 });
+    expect(growRect(r, 200, 120, 'right')).toEqual({ x: -60, y: 12, w: 200, h: 120 });
+    expect(growRect(r, 200, 120, 'left')).toEqual({ x: 100, y: 12, w: 200, h: 120 });
+    expect(growRect(r, 10, 10, 'left')).toEqual({ x: 100, y: 12, w: 40, h: 24 });     // encogiendo: se queda la de ahora
+    expect(growRect(r, NaN, NaN, 'center')).toEqual({ x: 100, y: 12, w: 40, h: 24 }); // sin tamaño final (el tablero)
+  });
   it('zona más cercana al soltarlo', () => { expect(nearestZone(.1)).toBe('left'); expect(nearestZone(.5)).toBe('center'); expect(nearestZone(.9)).toBe('right'); });
   it('el punto resume a todas las sesiones', () => {
     expect(orbDot(snap([]))).toBe('none');

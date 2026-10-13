@@ -8,7 +8,7 @@ export interface FeedItem { session_id: string; project: string; text: string; a
 export interface Deferred { session_id: string; project: string; kind: string; at_ms: number }
 export interface Snapshot { sessions: Session[]; pending: Pending[]; feed: FeedItem[]; focus: boolean; focus_auto: boolean; deferred: Deferred[] }
 export type FxKind = 'start' | 'permission' | 'done' | 'idle' | 'error' | 'subagent' | 'release' | 'resolved' | 'notice';
-export interface Fx { kind: FxKind; session_id: string; project: string; slot: number; text: string; visual: boolean; sound: boolean; monitor: number }
+export interface Fx { kind: FxKind; session_id: string; project: string; slot: number; text: string; visual: boolean; sound: boolean; monitor: number | null }
 export interface PulseCfg { color: string; shape: string; duration_ms: number; intensity: number; thickness: number; persistent: boolean }
 export interface Config {
   island: { mode: 'comando' | 'orbe'; orb_side: 'left' | 'center' | 'right'; dots: boolean; keys: boolean; hold: boolean; countdown: boolean; beam: boolean; ask_timeout_s: number; pos: [number, number] | null };

@@ -14,6 +14,7 @@ export function toNotice(fx: Fx): Notice | null {
     case 'error': return fx.visual ? N({ icon: 'error', color: COLORS.error, who: fx.project, what: 'falló', extra: fx.text || undefined, life: 2800 }) : null;
     case 'notice': return head === 'plan'
       ? N({ icon: 'assignment', color: COLORS.idle, who: fx.project, what: 'terminó un plan, revísalo en la terminal', life: 4500 })
+      : head === 'hold' ? N({ icon: 'touch_app', color: COLORS.permission, what: 'Es delicado: mantén presionado «Mantener» en la tarjeta', extra: tail || undefined, life: 3500 })
       : N({ icon: 'help', color: COLORS.idle, who: fx.project, what: `te pregunta en la terminal: ${tail}`, life: 4500 });
     case 'release': return N({ icon: 'dark_mode', color: COLORS.focus, what: 'Mientras estabas en foco', items: JSON.parse(fx.text) as Deferred[], life: 4000 });
     case 'resolved':
@@ -82,3 +83,14 @@ export function orbDot(s: Snapshot): DotKind | 'moon' | 'none' {
   return s.pending.length || has('Waiting') ? 'halo' : has('Working') ? 'fill' : has('Done') ? 'done' : 'calm';
 }
 export const focusLine = (s: Snapshot) => `En foco · ${s.deferred.length} guardado${s.deferred.length === 1 ? '' : 's'}`;
+
+/** Zona de clics de la isla durante un resorte: el rectángulo de ahora (`r`) unido al final (`tw` × `th`), anclado como
+ *  el CSS: arriba fijo; a la derecha o a la izquierda por ese borde, si no centrado. Sin tamaño final (NaN): `r` tal cual. */
+export function growRect(r: { left: number; top: number; right: number; bottom: number }, tw: number, th: number, anchor: Side): { x: number; y: number; w: number; h: number } {
+  let x = r.left, R = r.right, B = r.bottom;
+  if (tw >= 0 && th >= 0) {
+    const tx = anchor === 'right' ? r.right - tw : anchor === 'left' ? r.left : (r.left + r.right) / 2 - tw / 2;
+    x = Math.min(x, tx); R = Math.max(R, tx + tw); B = Math.max(B, r.top + th);
+  }
+  return { x, y: r.top, w: R - x, h: B - r.top };
+}

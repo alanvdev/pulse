@@ -1,11 +1,12 @@
 // Bolsillo: panel de la bandeja (spec §7, artboard Bolsillo). Pestañas Ahora, Hoy y Ajustes rápidos.
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent as RKeyboardEvent } from 'react';
 import { decide, forgetSessions, openDashboard, setFocus, skip, togglePanel, type Config, type DaySummary, type Pending, type Snapshot } from '../shared/bridge';
-import { clock, headline, hm, sessionsLabel } from '../shared/format';
-import { reduceMotion } from '../shared/motion';
+import { answerHint, clock, headline, hm, sessionsLabel } from '../shared/format';
+import { entryGate, reduceMotion } from '../shared/motion';
 import { useConfig, useDaySummary, useFlash, useFocusEdge, useFocusHalo, useHighlight, useHold, useNow, useResolved, useSnapshot, useTheme, type Resolved } from '../shared/react';
 import type { Row } from '../island/model';
 import { isUrgent } from '../shared/micro';
+import { hasChroma, isLinux } from '../shared/platform';
 import { Button, Chip, Dot, Icon, Keys, ResolvedNote, Seg, Slider, StateIcon, Switch } from '../shared/ui';
 import { Timeline, TimelineLegend } from '../shared/timeline';
 import { focusLine, inactiveIds, sessionRows, verb } from '../island/model';
@@ -22,7 +23,7 @@ function PendingBlock({ p, cfg, now, hold }: { p: Pending; cfg: Config; now: num
   if (p.kind === 'question') return <div className="pb">
     <div className="pb-h"><Dot kind="halo" /><b>{p.project}</b>te pregunta</div>
     <div className="pb-q">{p.command}</div>
-    <div className="pb-n">Respóndela en la isla, arriba de tu pantalla.</div>
+    <div className="pb-n">{answerHint(cfg.island.pos)}</div>
     <div className="pb-a"><Button solo size="md" onClick={() => skip(p.id)}>Responder en la terminal</Button></div>
   </div>;
   return <div className="pb">
@@ -61,7 +62,7 @@ function Ahora({ snap, cfg, save, now, hold, resolved }: { snap: Snapshot; cfg: 
       <Chip icon="dark_mode" tone="focus" on={snap.focus} onClick={() => setFocus(!snap.focus)}>Foco</Chip>
       <Chip icon="volume_up" iconOff="volume_off" on={cfg.sounds.enabled} onClick={() => flip('sounds')}>Sonidos</Chip>
       <Chip icon="blur_on" iconOff="blur_off" on={cfg.pulses.enabled} onClick={() => flip('pulses')}>Pulsos</Chip>
-      <Chip icon="keyboard" on={cfg.keyboard.enabled} onClick={() => flip('keyboard')}>Teclado</Chip>
+      {hasChroma && <Chip icon="keyboard" on={cfg.keyboard.enabled} onClick={() => flip('keyboard')}>Teclado</Chip>}
     </div>
   </>;
 }
@@ -83,7 +84,7 @@ function Rapidos({ cfg, save }: { cfg: Config; save: (c: Config) => void }) {
       <div className="qs"><span>Pulsos en los bordes</span><Switch label="Pulsos en los bordes" on={cfg.pulses.enabled} onChange={enabled => set('pulses', { enabled })} /></div>
       <div className="qs"><span>Sonidos</span><Switch label="Sonidos" on={cfg.sounds.enabled} onChange={enabled => set('sounds', { enabled })} /></div>
       <div className="qs"><span>Volumen</span><Slider label="Volumen" value={cfg.sounds.volume} min={0} max={100} step={5} onChange={volume => set('sounds', { volume })} /></div>
-      <div className="qs"><span>Modo foco automático<small>En llamadas, pantalla completa y tu horario</small></span><Switch label="Modo foco automático" on={cfg.focus.auto} onChange={auto => set('focus', { auto })} /></div>
+      <div className="qs"><span>Modo foco automático<small>{isLinux ? 'En llamadas y tu horario' : 'En llamadas, pantalla completa y tu horario'}</small></span><Switch label="Modo foco automático" on={cfg.focus.auto} onChange={auto => set('focus', { auto })} /></div>
     </div>
     <Button solo size="md" onClick={() => openDashboard('ajustes')}>Todos los ajustes</Button>
   </>;
@@ -102,9 +103,10 @@ export function Bolsillo() {
   useHighlight(tabs, '[aria-selected="true"]', [tab, cfg === null]);
   useFocusHalo(bp, useFocusEdge(snap));
 
-  // aparece desde la bandeja al mostrarse
+  // aparece desde la bandeja (abajo) o desde la barra superior (Linux), una vez por apertura
   useEffect(() => {
-    const show = () => { if (document.visibilityState !== 'visible' || !bp.current || reduceMotion()) return; bp.current.animate([{ opacity: 0, transform: 'translateY(10px) scale(.98)' }, { opacity: 1, transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.32,.72,0,1)' }); };
+    const gate = entryGate();
+    const show = () => { if (!gate(document.visibilityState === 'visible', performance.now()) || !bp.current || reduceMotion()) return; bp.current.animate([{ opacity: 0, transform: `translateY(${isLinux ? -10 : 10}px) scale(.98)` }, { opacity: 1, transform: 'none' }], { duration: 420, easing: 'cubic-bezier(.32,.72,0,1)' }); };
     window.addEventListener('focus', show); document.addEventListener('visibilitychange', show);
     return () => { window.removeEventListener('focus', show); document.removeEventListener('visibilitychange', show); };
   }, []);
@@ -128,7 +130,7 @@ export function Bolsillo() {
 
   const pick = (t: Tab) => { setTab(t); if (view.current && !reduceMotion()) view.current.animate([{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 240, easing: 'cubic-bezier(.16,1,.3,1)' }); };
   if (!cfg) return null;
-  return <section ref={bp} aria-label="Bolsillo" className={`bp surf f-host ${snap.focus ? 'in-focus' : ''}`}>
+  return <section ref={bp} aria-label="Bolsillo" className={`bp surf f-host ${isLinux ? 'from-top' : ''} ${snap.focus ? 'in-focus' : ''}`}>
     <div ref={view} className="bp-view" role="tabpanel">
       {tab === 'ahora' && <Ahora snap={snap} cfg={cfg} save={save} now={now} hold={{ ...hold, begin: beginHold }} resolved={resolved} />}
       {tab === 'hoy' && <Hoy day={day} now={now} />}

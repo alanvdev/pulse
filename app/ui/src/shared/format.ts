@@ -59,4 +59,6 @@ export function headline(s: Snapshot): string {
   if (c.working) return c.working === 1 ? 'Una trabajando' : `${c.working} trabajando`;
   return 'Todo en calma';
 }
+/** Dónde contestar una pregunta: la isla está arriba al centro hasta que la mueves con Ctrl+arrastrar (island.pos). */
+export const answerHint = (pos: [number, number] | null) => pos ? 'Respóndela en la isla.' : 'Respóndela en la isla, arriba de tu pantalla.';
 export const sessionsLabel = (n: number) => n === 1 ? '1 sesión' : `${n} sesiones`;

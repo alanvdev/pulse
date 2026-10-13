@@ -4,9 +4,11 @@ import type { Config, PulseCfg } from '../../shared/bridge';
 import { reduceMotion } from '../../shared/motion';
 import { Icon, MultiSeg, Seg, Slider, Swatches, Switch } from '../../shared/ui';
 import { useHighlight } from '../../shared/react';
+import { hasChroma, isLinux } from '../../shared/platform';
 import { EVENTS, FINISH, finishOf, PALETTE, seconds, SHAPES, silentLine } from '../settings';
 
-const SECTIONS: [string, string, string][] = [['isla', 'wb_iridescent', 'Isla'], ['pulsos', 'blur_on', 'Pulsos'], ['sonidos', 'volume_up', 'Sonidos'], ['foco', 'dark_mode', 'Modo foco'], ['teclado', 'keyboard', 'Teclado'], ['apariencia', 'contrast', 'Apariencia']];
+// Teclado es Razer Chroma: no aparece donde no existe (Linux)
+const SECTIONS = ([['isla', 'wb_iridescent', 'Isla'], ['pulsos', 'blur_on', 'Pulsos'], ['sonidos', 'volume_up', 'Sonidos'], ['foco', 'dark_mode', 'Modo foco'], ['teclado', 'keyboard', 'Teclado'], ['apariencia', 'contrast', 'Apariencia']] as [string, string, string][]).filter(([id]) => hasChroma || id !== 'teclado');
 const RULES: [Config['focus']['rules'][string], string][] = [['normal', 'Normal'], ['mudo', 'Sin sonido'], ['nada', 'Nada'], ['despues', 'Después']];
 const FINISH_KEYS = [['crisp', 'Línea nítida'], ['corners', 'Esquinas'], ['adapt', 'Ajuste en fondos claros'], ['dither', 'Grano']] as const;
 
@@ -57,13 +59,15 @@ export function Ajustes({ cfg, save, section, back }: { cfg: Config; save: (c: C
           <Row title="Tiempo para responder" sub="Después, Claude pregunta en la terminal. Pulse nunca decide solo."><Slider label="Segundos para responder" value={cfg.island.ask_timeout_s} min={10} max={120} step={5} format={v => `${v} s`} onChange={ask_timeout_s => set('island', { ask_timeout_s })} /></Row>
           <Row title="Cuenta regresiva"><Switch label="Cuenta regresiva" on={cfg.island.countdown} onChange={countdown => set('island', { countdown })} /></Row>
           <Row title="Haz de luz al llegar un aviso"><Switch label="Haz de luz al llegar un aviso" on={cfg.island.beam} onChange={beam => set('island', { beam })} /></Row>
-          <Row title="Atajos globales" sub="Ctrl+Alt+Y permite, Ctrl+Alt+N deniega, Ctrl+Alt+Espacio abre la paleta"><Switch label="Atajos globales" on={cfg.island.keys} onChange={keys => set('island', { keys })} /></Row>
-          <Row title="Mantener presionado en comandos delicados" sub="git push --force, rm -rf, migrate"><Switch label="Mantener presionado en comandos delicados" on={cfg.island.hold} onChange={hold => set('island', { hold })} /></Row>
+          <Row title="Atajos globales" sub={isLinux ? 'Ctrl+Alt+Y permite (los delicados, manteniendo el botón de la isla), Ctrl+Alt+N deniega, Ctrl+Alt+Espacio abre la paleta' : 'Ctrl+Alt+Y permite, Ctrl+Alt+N deniega, Ctrl+Alt+Espacio abre la paleta'}><Switch label="Atajos globales" on={cfg.island.keys} onChange={keys => set('island', { keys })} /></Row>
+          {/* GNOME manda el atajo como pulsar y soltar de golpe: no se puede mantener, así que ahí solo vale el botón */}
+          <Row title="Mantener presionado en comandos delicados" sub={isLinux ? 'git push --force, rm -rf, migrate · En GNOME el atajo no se puede mantener: usa el botón' : 'git push --force, rm -rf, migrate'}><Switch label="Mantener presionado en comandos delicados" on={cfg.island.hold} onChange={hold => set('island', { hold })} /></Row>
         </Section>
 
         <Section id="pulsos" title="Pulsos en los bordes">
           <Row title="Pulsos"><Switch label="Pulsos" on={cfg.pulses.enabled} onChange={enabled => set('pulses', { enabled })} /></Row>
-          <Row title="Dónde"><Seg label="Dónde" value={cfg.pulses.placement} options={[['active', 'Monitor activo'], ['all', 'Todos']]} onChange={placement => set('pulses', { placement })} /></Row>
+          {/* Linux no puede saber qué monitor usas: ahí los pulsos van a todos */}
+          {!isLinux && <Row title="Dónde"><Seg label="Dónde" value={cfg.pulses.placement} options={[['active', 'Monitor activo'], ['all', 'Todos']]} onChange={placement => set('pulses', { placement })} /></Row>}
           <div className="aj-evs" role="group" aria-label="Evento a editar">
             {EVENTS.map(([k, l]) => <button key={k} type="button" className="chip" aria-pressed={ev === k} onClick={() => setEv(k)}><span className="dot" style={{ background: cfg.pulses.events[k]?.color }} />{l}</button>)}
           </div>
@@ -93,7 +97,8 @@ export function Ajustes({ cfg, save, section, back }: { cfg: Config; save: (c: C
         <Section id="foco" title="Modo foco">
           <Row title="Activar solo" sub="Si lo apagas a mano, vuelve cuando cambie lo que lo activó"><Switch label="Activar solo" on={cfg.focus.auto} onChange={auto => set('focus', { auto })} /></Row>
           <Row title="En llamadas"><Switch label="En llamadas" on={cfg.focus.detect_call} onChange={detect_call => set('focus', { detect_call })} /></Row>
-          <Row title="En pantalla completa o presentación"><Switch label="En pantalla completa o presentación" on={cfg.focus.detect_fullscreen} onChange={detect_fullscreen => set('focus', { detect_fullscreen })} /></Row>
+          {/* Linux: Wayland no deja ver las ventanas de otras apps, así que la pantalla completa no se detecta */}
+          {!isLinux && <Row title="En pantalla completa o presentación"><Switch label="En pantalla completa o presentación" on={cfg.focus.detect_fullscreen} onChange={detect_fullscreen => set('focus', { detect_fullscreen })} /></Row>}
           <Row title="En un horario" sub={`${cfg.focus.from} a ${cfg.focus.to}, todos los días`}><Switch label="En un horario" on={cfg.focus.schedule} onChange={schedule => set('focus', { schedule })} /></Row>
           {cfg.focus.schedule && <Row title="Desde y hasta"><span className="aj-fin">
             <input type="time" className="aj-time" aria-label="Desde" value={cfg.focus.from} onChange={e => e.target.value && set('focus', { from: e.target.value })} />
@@ -102,14 +107,14 @@ export function Ajustes({ cfg, save, section, back }: { cfg: Config; save: (c: C
           {EVENTS.map(([k, l]) => <Row key={k} title={l}><Seg label={`${l} en foco`} value={cfg.focus.rules[k] ?? 'normal'} options={RULES} onChange={r => set('focus', { rules: { ...cfg.focus.rules, [k]: r } })} /></Row>)}
         </Section>
 
-        <Section id="teclado" title="Teclado">
+        {hasChroma && <Section id="teclado" title="Teclado">
           <Row title="Razer Chroma" sub="F1 a F3 se encienden con la sesión que te espera"><Switch label="Razer Chroma" on={cfg.keyboard.enabled} onChange={enabled => set('keyboard', { enabled })} /></Row>
           <Row title="F1 a F3 por sesión"><Switch label="F1 a F3 por sesión" on={cfg.keyboard.session_keys} onChange={session_keys => set('keyboard', { session_keys })} /></Row>
           <Row title="Brillo de fondo"><Slider label="Brillo de fondo" value={cfg.keyboard.base} min={0} max={100} onChange={base => set('keyboard', { base })} /></Row>
-        </Section>
+        </Section>}
 
         <Section id="apariencia" title="Apariencia">
-          <Row title="Tema" sub="Bolsillo, el menú de la bandeja y esta ventana. La isla siempre es oscura."><Seg label="Tema" value={cfg.appearance.theme} options={[['dark', 'Oscuro'], ['system', 'Como el sistema'], ['light', 'Claro']]} onChange={theme => set('appearance', { theme })} /></Row>
+          <Row title="Tema" sub="Bolsillo, el menú rápido y esta ventana. La isla siempre es oscura."><Seg label="Tema" value={cfg.appearance.theme} options={[['dark', 'Oscuro'], ['system', 'Como el sistema'], ['light', 'Claro']]} onChange={theme => set('appearance', { theme })} /></Row>
         </Section>
       </div>
     </main>

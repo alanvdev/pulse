@@ -1,6 +1,12 @@
 // Portado de docs/artboards/isla.html: resortes con linear() y morph() de la cápsula.
 export const reduceMotion = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 export const T = (ms: number) => ms;
+/** Una sola entrada por apertura. En Linux la ventana avisa dos veces (visibilitychange al mostrarse y focus ~100 ms
+ *  después, cuando GNOME le da el teclado); sin esto la animación vuelve a empezar desde transparente. Ocultarse rearma. */
+export function entryGate(gap = 500) {
+  let last = -Infinity;
+  return (visible: boolean, t: number) => { if (!visible) { last = -Infinity; return false; } if (t - last < gap) return false; last = t; return true; };
+}
 
 export function springPoints(k: number, d: number): number[] {
   let x = 0, v = 0; const dt = 1 / 120, pts = [0];
@@ -15,7 +21,7 @@ export function spring(k: number, d: number): { e: string; d: number } {
 }
 export const SP_OPEN = spring(260, 23), SP_CLOSE = spring(340, 38), SP_MOVE = spring(200, 24);
 
-export type Morph = { el: HTMLElement; w: number; h: number; sig: string; op?: number; anim?: Animation | null };
+export type Morph = { el: HTMLElement; w: number; h: number; sig: string; op?: number; anim?: Animation | null; ro?: ResizeObserver };
 export interface MorphOpts { radius?: (w: number, h: number) => string; empty?: [number, number]; hidden?: boolean; dy?: number; life?: number }
 
 export function morph(m: Morph, sig: string, html: string, o: MorphOpts = {}) {
@@ -33,6 +39,19 @@ export function morph(m: Morph, sig: string, html: string, o: MorphOpts = {}) {
   sh.style.width = w + 'px'; sh.style.height = h + 'px'; sh.style.borderRadius = r1;
   m.anim = reduce ? null : sh.animate([{ width: fw + 'px', height: fh + 'px', borderRadius: r0 }, { width: w + 'px', height: h + 'px', borderRadius: r1 }], { duration: T(sp.d), easing: sp.e });
   m.w = w; m.h = h;
+  // El contenido puede crecer después de medirlo (una tarjeta de preguntas arma su pie al montarse): la cápsula lo sigue
+  // en vez de recortarlo, y avisa con "fit" para que la zona de clics se vuelva a medir.
+  m.ro?.disconnect(); m.ro = undefined;
+  if (html && typeof ResizeObserver === 'function') {
+    const ro = new ResizeObserver(() => {
+      if (layer !== sh.lastElementChild || m.ro !== ro) return;
+      const w2 = layer.offsetWidth, h2 = layer.offsetHeight;
+      if (w2 === m.w && h2 === m.h) return;
+      m.w = w2; m.h = h2; sh.style.width = w2 + 'px'; sh.style.height = h2 + 'px';
+      sh.dispatchEvent(new Event('fit', { bubbles: true }));
+    });
+    ro.observe(layer); m.ro = ro;
+  }
   const op = o.hidden ? 0 : 1;
   if (m.op !== op) { sh.animate([{ opacity: m.op ?? 1 }, { opacity: op }], { duration: T(op ? 180 : 260), fill: 'forwards', easing: 'ease-out' }); m.op = op; }
   for (const x of old) { x.style.pointerEvents = 'none'; x.animate(reduce ? [{ opacity: 1 }, { opacity: 0 }] : [{ opacity: 1, filter: 'blur(0)', transform: 'scale(1)' }, { opacity: 0, filter: 'blur(4px)', transform: 'scale(.97)' }], { duration: T(reduce ? 120 : 150), easing: 'ease-in', fill: 'forwards' }).onfinish = () => x.remove(); }

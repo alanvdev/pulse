@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { forgetSessions, muteSession, type Config, type Session, type Snapshot } from '../../shared/bridge';
 import { hhmm, statusLine } from '../../shared/format';
+import { hasChroma } from '../../shared/platform';
 import { Button } from '../../shared/ui';
 import { SessionTable } from '../parts';
 
@@ -13,7 +14,7 @@ function Detail({ s, snap, now }: { s: Session; snap: Snapshot; now: number }) {
     <dl>
       <div><dt>Subagentes</dt><dd>{s.subagents}</dd></div>
       <div><dt>Acciones</dt><dd>{s.actions}</dd></div>
-      <div><dt>Tecla</dt><dd>{s.slot < 3 ? `F${s.slot + 1}` : '—'}</dd></div>
+      {hasChroma && <div><dt>Tecla</dt><dd>{s.slot < 3 ? `F${s.slot + 1}` : '—'}</dd></div>}
       <Button solo onClick={() => muteSession(s.id, muted ? 0 : 30)}>{muted ? 'Quitar silencio' : 'Silenciar 30 min'}</Button>
       <Button solo title="Vuelve si Claude hace algo en esa sesión" onClick={() => forgetSessions([s.id])}>Quitar de Pulse</Button>
     </dl>
