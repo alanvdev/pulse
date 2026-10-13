@@ -71,7 +71,9 @@ pub fn create_island(app: &AppHandle) -> tauri::Result<()> {
     let (w, h) = (size.width as f64 / scale, (size.height as f64 / scale * 0.8).min(860.0));
     let win = WebviewWindowBuilder::new(app, "island", WebviewUrl::App("island.html".into()))
         .transparent(true).decorations(false).always_on_top(true).skip_taskbar(true).focused(false)
-        .resizable(false).shadow(false).position(pos.x as f64 / scale, pos.y as f64 / scale).inner_size(w, h).build()?;
+        .resizable(false).shadow(false).visible(cfg!(windows)).position(pos.x as f64 / scale, pos.y as f64 / scale).inner_size(w, h).build()?;
+    // Linux: tipo dock como los bordes, para que GNOME no la mande a otro monitor y quede por encima de ellos.
+    #[cfg(not(windows))] as_dock(&win)?;
     win.set_ignore_cursor_events(true)?;
     app.manage(Hitbox::default());
     #[cfg(windows)] poll_island(app);
