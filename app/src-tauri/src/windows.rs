@@ -3,14 +3,18 @@ use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
 pub fn create_all(app: &AppHandle) -> tauri::Result<()> {
     for (i, m) in app.available_monitors()?.iter().enumerate() {
-        let (pos, size, scale) = (m.position(), m.size(), m.scale_factor());
+        let scale = m.scale_factor();
+        // Linux: ventana normal "siempre encima", del tamaño del área libre del monitor (sin la barra superior ni el dock):
+        // así GNOME la deja en su monitor, y queda en una capa debajo de la isla (dock), que nunca puede quedar tapada.
+        #[cfg(windows)] let (pos, size) = (*m.position(), *m.size());
+        #[cfg(not(windows))] let (pos, size) = (m.work_area().position, m.work_area().size);
         let w = WebviewWindowBuilder::new(app, format!("overlay-{i}"), WebviewUrl::App(format!("overlay.html?m={i}").into()))
             .transparent(true).decorations(false).always_on_top(true).skip_taskbar(true).focused(false)
             .resizable(false).shadow(false).visible(cfg!(windows))
             .position(pos.x as f64 / scale, pos.y as f64 / scale)
             .inner_size(size.width as f64 / scale, size.height as f64 / scale)
             .build()?;
-        #[cfg(not(windows))] { as_dock(&w)?; w.show()?; }
+        #[cfg(not(windows))] { no_frame_sync(&w.gtk_window()?); w.show()?; }
         w.set_ignore_cursor_events(true)?;
         no_activate(&w);
     }
@@ -18,14 +22,24 @@ pub fn create_all(app: &AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
-/// Linux: las ventanas de Pulse que flotan (bordes, isla, Bolsillo, menú rápido) son de tipo "dock". GNOME acomoda a su
-/// gusto una ventana normal (la manda a otro monitor si no cabe junto a la barra superior y el dock) y le niega el foco
-/// cuando lo pide sola; a un dock lo deja donde se pone y sí le da el teclado. El tipo se fija antes de mostrarla.
+/// Linux: la isla, Bolsillo y el menú rápido son de tipo "dock". GNOME acomoda a su gusto una ventana normal (la manda a
+/// otro monitor si no cabe junto a la barra superior y el dock) y le niega el foco cuando lo pide sola; a un dock lo deja
+/// donde se pone y sí le da el teclado. Los bordes no: GNOME reordena los docks entre sí al cambiar el foco y podría
+/// dejar la isla debajo de ellos, sin clics y sin pintarse. El tipo se fija antes de mostrarla.
 #[cfg(not(windows))]
 fn as_dock(w: &tauri::WebviewWindow) -> tauri::Result<()> {
     use gtk::prelude::*;
-    w.gtk_window()?.set_type_hint(gtk::gdk::WindowTypeHint::Dock);
+    let g = w.gtk_window()?;
+    g.set_type_hint(gtk::gdk::WindowTypeHint::Dock);
+    no_frame_sync(&g);
     Ok(())
+}
+/// GNOME deja de avisar "cuadro mostrado" a estas ventanas (dock, o tapadas por otra transparente); con la sincronización
+/// de cuadros activa, GTK se queda esperando ese aviso y la ventana deja de pintarse a media animación. Sin ella pinta a su ritmo.
+#[cfg(not(windows))]
+fn no_frame_sync(g: &gtk::ApplicationWindow) {
+    use gtk::prelude::*;
+    if let Some(x) = g.window().and_then(|x| x.downcast::<gdkx11::X11Window>().ok()) { x.set_frame_sync_enabled(false); }
 }
 
 /// Las ventanas de borde nunca deben quedar como ventana activa (ni robar el foco ni contar como "pantalla completa").
@@ -170,7 +184,7 @@ pub fn shape_island(app: &AppHandle) {
         let Some(gdk) = w2.gtk_window().ok().and_then(|g| g.window()) else { return };
         let region = match hb {
             Some((x, y, w, h)) => Region::create_rectangle(&RectangleInt::new(x.floor() as i32, y.floor() as i32, w.ceil() as i32 + 1, h.ceil() as i32 + 1)),
-            None => Region::create(),
+            None => Region::create_rectangle(&RectangleInt::new(0, 0, 1, 1)),
         };
         gdk.input_shape_combine_region(&region, 0, 0);
     });
@@ -227,16 +241,15 @@ pub fn island_keyboard(app: &AppHandle, on: bool) {
     }
 }
 
-/// Linux: la isla pide el teclado y, al soltarlo, se oculta y vuelve a aparecer en el acto: GNOME le devuelve el teclado
-/// a la última ventana que usaste (una app no puede elegir a cuál en Wayland).
+/// Linux: la isla pide el teclado; al soltarlo no hace nada. Una app no puede devolverle el teclado a otra ventana, y
+/// ocultarla y volverla a mostrar para que GNOME lo haga la deja debajo de los bordes: sin clics y sin pintarse.
+/// El teclado vuelve a tu ventana con el siguiente clic en ella.
 /// Los clics siguen limitados al rectángulo visible (que ya incluye la paleta o la tarjeta): GNOME puede negarle el foco
 /// a una ventana que lo pide sola, y entonces nunca llega el "perdió el foco" que la cierra; con toda la franja recibiendo
 /// clics, lo que hay debajo quedaría inalcanzable.
 #[cfg(not(windows))]
 pub fn island_keyboard(app: &AppHandle, on: bool) {
-    let Some(w) = app.get_webview_window("island") else { return };
-    if on { bring_to_front(&w); }
-    else if w.is_focused().unwrap_or(false) { let _ = w.hide(); let _ = w.show(); }
+    if on { if let Some(w) = app.get_webview_window("island") { bring_to_front(&w); } }
 }
 
 /// Esquina superior izquierda de Bolsillo (lógica): en Windows sobre la barra de tareas, abajo a la derecha;

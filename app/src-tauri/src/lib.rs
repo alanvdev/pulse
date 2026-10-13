@@ -106,9 +106,12 @@ fn handle(app: &AppHandle, inc: server::Incoming) {
 
 /// Linux con Wayland: la app corre por XWayland, porque Wayland no deja que una ventana se ponga arriba de las demás
 /// ni elija su lugar (bordes, isla y Bolsillo lo necesitan). Va antes de iniciar GTK y antes de crear hilos.
+/// WebKit, con su render por dmabuf, deja de entregar cuadros a estas ventanas transparentes por XWayland en cuanto hay
+/// animaciones (la isla se congela a media transición); con memoria compartida sigue usando la GPU y no se detiene.
 #[cfg(target_os = "linux")]
 fn linux_env() {
     if std::env::var_os("WAYLAND_DISPLAY").is_some() && std::env::var_os("GDK_BACKEND").is_none() { std::env::set_var("GDK_BACKEND", "x11"); }
+    if std::env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() { std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1"); }
 }
 
 pub fn run() {
