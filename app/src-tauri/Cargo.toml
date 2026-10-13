@@ -31,5 +31,7 @@ libc = "0.2"
 # La misma versión que usa Tauri: da acceso a la ventana GTK (región de entrada de la isla).
 gtk = "0.18"
 gdkx11 = "0.18"
+# Xlib para quitarles a los bordes el protocolo WM_TAKE_FOCUS (GNOME los enfocaría). Ya viene con gdkx11; "xlib" lo enlaza.
+x11 = { version = "2.21", features = ["xlib"] }
 [dev-dependencies]
 tokio = { version = "1", features = ["net", "io-util", "sync", "time", "rt-multi-thread", "macros"] }
