@@ -10,7 +10,7 @@ pub fn create_all(app: &AppHandle) -> tauri::Result<()> {
             .position(pos.x as f64 / scale, pos.y as f64 / scale)
             .inner_size(size.width as f64 / scale, size.height as f64 / scale)
             .build()?;
-        #[cfg(not(windows))] as_dock(&w)?;
+        #[cfg(not(windows))] { as_dock(&w)?; w.show()?; }
         w.set_ignore_cursor_events(true)?;
         no_activate(&w);
     }
@@ -18,13 +18,14 @@ pub fn create_all(app: &AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
-/// Linux: GNOME no deja una ventana normal del tamaño del monitor donde no cabe (la barra superior y el dock le quitan
-/// espacio) y la manda a otro monitor. Las de tipo "dock" se quedan donde se ponen. El tipo se fija antes de mostrarla.
+/// Linux: las ventanas de Pulse que flotan (bordes, isla, Bolsillo, menú rápido) son de tipo "dock". GNOME acomoda a su
+/// gusto una ventana normal (la manda a otro monitor si no cabe junto a la barra superior y el dock) y le niega el foco
+/// cuando lo pide sola; a un dock lo deja donde se pone y sí le da el teclado. El tipo se fija antes de mostrarla.
 #[cfg(not(windows))]
 fn as_dock(w: &tauri::WebviewWindow) -> tauri::Result<()> {
     use gtk::prelude::*;
     w.gtk_window()?.set_type_hint(gtk::gdk::WindowTypeHint::Dock);
-    w.show()
+    Ok(())
 }
 
 /// Las ventanas de borde nunca deben quedar como ventana activa (ni robar el foco ni contar como "pantalla completa").
@@ -39,6 +40,25 @@ fn no_activate(w: &tauri::WebviewWindow) {
 
 #[cfg(not(windows))]
 fn no_activate(w: &tauri::WebviewWindow) { let _ = w.set_focusable(false); }
+
+/// Muestra la ventana y le da el teclado. Linux: GNOME solo le da el foco a una ventana de Pulse que ya está visible y lo
+/// pide con una hora reciente del servidor X (si no, lo toma por un robo de foco). Se muestra, y un momento después pide
+/// el foco con la hora actual del servidor.
+pub fn bring_to_front(w: &tauri::WebviewWindow) {
+    let _ = w.show();
+    #[cfg(windows)] { let _ = w.set_focus(); }
+    #[cfg(not(windows))] {
+        let w2 = w.clone();
+        let _ = w.run_on_main_thread(move || {
+            use gtk::{glib, prelude::*};
+            let Ok(g) = w2.gtk_window() else { return };
+            glib::timeout_add_local_once(std::time::Duration::from_millis(80), move || {
+                let ts = g.window().and_then(|x| x.downcast::<gdkx11::X11Window>().ok()).map(|x| gdkx11::functions::x11_get_server_time(&x));
+                match ts { Some(t) => g.present_with_time(t), None => g.present() }
+            });
+        });
+    }
+}
 
 /// Monitor donde está la ventana en primer plano (para "monitor activo").
 #[cfg(windows)]
@@ -77,7 +97,7 @@ pub fn create_island(app: &AppHandle) -> tauri::Result<()> {
     let (x, y) = saved.map(|[x, y]| (x, y)).filter(|&(x, y)| on_screen(app, x as f64 + size.width as f64 / 2.0, y as f64 + 20.0)).unwrap_or_else(|| island_home(app));
     win.set_position(tauri::PhysicalPosition::new(x, y))?;
     // Linux: tipo dock como los bordes, para que GNOME no la mande a otro monitor y quede por encima de ellos.
-    #[cfg(not(windows))] as_dock(&win)?;
+    #[cfg(not(windows))] { as_dock(&win)?; win.show()?; }
     win.set_ignore_cursor_events(true)?;
     app.manage(Hitbox::default());
     #[cfg(windows)] poll_island(app);
@@ -207,13 +227,16 @@ pub fn island_keyboard(app: &AppHandle, on: bool) {
     }
 }
 
-/// Linux: la isla pide el teclado; devolverlo a la ventana anterior queda en manos del escritorio.
+/// Linux: la isla pide el teclado y, al soltarlo, se oculta y vuelve a aparecer en el acto: GNOME le devuelve el teclado
+/// a la última ventana que usaste (una app no puede elegir a cuál en Wayland).
 /// Los clics siguen limitados al rectángulo visible (que ya incluye la paleta o la tarjeta): GNOME puede negarle el foco
 /// a una ventana que lo pide sola, y entonces nunca llega el "perdió el foco" que la cierra; con toda la franja recibiendo
 /// clics, lo que hay debajo quedaría inalcanzable.
 #[cfg(not(windows))]
 pub fn island_keyboard(app: &AppHandle, on: bool) {
-    if on { if let Some(w) = app.get_webview_window("island") { let _ = w.set_focus(); } }
+    let Some(w) = app.get_webview_window("island") else { return };
+    if on { bring_to_front(&w); }
+    else if w.is_focused().unwrap_or(false) { let _ = w.hide(); let _ = w.show(); }
 }
 
 /// Esquina superior izquierda de Bolsillo (lógica): en Windows sobre la barra de tareas, abajo a la derecha;
@@ -231,12 +254,13 @@ pub fn toggle_panel(app: &AppHandle) {
     let (l, t, r, b) = work_area(app);
     let (x, y) = panel_origin((l / scale, t / scale, r / scale, b / scale));
     let _ = win.set_position(tauri::LogicalPosition::new(x, y));
-    let _ = win.show(); let _ = win.set_focus();
+    bring_to_front(&win);
 }
 fn create_panel(app: &AppHandle) -> tauri::Result<tauri::WebviewWindow> {
     let w = WebviewWindowBuilder::new(app, "panel", WebviewUrl::App("panel.html".into()))
         .transparent(true).decorations(false).always_on_top(true).skip_taskbar(true).resizable(false).shadow(false)
         .inner_size(380.0, 580.0).visible(false).build()?;
+    #[cfg(not(windows))] as_dock(&w)?;
     let w2 = w.clone();
     w.on_window_event(move |e| if let tauri::WindowEvent::Focused(false) = e { if w2.is_visible().unwrap_or(false) { PANEL_HIDDEN_AT.store(crate::now_ms(), std::sync::atomic::Ordering::SeqCst); } let _ = w2.hide(); });
     Ok(w)
@@ -246,7 +270,7 @@ pub fn open_dashboard(app: &AppHandle, view: Option<&str>) {
     use tauri::Emitter;
     if let Some(w) = app.get_webview_window("dashboard") {
         if let Some(v) = view { let _ = app.emit_to("dashboard", "pulse://route", v); }
-        let _ = w.unminimize(); let _ = w.show(); let _ = w.set_focus(); return;
+        let _ = w.unminimize(); bring_to_front(&w); return;
     }
     let route = serde_json::to_string(view.unwrap_or("")).unwrap_or_else(|_| "\"\"".into());
     let _ = WebviewWindowBuilder::new(app, "dashboard", WebviewUrl::App("dashboard.html".into()))
@@ -270,6 +294,7 @@ pub fn create_flyout(app: &AppHandle) -> tauri::Result<()> {
     let w = WebviewWindowBuilder::new(app, "flyout", WebviewUrl::App("flyout.html".into()))
         .transparent(true).decorations(false).always_on_top(true).skip_taskbar(true).resizable(false).shadow(false)
         .inner_size(FLYOUT_W, 420.0).visible(false).build()?;
+    #[cfg(not(windows))] as_dock(&w)?;
     let w2 = w.clone();
     w.on_window_event(move |e| if let tauri::WindowEvent::Focused(false) = e {
         if w2.is_visible().unwrap_or(false) { FLYOUT_HIDDEN_AT.store(crate::now_ms(), std::sync::atomic::Ordering::SeqCst); }
@@ -295,7 +320,7 @@ pub fn toggle_flyout(app: &AppHandle, click: tauri::PhysicalPosition<f64>) {
     *FLYOUT_CLICK_X.lock().unwrap() = click.x / win.scale_factor().unwrap_or(1.0);
     place_flyout(&win);
     let _ = app.emit_to("flyout", "pulse://flyout-open", ());
-    let _ = win.show(); let _ = win.set_focus();
+    bring_to_front(&win);
 }
 /// La interfaz avisa su alto (cambia con la fila "Responder permiso"); se recoloca para que el borde de abajo no se mueva.
 pub fn fit_flyout(app: &AppHandle, height: f64) {
