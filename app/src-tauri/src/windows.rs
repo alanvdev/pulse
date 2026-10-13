@@ -72,6 +72,10 @@ pub fn create_island(app: &AppHandle) -> tauri::Result<()> {
     let win = WebviewWindowBuilder::new(app, "island", WebviewUrl::App("island.html".into()))
         .transparent(true).decorations(false).always_on_top(true).skip_taskbar(true).focused(false)
         .resizable(false).shadow(false).visible(cfg!(windows)).position(pos.x as f64 / scale, pos.y as f64 / scale).inner_size(w, h).build()?;
+    let saved = app.state::<crate::AppState>().config.lock().unwrap().island.pos;
+    // donde la dejaste, si su centro sigue cayendo en algún monitor (pudiste desconectar el que la tenía)
+    let (x, y) = saved.map(|[x, y]| (x, y)).filter(|&(x, y)| on_screen(app, x as f64 + size.width as f64 / 2.0, y as f64 + 20.0)).unwrap_or_else(|| island_home(app));
+    win.set_position(tauri::PhysicalPosition::new(x, y))?;
     // Linux: tipo dock como los bordes, para que GNOME no la mande a otro monitor y quede por encima de ellos.
     #[cfg(not(windows))] as_dock(&win)?;
     win.set_ignore_cursor_events(true)?;
@@ -79,6 +83,40 @@ pub fn create_island(app: &AppHandle) -> tauri::Result<()> {
     #[cfg(windows)] poll_island(app);
     #[cfg(not(windows))] shape_island(app);
     Ok(())
+}
+
+/// Lugar de siempre de la isla (físico): arriba del monitor principal; en Linux, bajo la barra superior de GNOME.
+fn island_home(app: &AppHandle) -> (i32, i32) {
+    let Ok(Some(m)) = app.primary_monitor() else { return (0, 0) };
+    let top = if cfg!(windows) { m.position().y } else { work_area(app).1 as i32 };
+    (m.position().x, top)
+}
+fn on_screen(app: &AppHandle, x: f64, y: f64) -> bool {
+    app.available_monitors().unwrap_or_default().iter().any(|m| { let (p, s) = (m.position(), m.size()); x >= p.x as f64 && x < p.x as f64 + s.width as f64 && y >= p.y as f64 && y < p.y as f64 + s.height as f64 })
+}
+
+/// Ctrl + arrastrar mueve la isla a cualquier lugar, en cualquier monitor: la ventana sigue al cursor desde donde empezó.
+/// (cursor al empezar, esquina de la ventana al empezar), en píxeles físicos.
+static DRAG: Mutex<Option<((f64, f64), (i32, i32))>> = Mutex::new(None);
+/// `start`, `move`, `end` (guarda la posición) o `reset` (vuelve a su lugar de siempre).
+pub fn island_drag(app: &AppHandle, phase: &str) {
+    let Some(w) = app.get_webview_window("island") else { return };
+    match phase {
+        "start" => if let (Ok(c), Ok(p)) = (app.cursor_position(), w.outer_position()) { *DRAG.lock().unwrap() = Some(((c.x, c.y), (p.x, p.y))); },
+        "move" => {
+            let d = *DRAG.lock().unwrap();
+            if let (Some(((cx, cy), (px, py))), Ok(c)) = (d, app.cursor_position()) { let _ = w.set_position(tauri::PhysicalPosition::new(px + (c.x - cx).round() as i32, py + (c.y - cy).round() as i32)); }
+        }
+        "end" => if DRAG.lock().unwrap().take().is_some() { if let Ok(p) = w.outer_position() { save_island_pos(app, Some([p.x, p.y])); } },
+        "reset" => { *DRAG.lock().unwrap() = None; let (x, y) = island_home(app); let _ = w.set_position(tauri::PhysicalPosition::new(x, y)); save_island_pos(app, None); }
+        _ => {}
+    }
+}
+fn save_island_pos(app: &AppHandle, pos: Option<[i32; 2]>) {
+    use tauri::Emitter;
+    let cfg = { let st = app.state::<crate::AppState>(); let mut c = st.config.lock().unwrap(); c.island.pos = pos; c.clone() };
+    crate::config::save(&cfg);
+    let _ = app.emit("pulse://config", &cfg);
 }
 
 /// Windows: cada 40 ms la isla deja pasar los clics o no según dónde está el cursor.

@@ -8,8 +8,10 @@ use std::{collections::BTreeMap, path::PathBuf};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "lowercase")] pub enum Theme { Dark, Light, System }
 
 #[derive(Debug, Clone, Serialize, Deserialize)] #[serde(default)]
-pub struct IslandCfg { pub mode: IslandMode, pub orb_side: Side, pub dots: bool, pub keys: bool, pub hold: bool, pub countdown: bool, pub beam: bool, pub ask_timeout_s: u32 }
-impl Default for IslandCfg { fn default() -> Self { Self { mode: IslandMode::Comando, orb_side: Side::Right, dots: true, keys: true, hold: true, countdown: true, beam: true, ask_timeout_s: 30 } } }
+pub struct IslandCfg { pub mode: IslandMode, pub orb_side: Side, pub dots: bool, pub keys: bool, pub hold: bool, pub countdown: bool, pub beam: bool, pub ask_timeout_s: u32,
+    /// Esquina de la ventana de la isla en píxeles físicos, si la moviste con Ctrl + arrastrar. `None`: arriba del monitor principal.
+    pub pos: Option<[i32; 2]> }
+impl Default for IslandCfg { fn default() -> Self { Self { mode: IslandMode::Comando, orb_side: Side::Right, dots: true, keys: true, hold: true, countdown: true, beam: true, ask_timeout_s: 30, pos: None } } }
 
 #[derive(Debug, Clone, Serialize, Deserialize)] #[serde(default)]
 pub struct PulseCfg { pub color: String, pub shape: String, pub duration_ms: u32, pub intensity: u32, pub thickness: u32, pub persistent: bool }

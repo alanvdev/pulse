@@ -134,3 +134,6 @@
 @media (prefers-reduced-motion: reduce) { .c-moon, .o-bead .ms { animation: none } }
 .qleft.urgent { justify-self: start; transform-origin: left center }
 @media (prefers-reduced-motion: reduce) { .o-btn:active, .qopt:active { transform: none } }
+
+/* Ctrl + arrastrar: la isla se mueve con el cursor */
+body.moving, body.moving * { cursor: grabbing !important; user-select: none }

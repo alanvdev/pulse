@@ -1,5 +1,5 @@
 import { listen } from '@tauri-apps/api/event';
-import { allowAll, answer, dailySummary, decide, holdQuestion, skip, getConfig, getSnapshot, forgetSessions, islandFocus, muteSession, onConfig, onFx, onState, openDashboard, setConfig, setFocus, setIslandHitbox, type Config, type DaySummary, type Fx, type Snapshot } from '../shared/bridge';
+import { allowAll, answer, dailySummary, decide, holdQuestion, skip, getConfig, getSnapshot, forgetSessions, islandDrag, islandFocus, muteSession, onConfig, onFx, onState, openDashboard, setConfig, setFocus, setIslandHitbox, type Config, type DaySummary, type Fx, type Snapshot } from '../shared/bridge';
 import { SP_MOVE, SP_OPEN, T } from '../shared/motion';
 import { mountComando } from './comando';
 import { mountOrbe, type OrbeCtx } from './orbe';
@@ -64,6 +64,32 @@ function holdBegin(id: number) { if (holdRaf) return; holdId = id; holdT0 = perf
 function holdEnd() { if (!holdRaf) return; cancelAnimationFrame(holdRaf); holdRaf = 0; setHold(0); }
 document.addEventListener('pointerdown', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('.btn[data-danger="1"]'); if (b) { e.preventDefault(); holdBegin(Number(b.dataset.id)); } });
 ['pointerup', 'pointercancel'].forEach(t => document.addEventListener(t, holdEnd));
+
+/* Ctrl + arrastrar: mueve la isla (tarjeta, pastilla u Orbe) a cualquier lugar, en cualquier monitor. Ctrl + doble clic la regresa.
+   Va en fase de captura para ganarle al arrastre del Orbe entre lados y a los botones de las tarjetas. */
+let dragging = false, dragMoved = false, dragRaf = 0;
+board.addEventListener('pointerdown', e => {
+  if (!e.ctrlKey || e.button !== 0) return;
+  e.preventDefault(); e.stopPropagation();
+  dragging = true; dragMoved = false; board.setPointerCapture(e.pointerId); document.body.classList.add('moving');
+  islandDrag('start');
+}, true);
+board.addEventListener('pointermove', e => {
+  if (!dragging) return;
+  e.stopPropagation(); dragMoved = true;
+  if (!dragRaf) dragRaf = requestAnimationFrame(() => { dragRaf = 0; islandDrag('move'); });
+}, true);
+const dragEnd = (e: PointerEvent) => {
+  if (!dragging) return;
+  e.stopPropagation(); dragging = false; document.body.classList.remove('moving');
+  cancelAnimationFrame(dragRaf); dragRaf = 0;
+  if (dragMoved) islandDrag('move').then(() => islandDrag('end')); else islandDrag('end');
+};
+board.addEventListener('pointerup', dragEnd, true);
+board.addEventListener('pointercancel', dragEnd, true);
+// el clic que termina un arrastre no es un clic sobre la tarjeta (no aprueba ni elige nada)
+board.addEventListener('click', e => { if (e.ctrlKey) { e.preventDefault(); e.stopPropagation(); } }, true);
+board.addEventListener('dblclick', e => { if (e.ctrlKey) { e.preventDefault(); e.stopPropagation(); islandDrag('reset'); } }, true);
 
 (async () => {
   [cfg, snap] = await Promise.all([getConfig(), getSnapshot()]);

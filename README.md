@@ -59,6 +59,7 @@ Además, sonidos por evento y, si tienes un teclado Razer, F1 a F3 encendidas po
 - **Responder sin ir a la terminal.** Permite o deniega desde la isla, la paleta o con atajos globales: `Ctrl+Alt+Y` permite, `Ctrl+Alt+N` deniega, `Ctrl+Alt+Espacio` abre la paleta.
 - **Nunca decide por ti.** Si nadie responde en 30 s, Pulse no hace nada y Claude pregunta en la terminal, como siempre. Los comandos delicados (`git push --force`, `rm -rf`) se aprueban manteniendo presionado.
 - **Contesta las preguntas de Claude.** Opciones, selección múltiple y respuesta libre, desde la isla.
+- **La isla va donde quieras.** `Ctrl` + arrastrar la mueve (tarjeta, pastilla u Orbe) a cualquier lugar y a cualquier monitor; se queda ahí. `Ctrl` + doble clic la regresa arriba.
 - **Modo foco.** Se activa solo en llamadas, en pantalla completa o en tu horario. Cada evento decide qué hace mientras tanto: normal, sin sonido, nada, o guardarlo para después.
 - **Invisible cuando no pasa nada.** Arranca con el primer hook y se cierra solo a los 5 minutos sin actividad.
 - **Sin depender del color.** Cada estado tiene su forma o su icono, y todo respeta *reducir movimiento* de Windows.

@@ -11,7 +11,7 @@ export type FxKind = 'start' | 'permission' | 'done' | 'idle' | 'error' | 'subag
 export interface Fx { kind: FxKind; session_id: string; project: string; slot: number; text: string; visual: boolean; sound: boolean; monitor: number }
 export interface PulseCfg { color: string; shape: string; duration_ms: number; intensity: number; thickness: number; persistent: boolean }
 export interface Config {
-  island: { mode: 'comando' | 'orbe'; orb_side: 'left' | 'center' | 'right'; dots: boolean; keys: boolean; hold: boolean; countdown: boolean; beam: boolean; ask_timeout_s: number };
+  island: { mode: 'comando' | 'orbe'; orb_side: 'left' | 'center' | 'right'; dots: boolean; keys: boolean; hold: boolean; countdown: boolean; beam: boolean; ask_timeout_s: number; pos: [number, number] | null };
   pulses: { enabled: boolean; placement: 'active' | 'all'; crisp: boolean; corners: boolean; adapt: boolean; dither: boolean; events: Record<string, PulseCfg> };
   sounds: { enabled: boolean; volume: number; per_event: Record<string, boolean> };
   focus: { auto: boolean; detect_call: boolean; detect_fullscreen: boolean; schedule: boolean; from: string; to: string; rules: Record<string, 'normal' | 'mudo' | 'nada' | 'despues'> };
@@ -38,6 +38,8 @@ export const muteSession = (sessionId: string, minutes: number) => invoke('mute_
 export const dailySummary = () => invoke<DaySummary>('daily_summary');
 export const setIslandHitbox = (rect: { x: number; y: number; w: number; h: number } | null) => invoke('set_island_hitbox', { rect });
 export const islandFocus = (on: boolean) => invoke('island_focus', { on });
+/** Ctrl + arrastrar la isla: `start`, `move`, `end` (guarda dónde quedó) o `reset` (vuelve a su lugar). */
+export const islandDrag = (phase: 'start' | 'move' | 'end' | 'reset') => invoke('island_drag', { phase });
 export const openDashboard = (view?: string) => invoke('open_dashboard', { view: view ?? null });
 export const flyoutFit = (height: number) => invoke('flyout_fit', { height });
 export const flyoutHide = () => invoke('flyout_hide');

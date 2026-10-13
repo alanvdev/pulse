@@ -40,6 +40,7 @@ use tauri::{AppHandle, Emitter, State};
 #[derive(serde::Deserialize)] pub struct Rect { x: f64, y: f64, w: f64, h: f64 }
 #[tauri::command] pub fn set_island_hitbox(app: AppHandle, hb: State<crate::windows::Hitbox>, rect: Option<Rect>) { *hb.0.lock().unwrap() = rect.map(|r| (r.x - 6.0, r.y - 6.0, r.w + 12.0, r.h + 12.0)); crate::windows::hitbox_changed(&app); }
 #[tauri::command] pub fn island_focus(app: AppHandle, on: bool) { crate::windows::island_keyboard(&app, on); }
+#[tauri::command] pub fn island_drag(app: AppHandle, phase: String) { crate::windows::island_drag(&app, &phase); }
 // Async: en Windows, crear una ventana desde un comando síncrono bloquea el hilo principal.
 #[tauri::command] pub async fn toggle_panel(app: AppHandle) { crate::windows::toggle_panel(&app) }
 #[tauri::command] pub async fn open_dashboard(app: AppHandle, view: Option<String>) { crate::windows::open_dashboard(&app, view.as_deref()) }
