@@ -6,15 +6,25 @@ pub fn create_all(app: &AppHandle) -> tauri::Result<()> {
         let (pos, size, scale) = (m.position(), m.size(), m.scale_factor());
         let w = WebviewWindowBuilder::new(app, format!("overlay-{i}"), WebviewUrl::App(format!("overlay.html?m={i}").into()))
             .transparent(true).decorations(false).always_on_top(true).skip_taskbar(true).focused(false)
-            .resizable(false).shadow(false).visible(true)
+            .resizable(false).shadow(false).visible(cfg!(windows))
             .position(pos.x as f64 / scale, pos.y as f64 / scale)
             .inner_size(size.width as f64 / scale, size.height as f64 / scale)
             .build()?;
+        #[cfg(not(windows))] as_dock(&w)?;
         w.set_ignore_cursor_events(true)?;
         no_activate(&w);
     }
     crate::windows::create_island(app)?;        // Task 4
     Ok(())
+}
+
+/// Linux: GNOME no deja una ventana normal del tamaño del monitor donde no cabe (la barra superior y el dock le quitan
+/// espacio) y la manda a otro monitor. Las de tipo "dock" se quedan donde se ponen. El tipo se fija antes de mostrarla.
+#[cfg(not(windows))]
+fn as_dock(w: &tauri::WebviewWindow) -> tauri::Result<()> {
+    use gtk::prelude::*;
+    w.gtk_window()?.set_type_hint(gtk::gdk::WindowTypeHint::Dock);
+    w.show()
 }
 
 /// Las ventanas de borde nunca deben quedar como ventana activa (ni robar el foco ni contar como "pantalla completa").
@@ -88,21 +98,19 @@ fn poll_island(app: &AppHandle) {
     } });
 }
 
-/// Linux: la isla solo recibe clics dentro del rectángulo que reporta la interfaz (región de entrada de la ventana),
-/// o en toda la ventana mientras tiene el teclado. El resto deja pasar los clics a lo que esté debajo.
+/// Linux: la isla solo recibe clics dentro del rectángulo que reporta la interfaz (región de entrada de la ventana).
+/// El resto deja pasar los clics a lo que esté debajo.
 #[cfg(not(windows))]
 pub fn shape_island(app: &AppHandle) {
     use gtk::{cairo::{RectangleInt, Region}, prelude::*};
     let Some(w) = app.get_webview_window("island") else { return };
     let hb = *app.state::<Hitbox>().0.lock().unwrap();
-    let all = !ISLAND_IGNORES.load(std::sync::atomic::Ordering::SeqCst);
     let w2 = w.clone();
     let _ = w.run_on_main_thread(move || {
         let Some(gdk) = w2.gtk_window().ok().and_then(|g| g.window()) else { return };
-        let region = match (all, hb) {
-            (true, _) => Region::create_rectangle(&RectangleInt::new(0, 0, i32::MAX / 2, i32::MAX / 2)),
-            (false, Some((x, y, w, h))) => Region::create_rectangle(&RectangleInt::new(x.floor() as i32, y.floor() as i32, w.ceil() as i32 + 1, h.ceil() as i32 + 1)),
-            (false, None) => Region::create(),
+        let region = match hb {
+            Some((x, y, w, h)) => Region::create_rectangle(&RectangleInt::new(x.floor() as i32, y.floor() as i32, w.ceil() as i32 + 1, h.ceil() as i32 + 1)),
+            None => Region::create(),
         };
         gdk.input_shape_combine_region(&region, 0, 0);
     });
@@ -127,6 +135,7 @@ fn work_area(app: &AppHandle) -> (f64, f64, f64, f64) {
 /// Momento en que el panel se ocultó por perder el foco: el clic en la bandeja que lo provocó no debe volver a abrirlo.
 static PANEL_HIDDEN_AT: std::sync::atomic::AtomicI64 = std::sync::atomic::AtomicI64::new(0);
 /// Si la isla deja pasar los clics ahora mismo. Lo comparten el ciclo de 40 ms y `island_keyboard`.
+#[cfg(windows)]
 static ISLAND_IGNORES: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
 /// Ventana que tenía el teclado antes de que la isla lo tomara (paleta, "Otra…").
 #[cfg(windows)]
@@ -158,11 +167,12 @@ pub fn island_keyboard(app: &AppHandle, on: bool) {
     }
 }
 
-/// Linux: la isla toma el teclado o lo suelta; devolverlo a la ventana anterior queda en manos del escritorio.
+/// Linux: la isla pide el teclado; devolverlo a la ventana anterior queda en manos del escritorio.
+/// Los clics siguen limitados al rectángulo visible (que ya incluye la paleta o la tarjeta): GNOME puede negarle el foco
+/// a una ventana que lo pide sola, y entonces nunca llega el "perdió el foco" que la cierra; con toda la franja recibiendo
+/// clics, lo que hay debajo quedaría inalcanzable.
 #[cfg(not(windows))]
 pub fn island_keyboard(app: &AppHandle, on: bool) {
-    ISLAND_IGNORES.store(!on, std::sync::atomic::Ordering::SeqCst);
-    shape_island(app);
     if on { if let Some(w) = app.get_webview_window("island") { let _ = w.set_focus(); } }
 }
 

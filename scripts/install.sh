@@ -17,6 +17,20 @@ fi
 pkill -x pulse-app 2>/dev/null || true
 mkdir -p "$dest"
 install -m 755 "$root/target/release/pulse" "$root/target/release/pulse-app" "$dest/"
+install -m 644 "$root/assets/icon.png" "$dest/icon.png"
+# Sin esto GNOME muestra un engrane en el dock: reconoce la ventana por su clase (pulse-app) y busca su ícono aquí.
+apps="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
+mkdir -p "$apps"
+cat > "$apps/pulse.desktop" <<DESKTOP
+[Desktop Entry]
+Type=Application
+Name=Pulse
+Comment=Lo que hace Claude Code, fuera de la terminal
+Exec="$dest/pulse-app"
+Icon=$dest/icon.png
+StartupWMClass=pulse-app
+Categories=Development;
+DESKTOP
 echo "Pulse instalado en $dest"
 for d in "${dirs[@]}"; do node "$root/scripts/linux-setup.mjs" hooks-add "$d/settings.json" "$dest/pulse"; done
 node "$root/scripts/linux-setup.mjs" keys-add "$dest/pulse"

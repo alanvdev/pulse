@@ -9,5 +9,5 @@ dirs=("$@"); [ ${#dirs[@]} -gt 0 ] || dirs=("${CLAUDE_CONFIG_DIR:-$HOME/.claude}
 pkill -x pulse-app 2>/dev/null || true
 for d in "${dirs[@]}"; do node "$root/scripts/linux-setup.mjs" hooks-remove "$d/settings.json"; done
 node "$root/scripts/linux-setup.mjs" keys-remove
-rm -f "$dest/pulse" "$dest/pulse-app"; rmdir "$dest" 2>/dev/null || true
+rm -f "$dest/pulse" "$dest/pulse-app" "$dest/icon.png" "${XDG_DATA_HOME:-$HOME/.local/share}/applications/pulse.desktop"; rmdir "$dest" 2>/dev/null || true
 echo "Pulse desinstalado."
