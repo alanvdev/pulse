@@ -1,5 +1,5 @@
 mod pipe;
-use std::{io::Read, time::Duration};
+use std::{io::Read, thread, time::Duration};
 use pulse_protocol::*;
 
 fn now_ms() -> i64 { std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0) }
@@ -17,9 +17,21 @@ fn read_envelope(ask: bool) -> Result<Option<Envelope>, String> { Ok(stamped(&re
 
 fn app_path() -> Option<std::path::PathBuf> { std::env::current_exe().ok().map(|p| p.with_file_name(if cfg!(windows) { "pulse-app.exe" } else { "pulse-app" })) }
 
+/// Tope duro: pase lo que pase (un `connect` que no vuelve, una app trabada), el proceso sale con 0 a los `ms`.
+fn deadline(ms: u64) { thread::spawn(move || { thread::sleep(Duration::from_millis(ms)); std::process::exit(0); }); }
+
+/// Lo que `pulse ask` espera un permiso: el "Tiempo para responder" de config.json más un margen, porque la app
+/// contesta "nada" justo al vencer su plazo. El hook `PermissionRequest` se registra con 130 s, más que el máximo.
+fn ask_wait() -> Duration {
+    let cfg = data_dir().and_then(|d| std::fs::read_to_string(d.join("config.json")).ok()).unwrap_or_default();
+    Duration::from_secs(ask_timeout_from_config(&cfg) + 2)
+}
+
 fn emit() -> Result<(), String> {
     let Some(env) = read_envelope(false)? else { return Ok(()) };
-    pipe::send_line(&endpoint(), &(serde_json::to_string(&env).map_err(|e| e.to_string())? + "\n"), app_path().as_deref())
+    // `SessionEnd` con Pulse cerrado no lo abre: no hay nada que mostrar
+    let app = if wakes_app(&env.event) { app_path() } else { None };
+    pipe::send_line(&endpoint(), &(serde_json::to_string(&env).map_err(|e| e.to_string())? + "\n"), app.as_deref())
 }
 
 fn ask() -> Result<(), String> {
@@ -40,7 +52,9 @@ fn ask() -> Result<(), String> {
         return pipe::send_line(&endpoint(), &(serde_json::to_string(&env).map_err(|e| e.to_string())? + "\n"), app_path().as_deref());
     }
     let line = serde_json::to_string(&env).map_err(|e| e.to_string())? + "\n";
-    let reply = pipe::request(&endpoint(), &line, app_path().as_deref(), Duration::from_secs(ASK_TIMEOUT_S + 2));
+    let wait = ask_wait();
+    deadline(wait.as_millis() as u64 + 4_000);   // 3 s para que arranque la app y un poco más; sigue por debajo de los 130 s del hook
+    let reply = pipe::request(&endpoint(), &line, app_path().as_deref(), wait);
     let decision = reply.and_then(|r| serde_json::from_str::<Reply>(&r).ok()).map(|r| r.decision).unwrap_or(Decision::None);
     if let Some(out) = permission_output(decision) { println!("{out}"); }
     Ok(())
@@ -53,6 +67,11 @@ fn key(action: Option<String>) -> Result<(), String> {
 }
 
 fn main() {
+    match std::env::args().nth(1).as_deref() {
+        Some("emit" | "key") => deadline(3_500),   // la regla: `pulse emit` tarda menos de 4 s
+        Some("ask") => deadline((QUESTION_MAX_WAIT_S + 4) * 1000),   // el hook de preguntas se registra con 310 s
+        _ => {}
+    }
     let r = match std::env::args().nth(1).as_deref() {
         Some("emit") => emit(),
         Some("ask") => ask(),

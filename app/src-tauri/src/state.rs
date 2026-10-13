@@ -80,7 +80,7 @@ impl Store {
             PulseEvent::Idle => { set(s, SessionState::IdleWait); (Some(Cue::Idle), None) }
             PulseEvent::Done => { set(s, SessionState::Done); s.subagents = 0; (Some(Cue::Done), Some("Terminó".into())) }
             PulseEvent::Error { message } => { s.last = format!("Falló: {message}"); (Some(Cue::Error), Some(format!("Error {message}"))) }
-            PulseEvent::SubagentStart { agent } => { s.subagents += 1; set(s, SessionState::Working); (None, Some(format!("Agent {agent}"))) }
+            PulseEvent::SubagentStart { agent } => { s.subagents += 1; if s.state != SessionState::Waiting { set(s, SessionState::Working); } (None, Some(format!("Agent {agent}"))) }
             PulseEvent::SubagentStop { agent } => { s.subagents = s.subagents.saturating_sub(1); (Some(Cue::Subagent), Some(format!("Agent terminó: {agent}"))) }
         };
         if let Some(text) = feed {
@@ -93,7 +93,7 @@ impl Store {
     pub fn add_pending(&mut self, id: u64, e: &Envelope, timeout_ms: i64) {
         let base = |kind: &str, tool: &str, command: String, description: String, danger: bool, questions: Option<serde_json::Value>| Pending { id, kind: kind.into(), session_id: e.session_id.clone(), project: e.project.clone(), tool: tool.into(), command, description, danger, at_ms: e.at_ms, timeout_ms, deadline_ms: e.at_ms + timeout_ms, paused: false, left_ms: timeout_ms, questions };
         match &e.event {
-            PulseEvent::Permission { tool, command, description } => self.pending.push(base("permission", tool, command.clone(), description.clone(), is_dangerous(command), None)),
+            PulseEvent::Permission { tool, command, description, dangerous } => self.pending.push(base("permission", tool, command.clone(), description.clone(), *dangerous || is_dangerous(command), None)),
             PulseEvent::Question { questions } => self.pending.push(base("question", "AskUserQuestion", first_question(questions), String::new(), false, Some(questions.clone()))),
             _ => {}
         }
@@ -101,6 +101,8 @@ impl Store {
 
     /// El primer permiso de verdad (los atajos Ctrl+Alt+Y/N no contestan preguntas).
     pub fn first_permission(&self) -> Option<&Pending> { self.pending.iter().find(|p| p.kind == "permission") }
+    /// Permisos que "Aprobar todo" puede aprobar: con `hold`, los delicados quedan fuera (solo se aprueban manteniendo).
+    pub fn allowable(&self, hold: bool) -> Vec<u64> { self.pending.iter().filter(|p| p.kind == "permission" && !(hold && p.danger)).map(|p| p.id).collect() }
 
     /// Fija el proyecto de la sesión en su carpeta raíz: Claude hace `cd` a subcarpetas y el `cwd` del hook cambia.
     /// La raíz es el `cwd` más corto visto que contiene a los demás.
@@ -113,17 +115,27 @@ impl Store {
         e
     }
 
-    pub fn resolve(&mut self, id: u64) -> Option<Pending> {
+    /// Quita un pendiente. `to_terminal`: nadie lo contestó en Pulse (venció o lo saltaste) y Claude lo pregunta ahora en la
+    /// terminal, así que la sesión te espera; si no, sigue trabajando. Su siguiente herramienta la regresa a "trabajando".
+    pub fn resolve(&mut self, id: u64, to_terminal: bool, now_ms: i64) -> Option<Pending> {
         let i = self.pending.iter().position(|p| p.id == id)?;
         let p = self.pending.remove(i);
-        if let Some(s) = self.sessions.get_mut(&p.session_id) { if !self.pending.iter().any(|q| q.session_id == p.session_id) { s.state = SessionState::Working; } }
+        if let Some(s) = self.sessions.get_mut(&p.session_id) {
+            if !self.pending.iter().any(|q| q.session_id == p.session_id) {
+                let st = if to_terminal { SessionState::IdleWait } else { SessionState::Working };
+                if s.state != st { s.state = st; s.since_ms = now_ms; }
+                if to_terminal { s.last = format!("{} en la terminal: {}", if p.kind == "question" { "Te pregunta" } else { "Te espera" }, p.command); }
+            }
+        }
         Some(p)
     }
 
     /// Permisos de la sesión de `e` que ya se respondieron en la terminal: si Claude siguió (empezó otro turno, terminó,
-    /// falló, quedó esperando), ya no espera a la isla. Las herramientas no cuentan: pueden correr en paralelo al permiso.
+    /// quedó esperando), ya no espera a la isla. Herramientas, errores y subagentes no cuentan: corren en paralelo al
+    /// permiso (los subagentes comparten la sesión de quien los lanzó).
     pub fn answered_elsewhere(&self, e: &Envelope) -> Vec<u64> {
-        if matches!(e.event, PulseEvent::Permission { .. } | PulseEvent::Question { .. } | PulseEvent::Plan | PulseEvent::Tool { .. } | PulseEvent::SessionStart | PulseEvent::SubagentStart { .. }) { return Vec::new(); }
+        if matches!(e.event, PulseEvent::Permission { .. } | PulseEvent::Question { .. } | PulseEvent::Plan | PulseEvent::Tool { .. } | PulseEvent::SessionStart
+            | PulseEvent::SubagentStart { .. } | PulseEvent::SubagentStop { .. } | PulseEvent::Error { .. }) { return Vec::new(); }
         self.pending.iter().filter(|p| p.session_id == e.session_id).map(|p| p.id).collect()
     }
 
@@ -183,6 +195,9 @@ impl Store {
         self.pending.iter().filter(|p| p.session_id == session_id).map(|p| p.id).collect()
     }
 
+    /// Algo de Pulse está abierto (Bolsillo, Mosaico): el autocierre vuelve a contar desde ahora.
+    pub fn touch(&mut self, now_ms: i64) { self.last_event_ms = self.last_event_ms.max(now_ms); }
+
     pub fn should_exit(&mut self, now_ms: i64) -> bool {
         let mut freed_at = self.last_event_ms;
         self.sessions.retain(|_, s| { let alive = now_ms - s.last_event_ms < STALE_SESSION_MS; if !alive { freed_at = freed_at.max(s.last_event_ms + STALE_SESSION_MS); } alive });
@@ -201,7 +216,7 @@ mod tests {
     use super::*;
     use pulse_protocol::{Envelope, PulseEvent};
     fn env(sid: &str, at: i64, event: PulseEvent) -> Envelope { Envelope { v: 1, session_id: sid.into(), project: format!("p-{sid}"), cwd: String::new(), at_ms: at, ask: false, owner: Default::default(), event } }
-    fn perm(sid: &str, at: i64, cmd: &str) -> Envelope { env(sid, at, PulseEvent::Permission { tool: "Bash".into(), command: cmd.into(), description: String::new() }) }
+    fn perm(sid: &str, at: i64, cmd: &str) -> Envelope { env(sid, at, PulseEvent::Permission { tool: "Bash".into(), command: cmd.into(), description: String::new(), dangerous: false }) }
 
     #[test] fn lifecycle_of_a_session() {
         let mut s = Store::default();
@@ -237,8 +252,32 @@ mod tests {
         let p = &s.snapshot().pending[0];
         assert!(p.danger && p.id == 7 && p.timeout_ms == 30_000);
         assert_eq!(s.aggregate(), SessionState::Waiting);
-        assert_eq!(s.resolve(7).unwrap().command, "git push --force");
+        assert_eq!(s.resolve(7, false, 20).unwrap().command, "git push --force");
         assert!(s.snapshot().pending.is_empty());
+        assert_eq!(s.snapshot().sessions[0].state, SessionState::Working);
+    }
+    #[test] fn approve_all_leaves_delicate_ones_when_holding() {
+        let mut s = Store::default();
+        for (id, sid, cmd) in [(1, "a", "rm -rf node_modules"), (2, "b", "npm test")] { let e = perm(sid, 0, cmd); s.apply(&e); s.add_pending(id, &e, 30_000); }
+        assert_eq!(s.allowable(true), vec![2]);
+        assert_eq!(s.allowable(false), vec![1, 2]);
+    }
+    #[test] fn danger_carried_from_the_whole_command_counts() {
+        let mut s = Store::default();
+        let e = env("a", 0, PulseEvent::Permission { tool: "Bash".into(), command: "npm ci && npm run build".into(), description: String::new(), dangerous: true });
+        s.apply(&e); s.add_pending(1, &e, 30_000);
+        assert!(s.snapshot().pending[0].danger);
+    }
+    #[test] fn unanswered_permission_leaves_the_session_waiting_in_the_terminal() {
+        let mut s = Store::default();
+        let e = perm("a", 0, "npm test");
+        s.apply(&e); s.add_pending(1, &e, 30_000);
+        s.resolve(1, true, 30_000);
+        let a = s.snapshot().sessions[0].clone();
+        assert_eq!((a.state, a.last.as_str(), a.since_ms), (SessionState::IdleWait, "Te espera en la terminal: npm test", 30_000));
+        assert_eq!(s.summary(), "Pulse · 1 te necesita");
+        // contestas en la terminal: la siguiente herramienta la regresa a "trabajando"
+        s.apply(&env("a", 40_000, PulseEvent::Tool { tool: "Bash".into(), target: "npm test".into() }));
         assert_eq!(s.snapshot().sessions[0].state, SessionState::Working);
     }
     fn question(sid: &str, at: i64, ask: bool) -> Envelope { let mut e = env(sid, at, PulseEvent::Question { questions: serde_json::json!([{ "question": "¿Qué framework?", "header": "Framework", "options": [], "multiSelect": false }]) }); e.ask = ask; e }
@@ -296,6 +335,16 @@ mod tests {
         assert_eq!(s.answered_elsewhere(&env("a", 2, PulseEvent::Done)), vec![3]);
         assert_eq!(s.answered_elsewhere(&env("a", 2, PulseEvent::Start { prompt: "x".into() })), vec![3]);
         assert!(s.answered_elsewhere(&env("c", 2, PulseEvent::Done)).is_empty());
+        // subagentes en paralelo que terminan o herramientas que fallan no contestan el permiso de otro
+        assert!(s.answered_elsewhere(&env("a", 3, PulseEvent::SubagentStop { agent: "Explore".into() })).is_empty());
+        assert!(s.answered_elsewhere(&env("a", 3, PulseEvent::Error { message: "exit 1".into() })).is_empty());
+    }
+    #[test] fn a_subagent_starting_keeps_the_session_waiting() {
+        let mut s = Store::default();
+        let e = perm("a", 0, "ls");
+        s.apply(&e); s.add_pending(1, &e, 30_000);
+        s.apply(&env("a", 1, PulseEvent::SubagentStart { agent: "Explore".into() }));
+        assert_eq!(s.snapshot().sessions[0].state, SessionState::Waiting);
     }
     #[test] fn pending_expire_after_timeout() {
         let mut s = Store::default();
@@ -352,6 +401,11 @@ mod tests {
         let mut fresh = Store::new(50_000);
         assert!(!fresh.should_exit(50_000 + 1_000));
         assert!(fresh.should_exit(50_000 + IDLE_EXIT_MS));
+        // con Mosaico o Bolsillo abiertos la cuenta vuelve a empezar
+        let mut open = Store::new(0);
+        open.touch(IDLE_EXIT_MS - 1);
+        assert!(!open.should_exit(IDLE_EXIT_MS + 1_000));
+        assert!(open.should_exit(2 * IDLE_EXIT_MS - 1));
     }
     #[test] fn forget_drops_the_session_until_its_next_event() {
         let mut s = Store::default();
@@ -366,7 +420,7 @@ mod tests {
         assert_eq!(s.forget("a", 10_000), vec![1]);
         assert_eq!(s.forget("a", 10_000), Vec::<u64>::new());
         assert_eq!(s.snapshot().sessions.len(), 1);
-        assert_eq!(s.resolve(1).map(|p| p.id), Some(1));
+        assert_eq!(s.resolve(1, false, 10_000).map(|p| p.id), Some(1));
         s.forget("b", 10_000);
         assert!(!s.should_exit(10_000 + IDLE_EXIT_MS - 1));
         assert!(s.should_exit(10_000 + IDLE_EXIT_MS));

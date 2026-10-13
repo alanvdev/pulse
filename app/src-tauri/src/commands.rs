@@ -6,7 +6,9 @@ use tauri::{AppHandle, Emitter, State};
 #[tauri::command] pub fn get_config(st: State<AppState>) -> Config { st.config.lock().unwrap().clone() }
 #[tauri::command] pub fn set_config(app: AppHandle, st: State<AppState>, config: Config) {
     config::save(&config);
+    let was = st.config.lock().unwrap().keyboard.enabled;
     *st.config.lock().unwrap() = config.clone();
+    if !was && config.keyboard.enabled { crate::chroma::start(&app); }   // encender Razer Chroma sin reiniciar Pulse
     let _ = app.emit("pulse://config", &config);
 }
 #[tauri::command] pub fn decide(app: AppHandle, id: u64, allow: bool) { resolve(&app, id, if allow { Decision::Allow } else { Decision::Deny }); }
@@ -15,8 +17,11 @@ use tauri::{AppHandle, Emitter, State};
 #[tauri::command] pub fn hold_question(app: AppHandle, st: State<AppState>, id: u64, on: bool) { st.store.lock().unwrap().pause(id, on, now_ms()); broadcast(&app); }
 /// Deja la pregunta para la terminal (no decide nada).
 #[tauri::command] pub fn skip(app: AppHandle, id: u64) { crate::resolve_as(&app, id, Decision::None, "skip"); }
+/// Aprueba los permisos que esperan, menos los delicados si el ajuste pide mantener: esos solo se aprueban manteniendo
+/// «Mantener» en su tarjeta (la paleta y el "Aprobar todo" del Orbe no se lo saltan).
 #[tauri::command] pub fn allow_all(app: AppHandle, st: State<AppState>) {
-    let ids: Vec<u64> = st.store.lock().unwrap().snapshot().pending.iter().filter(|p| p.kind == "permission").map(|p| p.id).collect();
+    let hold = st.config.lock().unwrap().island.hold;   // se suelta antes de tomar el del estado
+    let ids = st.store.lock().unwrap().allowable(hold);
     for id in ids { resolve(&app, id, Decision::Allow); }
 }
 #[tauri::command] pub fn set_focus(app: AppHandle, st: State<AppState>, on: bool) {
@@ -34,9 +39,10 @@ use tauri::{AppHandle, Emitter, State};
 /// Quitar de Pulse a mano (sesiones que ya cerraste o que no quieres ver). Vuelven con su siguiente evento.
 #[tauri::command] pub fn forget_sessions(app: AppHandle, ids: Vec<String>) { crate::forget(&app, &ids); }
 
-/// Async: leen todo log.jsonl y no deben frenar el hilo principal (ahí también viaja la isla).
-#[tauri::command] pub async fn log_today() -> Vec<crate::logbook::LogItem> { crate::logbook::today(crate::logbook::TODAY_LIMIT) }
-#[tauri::command] pub async fn daily_summary() -> crate::daylog::DaySummary { crate::daylog::today() }
+/// Async: leen log.jsonl y no deben frenar el hilo principal (ahí también viaja la isla); en un hilo aparte para no
+/// ocupar los que atienden los hooks y el vencimiento de permisos.
+#[tauri::command] pub async fn log_today() -> Vec<crate::logbook::LogItem> { tauri::async_runtime::spawn_blocking(|| crate::logbook::today(crate::logbook::TODAY_LIMIT)).await.unwrap_or_default() }
+#[tauri::command] pub async fn daily_summary() -> crate::daylog::DaySummary { tauri::async_runtime::spawn_blocking(crate::daylog::today).await.unwrap_or_default() }
 #[derive(serde::Deserialize)] pub struct Rect { x: f64, y: f64, w: f64, h: f64 }
 #[tauri::command] pub fn set_island_hitbox(app: AppHandle, hb: State<crate::windows::Hitbox>, rect: Option<Rect>) { *hb.0.lock().unwrap() = rect.map(|r| (r.x - 6.0, r.y - 6.0, r.w + 12.0, r.h + 12.0)); crate::windows::hitbox_changed(&app); }
 #[tauri::command] pub fn island_focus(app: AppHandle, on: bool) { crate::windows::island_keyboard(&app, on); }

@@ -1,11 +1,13 @@
 use crate::AppState;
-use std::sync::{Mutex, OnceLock};
+use std::sync::{atomic::{AtomicBool, Ordering}, Mutex, OnceLock};
 use tauri::{AppHandle, Manager};
 
 const ROWS: usize = 6; const COLS: usize = 22;
 pub struct KeyFx { pub shape: String, pub color: [u8; 3], pub intensity: f32, pub start_ms: i64, pub dur_ms: i64, pub ox: f32, pub oy: f32, pub left: bool }
 static URI: OnceLock<Mutex<Option<String>>> = OnceLock::new();
 static FX: OnceLock<Mutex<Vec<KeyFx>>> = OnceLock::new();
+/// Ya hay un hilo hablando con Chroma: encenderlo otra vez en Ajustes no abre otro.
+static STARTED: AtomicBool = AtomicBool::new(false);
 fn uri() -> &'static Mutex<Option<String>> { URI.get_or_init(|| Mutex::new(None)) }
 fn fxs() -> &'static Mutex<Vec<KeyFx>> { FX.get_or_init(|| Mutex::new(Vec::new())) }
 
@@ -41,13 +43,16 @@ pub fn grid(base: [u8; 3], level: f32, fx: &[KeyFx], waiting: &[(u8, [u8; 3])], 
 
 fn put(path: &str, body: serde_json::Value) { if let Some(u) = uri().lock().unwrap().clone() { let _ = ureq::put(&format!("{u}{path}")).send_json(body); } }
 
+/// Se llama al arrancar y al encender "Razer Chroma" en Ajustes. El SDK REST de Chroma solo existe en Windows.
 pub fn start(app: &AppHandle) {
-    if !app.state::<AppState>().config.lock().unwrap().keyboard.enabled { return; }
+    if cfg!(not(windows)) || !app.state::<AppState>().config.lock().unwrap().keyboard.enabled { return; }
+    if STARTED.swap(true, Ordering::SeqCst) { return; }
     let a = app.clone();
     std::thread::spawn(move || {
         let init = serde_json::json!({ "title": "Pulse", "description": "Avisos de Claude Code", "author": { "name": "Pulse", "contact": "local" }, "device_supported": ["keyboard"], "category": "application" });
-        let Ok(resp) = ureq::post("http://localhost:54235/razer/chromasdk").send_json(init) else { return };   // Chroma no instalado: no hacer nada
-        let Ok(v) = resp.into_json::<serde_json::Value>() else { return };
+        // Chroma no instalado o sin responder: no hacer nada; el siguiente "encender" lo vuelve a intentar
+        let Ok(resp) = ureq::post("http://localhost:54235/razer/chromasdk").send_json(init) else { STARTED.store(false, Ordering::SeqCst); return };
+        let Ok(v) = resp.into_json::<serde_json::Value>() else { STARTED.store(false, Ordering::SeqCst); return };
         *uri().lock().unwrap() = v["uri"].as_str().map(str::to_string);
         std::thread::sleep(std::time::Duration::from_millis(500));   // Chroma necesita un momento tras el init
         let mut last_beat = std::time::Instant::now();
@@ -69,6 +74,7 @@ pub fn start(app: &AppHandle) {
 }
 
 pub fn pulse(app: &AppHandle, kind: &str, slot: u8) {
+    if uri().lock().unwrap().is_none() { return; }   // sin Chroma (siempre en Linux) nadie vaciaría la cola de efectos
     let cfg = app.state::<AppState>().config.lock().unwrap().clone();
     if !cfg.keyboard.enabled { return; }
     let Some(p) = cfg.pulses.events.get(kind) else { return };

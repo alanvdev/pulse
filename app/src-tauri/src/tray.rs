@@ -80,7 +80,11 @@ pub fn create(app: &AppHandle, on_left_click: fn(&AppHandle), on_right_click: fn
     #[cfg(not(windows))]
     let builder = {
         use tauri::menu::{MenuBuilder, MenuItem, PredefinedMenuItem};
+        // AppIndicator no tiene tooltip: el resumen ("Pulse · 1 te necesita") va como primera línea del menú, sin clic
+        let summary = MenuItem::with_id(app, "summary", "Pulse · sin sesiones", false, None::<&str>)?;
         let menu = MenuBuilder::new(app)
+            .item(&summary)
+            .item(&PredefinedMenuItem::separator(app)?)
             .item(&MenuItem::with_id(app, "panel", "Bolsillo", true, None::<&str>)?)
             .item(&MenuItem::with_id(app, "flyout", "Menú rápido", true, None::<&str>)?)
             .item(&MenuItem::with_id(app, "palette", "Responder permiso", true, None::<&str>)?)
@@ -88,6 +92,7 @@ pub fn create(app: &AppHandle, on_left_click: fn(&AppHandle), on_right_click: fn
             .item(&PredefinedMenuItem::separator(app)?)
             .item(&MenuItem::with_id(app, "quit", "Salir", true, None::<&str>)?)
             .build()?;
+        { use tauri::Manager; app.manage(Summary(summary)); }
         builder.menu(&menu).on_menu_event(move |a, e| match e.id().as_ref() {
             "panel" => on_left_click(a),
             "flyout" => on_right_click(a, PhysicalPosition::new(0.0, 0.0)),
@@ -107,12 +112,19 @@ pub fn create(app: &AppHandle, on_left_click: fn(&AppHandle), on_right_click: fn
         .build(app)?;
     Ok(())
 }
+/// La primera línea del menú de la bandeja en Linux: el mismo resumen que el tooltip de Windows.
+#[cfg(not(windows))]
+struct Summary(tauri::menu::MenuItem<tauri::Wry>);
+/// Último resumen puesto: igual que el ícono, solo se cambia si cambió.
+static LAST_TIP: Mutex<String> = Mutex::new(String::new());
 pub fn update(app: &AppHandle, sessions: &[Session], tip: &str) {
     let Some(t) = app.tray_by_id(TRAY_ID) else { return };
     let dots = tray_dots(sessions, LIGHT_BAR.load(std::sync::atomic::Ordering::SeqCst));
     let changed = { let mut last = LAST.lock().unwrap(); if *last != dots { *last = dots.clone(); true } else { false } };
     if changed { let _ = t.set_icon(Some(icon(&dots))); }
+    { let mut last = LAST_TIP.lock().unwrap(); if *last == tip { return; } *last = tip.to_string(); }
     let _ = t.set_tooltip(Some(tip));
+    #[cfg(not(windows))] { use tauri::Manager; if let Some(s) = app.try_state::<Summary>() { let _ = s.0.set_text(tip); } }
 }
 #[cfg(test)]
 mod tests { use super::*; use crate::state::{Session, SessionState};

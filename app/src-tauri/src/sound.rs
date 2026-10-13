@@ -5,17 +5,32 @@ static START: &[u8] = include_bytes!("../../../assets/sounds/start.wav");
 static PERMISSION: &[u8] = include_bytes!("../../../assets/sounds/permission.wav");
 static DONE: &[u8] = include_bytes!("../../../assets/sounds/done.wav");
 static IDLE: &[u8] = include_bytes!("../../../assets/sounds/idle.wav");
+/// Linux: la salida se cierra tras unos segundos sin sonar, así PipeWire suspende la tarjeta (sin zumbido ni consumo) y
+/// Pulse no aparece siempre "reproduciendo" en Ajustes › Sonido. Más que el sonido más largo (menos de 2 s).
+/// En Windows se queda abierta, como siempre.
+#[cfg(not(windows))] const IDLE_CLOSE: Option<Duration> = Some(Duration::from_secs(8));
+#[cfg(windows)] const IDLE_CLOSE: Option<Duration> = None;
 pub struct Player { tx: mpsc::Sender<(Cue, f32)> }
 impl Player {
     pub fn start() -> Player {
         let (tx, rx) = mpsc::channel::<(Cue, f32)>();
         std::thread::spawn(move || {
-            let Ok((_stream, handle)) = OutputStream::try_default() else { return };
+            // La salida se abre al arrancar; si falla (PipeWire aún no está), se reintenta con el siguiente sonido.
+            let mut out = OutputStream::try_default().ok();
+            let mut used = Instant::now();
             let mut last: HashMap<&'static str, Instant> = HashMap::new();
-            for (cue, vol) in rx {
+            loop {
+                let (cue, vol) = match rx.recv_timeout(Duration::from_secs(1)) {
+                    Ok(m) => m,
+                    Err(mpsc::RecvTimeoutError::Timeout) => { if IDLE_CLOSE.is_some_and(|d| used.elapsed() > d) { out = None; } continue; }
+                    Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                };
                 if last.get(cue.key()).is_some_and(|t| t.elapsed() < Duration::from_millis(300)) { continue; }
                 last.insert(cue.key(), Instant::now());
-                let Ok(sink) = Sink::try_new(&handle) else { continue };
+                if out.is_none() { out = OutputStream::try_default().ok(); }
+                let Some((_, handle)) = out.as_ref() else { continue };
+                used = Instant::now();
+                let Ok(sink) = Sink::try_new(handle) else { out = None; continue };
                 let wav = |b: &'static [u8]| Decoder::new(Cursor::new(b)).ok().map(|d| d.amplify(vol));
                 let tone = |f: f32, ms: u64, g: f32| SineWave::new(f).take_duration(Duration::from_millis(ms)).amplify(g * vol);
                 match cue {

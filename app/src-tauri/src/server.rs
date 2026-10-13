@@ -27,8 +27,15 @@ mod imp {
 mod imp {
     use tokio::net::UnixListener;
     pub type Listener = UnixListener;
-    /// Una sola instancia: si alguien ya contesta en el socket, falla. Un archivo viejo sin nadie detrás se borra.
+    /// El candado de `<socket>.lock`: se queda abierto mientras viva la app y el sistema lo suelta al salir (aun con un pánico).
+    static LOCK: std::sync::OnceLock<std::fs::File> = std::sync::OnceLock::new();
+    /// Una sola instancia. Dos hooks a la vez lanzan dos apps: el candado decide cuál se queda, así la otra no puede
+    /// borrar el socket vivo de la primera. Si alguien ya contesta en el socket, falla; un archivo viejo sin nadie detrás se borra.
     pub fn create_first(name: &str) -> std::io::Result<Listener> {
+        use std::os::fd::AsRawFd;
+        let f = std::fs::OpenOptions::new().create(true).truncate(false).write(true).open(format!("{name}.lock"))?;
+        if unsafe { libc::flock(f.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0 { return Err(std::io::ErrorKind::AddrInUse.into()); }
+        let _ = LOCK.set(f);
         if std::os::unix::net::UnixStream::connect(name).is_ok() { return Err(std::io::ErrorKind::AddrInUse.into()); }
         let _ = std::fs::remove_file(name);
         UnixListener::bind(name)
@@ -62,5 +69,19 @@ async fn connection<C: AsyncRead + AsyncWrite>(conn: C, tx: UnboundedSender<Inco
             return;
         }
         let _ = tx.send(Incoming { env, reply: None });
+    }
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    #[tokio::test] async fn only_one_instance_holds_the_socket() {
+        let name = std::env::temp_dir().join(format!("pulse-test-single-{}.sock", std::process::id())).to_string_lossy().into_owned();
+        let first = super::create_first(&name).unwrap();
+        // la segunda pierde por el candado, aunque el socket aún no contestara, y no borra el de la primera
+        assert!(super::create_first(&name).is_err());
+        assert!(std::path::Path::new(&name).exists());
+        drop(first);
+        let _ = std::fs::remove_file(&name);
+        let _ = std::fs::remove_file(format!("{name}.lock"));
     }
 }

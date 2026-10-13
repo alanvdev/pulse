@@ -16,6 +16,8 @@ pub fn summarize(lines: impl Iterator<Item = String>, day_start_ms: i64, now_ms:
     let mut days: BTreeMap<String, (SessionDay, Open)> = BTreeMap::new();
     let mut out = DaySummary::default();
     for line in lines {
+        // la mayoría de las líneas son de otros días: se descartan sin interpretar el JSON
+        if crate::logbook::quick_at(&line).is_some_and(|at| at < day_start_ms || at > now_ms) { continue; }
         let Ok(v) = serde_json::from_str::<serde_json::Value>(&line) else { continue };
         let (Some(sid), Some(at), Some(kind)) = (v["session_id"].as_str(), v["at_ms"].as_i64(), v["event"]["kind"].as_str()) else { continue };
         if at < day_start_ms || at > now_ms { continue; }
@@ -57,8 +59,7 @@ pub fn summarize(lines: impl Iterator<Item = String>, day_start_ms: i64, now_ms:
 pub fn today() -> DaySummary {
     let now = crate::now_ms();
     let start = local_midnight_ms(now);
-    let lines = crate::logbook::path().and_then(|p| std::fs::read_to_string(p).ok()).unwrap_or_default();
-    summarize(lines.lines().map(str::to_string), start, now)
+    summarize(crate::logbook::lines(), start, now)
 }
 
 /// Cuánto hay que sumarle a UTC para tener la hora local, en ms.

@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{collections::BTreeMap, path::{Path, PathBuf}, sync::Mutex};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "lowercase")] pub enum IslandMode { Comando, Orbe }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)] #[serde(rename_all = "lowercase")] pub enum Side { Left, Center, Right }
@@ -71,11 +71,26 @@ pub fn route(c: &Config, focus_on: bool, kind: &str) -> Route {
 }
 
 pub fn path() -> Option<PathBuf> { dirs::home_dir().map(|h| h.join(".claude").join("pulse").join("config.json")) }
-pub fn load() -> Config { path().and_then(|p| std::fs::read_to_string(p).ok()).and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default() }
-pub fn save(c: &Config) {
-    let Some(p) = path() else { return };
+pub fn load() -> Config { path().map(|p| load_at(&p)).unwrap_or_default() }
+/// Un config.json que no se entiende se aparta (`config.json.bad-<segundos>`) antes de usar los de fábrica:
+/// el siguiente guardado no borra tus ajustes y puedes recuperarlos a mano.
+fn load_at(p: &Path) -> Config {
+    let Ok(s) = std::fs::read_to_string(p) else { return Config::default() };
+    serde_json::from_str(&s).unwrap_or_else(|_| {
+        let ts = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+        let _ = std::fs::rename(p, p.with_extension(format!("json.bad-{ts}")));
+        Config::default()
+    })
+}
+pub fn save(c: &Config) { if let Some(p) = path() { save_at(&p, c); } }
+/// Se escribe aparte y se renombra encima: un corte a medio guardar deja el archivo anterior, nunca uno a medias.
+fn save_at(p: &Path, c: &Config) {
+    static SAVING: Mutex<()> = Mutex::new(());   // arrastre de la isla y Ajustes pueden guardar a la vez
+    let _g = SAVING.lock().unwrap_or_else(|e| e.into_inner());
     if let Some(d) = p.parent() { let _ = std::fs::create_dir_all(d); }
-    if let Ok(s) = serde_json::to_string_pretty(c) { let _ = std::fs::write(p, s); }
+    let Ok(s) = serde_json::to_string_pretty(c) else { return };
+    let tmp = p.with_extension("json.tmp");
+    if std::fs::write(&tmp, s).is_ok() { let _ = std::fs::rename(&tmp, p); }
 }
 
 #[cfg(test)]
@@ -126,6 +141,22 @@ mod tests {
         assert!(c.island.dots && !c.island.keys);
         assert_eq!(c.appearance.theme, Theme::Dark);
         assert_eq!(c.pulses.events["done"].color, "#4fe0a0");   // quien ya tenía config.json conserva sus colores
+    }
+    #[test] fn save_is_atomic_and_a_broken_file_is_kept_aside() {
+        let dir = std::env::temp_dir().join(format!("pulse-test-config-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let p = dir.join("config.json");
+        let mut c = Config::default(); c.island.ask_timeout_s = 60;
+        save_at(&p, &c);
+        assert_eq!(load_at(&p).island.ask_timeout_s, 60);
+        assert!(!p.with_extension("json.tmp").exists());
+        std::fs::write(&p, r#"{"island":{"mode":"rara"}}"#).unwrap();
+        assert_eq!(load_at(&p).island.ask_timeout_s, 30);
+        assert!(!p.exists(), "el archivo roto se aparta");
+        let kept: Vec<_> = std::fs::read_dir(&dir).unwrap().filter_map(|e| e.ok()).filter(|e| e.file_name().to_string_lossy().starts_with("config.json.bad-")).collect();
+        assert_eq!(kept.len(), 1);
+        assert!(std::fs::read_to_string(kept[0].path()).unwrap().contains("rara"));
+        let _ = std::fs::remove_dir_all(&dir);
     }
     #[test] fn theme_is_lowercase_in_json() {
         assert_eq!(serde_json::to_string(&Theme::System).unwrap(), "\"system\"");

@@ -28,6 +28,21 @@ pub fn plugin() -> tauri::plugin::TauriPlugin<Wry> {
         .build()
 }
 
+/// `pulse key` (en Linux el atajo lo registra GNOME) es un golpe sin "soltar": se manda presionar y soltar, así un comando
+/// delicado no se aprueba solo. En ese caso, en vez de no hacer nada, la isla dice cómo aprobarlo (aviso `hold|`).
+pub fn tap(app: &AppHandle, k: Key) {
+    if k == Key::Allow {
+        let st = app.state::<AppState>();
+        let (keys, hold) = { let c = st.config.lock().unwrap(); (c.island.keys, c.island.hold) };
+        let top = st.store.lock().unwrap().first_permission().cloned();
+        if let Some(p) = top.filter(|p| keys && hold && p.danger) {
+            crate::emit_fx(app, crate::Fx { kind: "notice".into(), session_id: p.session_id, project: p.project, slot: 0, text: format!("hold|{}", p.command), visual: false, sound: false, monitor: crate::windows::active_monitor_index(app) });
+            return;
+        }
+    }
+    key(app, k, true); key(app, k, false);
+}
+
 /// Un atajo se presionó (`pressed`) o se soltó. Permitir un comando delicado pide mantenerlo presionado.
 pub fn key(app: &AppHandle, k: Key, pressed: bool) {
     let app = app.clone();

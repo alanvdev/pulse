@@ -42,10 +42,20 @@ fn detach(c: &mut Command) {
 #[cfg(unix)]
 fn detach(c: &mut Command) { use std::os::unix::process::CommandExt; c.process_group(0); }
 
+/// Salida de la app a `~/.claude/pulse/app.log`: si no arranca (falta una librería, GTK sin pantalla, un pánico), ahí queda por qué.
+/// Pasado 1 MB se empieza de nuevo.
+fn app_log() -> Stdio {
+    let Some(dir) = pulse_protocol::data_dir() else { return Stdio::null() };
+    let _ = std::fs::create_dir_all(&dir);
+    let p = dir.join("app.log");
+    if std::fs::metadata(&p).is_ok_and(|m| m.len() > 1_000_000) { let _ = std::fs::File::create(&p); }
+    std::fs::OpenOptions::new().create(true).append(true).open(p).map(Stdio::from).unwrap_or_else(|_| Stdio::null())
+}
+
 fn spawn_app(app: &Path) -> Result<(), String> {
     let mut c = Command::new(app);
     detach(&mut c);
-    c.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null())
+    c.stdin(Stdio::null()).stdout(app_log()).stderr(app_log())
         .spawn().map(|_| ()).map_err(|e| format!("no se pudo lanzar {}: {e}", app.display()))
 }
 
@@ -62,7 +72,7 @@ pub fn open(pipe: &str, app: Option<&Path>) -> Result<Conn, String> {
         thread::sleep(Duration::from_millis(80));
         if let Try::Ok(f) = try_open(pipe) { return Ok(f); }
     }
-    Err("la app no respondió".into())
+    Err("la app no respondió (ver ~/.claude/pulse/app.log)".into())
 }
 
 pub fn send_line(pipe: &str, line: &str, app: Option<&Path>) -> Result<(), String> {
