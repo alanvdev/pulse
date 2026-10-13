@@ -28,8 +28,15 @@ $events = [ordered]@{
 }
 foreach ($ev in $events.Keys) {
   $keep = @()
-  if ($s.hooks.ContainsKey($ev)) { $keep = @($s.hooks[$ev] | Where-Object { -not ($_.hooks | Where-Object { $_.command -match 'sounds/play\.ps1|pulse\.exe' }) }) }
-  $a = $events[$ev]; $s.hooks[$ev] = $keep + (Entry $a[0] $a[1] $a[2] 35)
+  # Se quitan hook por hook, no el grupo entero: el menú /hooks de Claude Code mete en el mismo grupo los hooks con el
+  # mismo matcher, y ahí puede haber uno tuyo junto al de Pulse. Un grupo solo se va si queda vacío.
+  if ($s.hooks.ContainsKey($ev)) {
+    $keep = @($s.hooks[$ev] | ForEach-Object {
+      $_.hooks = @($_.hooks | Where-Object { $_ -and $_.command -notmatch 'sounds/play\.ps1|pulse\.exe' })
+      if ($_.hooks.Count) { $_ } })
+  }
+  # PermissionRequest espera tu respuesta en la isla ("Tiempo para responder", hasta 120 s): su hook tiene 130 s
+  $a = $events[$ev]; $s.hooks[$ev] = $keep + (Entry $a[0] $a[1] $a[2] $(if ($ev -eq 'PermissionRequest') { 130 } else { 35 }))
 }
 # Preguntas de Claude (AskUserQuestion): la isla puede contestarlas antes de que salgan en la terminal.
 # 60 s visibles que se pausan mientras contestas; tope de 300 s en pulse.exe, y el hook un poco más.

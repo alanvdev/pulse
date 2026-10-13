@@ -33,5 +33,7 @@ Categories=Development;
 DESKTOP
 echo "Pulse instalado en $dest"
 for d in "${dirs[@]}"; do node "$root/scripts/linux-setup.mjs" hooks-add "$d/settings.json" "$dest/pulse"; done
+# Las cuentas con hooks quedan anotadas: uninstall.sh las limpia todas, aunque se le llame sin carpetas.
+{ cat "$dest/accounts" 2>/dev/null || true; for d in "${dirs[@]}"; do realpath -m "$d"; done; } | awk 'NF && !s[$0]++' > "$dest/accounts.tmp" && mv "$dest/accounts.tmp" "$dest/accounts"
 node "$root/scripts/linux-setup.mjs" keys-add "$dest/pulse"
 echo "Listo. Pulse arranca solo con el próximo evento de Claude Code (las sesiones ya abiertas necesitan reiniciarse para leer los hooks)."

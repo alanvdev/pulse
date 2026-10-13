@@ -7,11 +7,11 @@ Desktop app (Tauri v2) for Windows and Linux (GNOME) that shows what Claude Code
 ```powershell
 cargo test --workspace                 # Rust: protocol, CLI, core
 npm test --prefix app                  # Vitest: UI logic
-npm run tauri dev --prefix app         # app in development (Vite on :5173)
+npm run tauri dev --prefix app         # app in development (Vite on :5173); quit the installed Pulse first, only one instance can own the pipe/socket
 pwsh scripts/install.ps1               # build, install to %LOCALAPPDATA%\Pulse and register hooks
 pwsh scripts/uninstall.ps1             # restore settings.json from the backup
 scripts/install.sh [config dirs...]    # Linux: build, install to ~/.local/share/pulse, register hooks and GNOME shortcuts
-scripts/uninstall.sh [config dirs...]  # Linux: remove Pulse's hook entries and shortcuts
+scripts/uninstall.sh [config dirs...]  # Linux: remove Pulse's hooks from every account install.sh recorded (and any ~/.claude* that calls Pulse), shortcuts, binaries
 ```
 
 ## Architecture
@@ -26,7 +26,7 @@ scripts/uninstall.sh [config dirs...]  # Linux: remove Pulse's hook entries and 
 - `pulse.exe` always exits with code 0.
 - `pulse emit` never writes to stdout and takes under 4 s in the worst case.
 - `pulse ask` writes to stdout only the decision JSON, or nothing. With no answer it decides nothing and Claude asks in the terminal.
-- The installer backs up `~/.claude/settings.json` (with the date) before touching it, and only replaces entries that call `pulse.exe` or `sounds/play.ps1`.
+- The installer backs up `~/.claude/settings.json` (with the date) before touching it, and only replaces the hooks that call `pulse.exe` or `sounds/play.ps1`, one by one: a group that also holds a user hook keeps it (Claude Code's `/hooks` menu puts hooks with the same matcher in one group).
 
 ## Conventions
 

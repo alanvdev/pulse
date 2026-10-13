@@ -13,16 +13,19 @@ hook() {   # hook <emit|ask> '<campos JSON sin llaves>'
 }
 pregunta='{"question":"¿Con qué framework sigo?","header":"Framework","multiSelect":false,"options":[{"label":"React","description":"Componentes"},{"label":"Vue","description":"Progresivo"}]}'
 multiple='{"question":"¿Qué partes reviso?","header":"Partes","multiSelect":true,"options":[{"label":"Isla"},{"label":"Panel"},{"label":"Tablero"}]}'
+largas1='{"question":"¿Cómo se ven los colores de los eventos en la versión final?","header":"Eventos","multiSelect":false,"options":[{"label":"Solo permiso en color","description":"Ámbar solo cuando algo te necesita; terminó y error en gris con su icono."},{"label":"Apagados","description":"Ámbar, verde y rojo desaturados, cada uno con su icono."},{"label":"Acento","description":"La salvia marca '\''te necesita'\''; menos colores en total."}]}'
+largas2='{"question":"¿Qué letra?","header":"Letra","multiSelect":false,"options":[{"label":"Geist","description":"La actual. Neutra y técnica, al estilo Vercel."},{"label":"Hanken Grotesk","description":"Más cálida y redonda."},{"label":"Zen Kaku Gothic","description":"Geométrica, con aire japonés."},{"label":"Inter","description":"La de siempre."}]}'
 
-nombres=(inicio herramienta permiso delicado otra pregunta preguntas plan termino error espera subagente terminal todo fin)
+nombres=(inicio herramienta permiso delicado otra pregunta preguntas largas plan termino error espera subagente terminal todo fin)
 declare -A desc=(
   [inicio]='Claude empieza a trabajar (respira blanco + sonido)'
   [herramienta]='Claude usa una herramienta (solo actividad, sin pulso)'
-  [permiso]='Pide permiso para un comando (espera tu Ctrl+Alt+Y / N o clic, 30 s)'
+  [permiso]='Pide permiso para un comando (espera tu Ctrl+Alt+Y / N o clic; 30 s de fábrica, se cambia en Ajustes)'
   [delicado]='Comando delicado: hay que MANTENER el botón de la isla'
   [otra]='Permiso de otra herramienta (Artifact)'
   [pregunta]='Claude te pregunta (una opción: con un clic basta, 60 s)'
   [preguntas]='Dos preguntas, una de varias opciones; prueba "Otra…"'
+  [largas]='Dos preguntas largas con descripciones (una a la vez, Atrás / Siguiente / Enviar)'
   [plan]='Claude terminó un plan (aviso: revísalo en la terminal)'
   [termino]='Claude terminó (ola verde + sonido + aviso en la isla)'
   [error]='Falló una herramienta (destello rojo de costado)'
@@ -42,14 +45,17 @@ correr() {
     otra) hook ask '"hook_event_name":"PermissionRequest","tool_name":"Artifact","tool_input":{"action":"delete","url":"https://claude.ai/artifact/EJEMPLO"}' ;;
     pregunta) hook ask "\"hook_event_name\":\"PreToolUse\",\"tool_name\":\"AskUserQuestion\",\"tool_input\":{\"questions\":[$pregunta]}" ;;
     preguntas) hook ask "\"hook_event_name\":\"PreToolUse\",\"tool_name\":\"AskUserQuestion\",\"tool_input\":{\"questions\":[$multiple,$pregunta]}" ;;
+    largas) hook ask "\"hook_event_name\":\"PreToolUse\",\"tool_name\":\"AskUserQuestion\",\"tool_input\":{\"questions\":[$largas1,$largas2]}" ;;
     plan) hook ask '"hook_event_name":"PermissionRequest","tool_name":"ExitPlanMode","tool_input":{}' ;;
     termino) hook emit '"hook_event_name":"Stop"' ;;
     error) hook emit '"hook_event_name":"PostToolUseFailure","error":"tsx no encontrado"' ;;
     espera) hook emit '"hook_event_name":"Notification","notification_type":"idle_prompt"' ;;
     subagente) hook emit '"hook_event_name":"SubagentStop","agent_type":"Explore"' ;;
     terminal)
-      hook ask '"hook_event_name":"PermissionRequest","tool_name":"Bash","tool_input":{"command":"npm test"}' & local job=$!
-      sleep 3; echo 'Simulo que Claude siguió (ya respondiste en la terminal)…'; hook emit '"hook_event_name":"Stop"'; kill "$job" 2>/dev/null; pkill -f "^$pulse ask" 2>/dev/null ;;
+      # Un solo comando en segundo plano, así $! es el propio `pulse ask` y se cierra solo ese: nada de pkill, que
+      # también mataría los `pulse ask` de las sesiones reales que estén esperando en la isla.
+      "$pulse" ask <<<"$(printf '{%s,%s}' "$base" '"hook_event_name":"PermissionRequest","tool_name":"Bash","tool_input":{"command":"npm test"}')" >/dev/null & local pid=$!
+      sleep 3; echo 'Simulo que Claude siguió (ya respondiste en la terminal)…'; hook emit '"hook_event_name":"Stop"'; kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null ;;
     todo) for n in "${nombres[@]}"; do case "$n" in todo|fin) continue ;; esac; echo "→ $n · ${desc[$n]}"; correr "$n"; sleep 3; done; echo "→ fin · ${desc[fin]}"; correr fin ;;
     fin) hook emit '"hook_event_name":"SessionEnd"' ;;
   esac

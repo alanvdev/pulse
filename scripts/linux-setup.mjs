@@ -11,7 +11,10 @@ import { execFileSync } from 'node:child_process';
 const [cmd, ...args] = process.argv.slice(2);
 // Entradas que llaman a Pulse (las de Linux y las de Windows): son las únicas que se reemplazan o se quitan.
 const OURS = /[\\/]pulse(\.exe)?"? (emit|ask)\b|sounds\/play\.ps1/;
-const isOurs = e => (e.hooks ?? []).some(h => OURS.test(h.command ?? ''));
+// Se quitan hook por hook, no el grupo entero: el menú /hooks de Claude Code mete en el mismo grupo los hooks
+// con el mismo matcher, y ahí puede haber uno tuyo junto al de Pulse. Un grupo solo se va si queda vacío.
+const stripOurs = list => (list ?? []).map(e => ({ ...e, hooks: (e.hooks ?? []).filter(h => !OURS.test(h.command ?? '')) })).filter(e => e.hooks.length);
+const countOurs = hooks => Object.values(hooks ?? {}).flat().flatMap(e => e?.hooks ?? []).filter(h => OURS.test(h.command ?? '')).length;
 
 // Hora local, como en install.ps1: yyyyMMdd-HHmmss.
 const stamp = () => { const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`; };
@@ -38,7 +41,8 @@ function entry(pulse, sub, matcher, async, timeout) {
   return matcher ? { matcher, hooks: [hook] } : { hooks: [hook] };
 }
 
-// Los mismos eventos que registra install.ps1 en Windows.
+// Los mismos eventos que registra install.ps1 en Windows. PermissionRequest espera tu respuesta en la isla
+// ("Tiempo para responder", hasta 120 s): su hook tiene 130 s para que Claude Code no lo corte antes.
 const EVENTS = {
   SessionStart: ['emit', null, true], SessionEnd: ['emit', null, true], UserPromptSubmit: ['emit', null, true],
   PreToolUse: ['emit', '*', true], PermissionRequest: ['ask', null, false], Notification: ['emit', 'idle_prompt', true],
@@ -50,7 +54,7 @@ function hooksAdd(path, pulse) {
   const saved = backup(path);
   s.hooks ??= {};
   for (const [ev, [sub, matcher, async]] of Object.entries(EVENTS)) {
-    s.hooks[ev] = [...(s.hooks[ev] ?? []).filter(e => !isOurs(e)), entry(pulse, sub, matcher, async, 35)];
+    s.hooks[ev] = [...stripOurs(s.hooks[ev]), entry(pulse, sub, matcher, async, ev === 'PermissionRequest' ? 130 : 35)];
   }
   // Preguntas de Claude (AskUserQuestion): la isla puede contestarlas antes de que salgan en la terminal.
   // 60 s visibles que se pausan mientras contestas; tope de 300 s en pulse, y el hook un poco más.
@@ -62,15 +66,17 @@ function hooksAdd(path, pulse) {
 function hooksRemove(path) {
   if (!existsSync(path)) return;
   const s = readSettings(path);
-  if (!s.hooks) return;
+  // Sin entradas de Pulse no se respalda ni se reescribe: uninstall.sh revisa todas las cuentas, no solo las que lo tienen.
+  if (!countOurs(s.hooks)) return;
   const saved = backup(path);
   for (const ev of Object.keys(s.hooks)) {
-    s.hooks[ev] = s.hooks[ev].filter(e => !isOurs(e));
+    if (!Array.isArray(s.hooks[ev])) continue;
+    s.hooks[ev] = stripOurs(s.hooks[ev]);
     if (!s.hooks[ev].length) delete s.hooks[ev];
   }
   if (!Object.keys(s.hooks).length) delete s.hooks;
   write(path, s);
-  console.log(`  hooks quitados de ${path} (respaldo: ${saved})`);
+  console.log(`  hooks de Pulse quitados de ${path} (respaldo: ${saved})`);
 }
 
 // Atajos globales: en Wayland una app no puede registrarlos, así que se dan de alta como atajos de GNOME que llaman a `pulse key`.

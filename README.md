@@ -57,12 +57,12 @@ Además, sonidos por evento y, si tienes un teclado Razer, F1 a F3 encendidas po
 ## Lo que cumple
 
 - **Responder sin ir a la terminal.** Permite o deniega desde la isla, la paleta o con atajos globales: `Ctrl+Alt+Y` permite, `Ctrl+Alt+N` deniega, `Ctrl+Alt+Espacio` abre la paleta.
-- **Nunca decide por ti.** Si nadie responde en 30 s, Pulse no hace nada y Claude pregunta en la terminal, como siempre. Los comandos delicados (`git push --force`, `rm -rf`) se aprueban manteniendo presionado.
+- **Nunca decide por ti.** Si nadie responde a tiempo (30 s de fábrica; de 10 a 120 s en Ajustes), Pulse no hace nada y Claude pregunta en la terminal, como siempre. Los comandos delicados (`git push --force`, `rm -rf`) se aprueban manteniendo presionado.
 - **Contesta las preguntas de Claude.** Opciones, selección múltiple y respuesta libre, desde la isla.
 - **La isla va donde quieras.** `Ctrl` + arrastrar la mueve (tarjeta, pastilla u Orbe) a cualquier lugar y a cualquier monitor; se queda ahí. `Ctrl` + doble clic la regresa arriba.
 - **Modo foco.** Se activa solo en llamadas, en pantalla completa o en tu horario. Cada evento decide qué hace mientras tanto: normal, sin sonido, nada, o guardarlo para después.
 - **Invisible cuando no pasa nada.** Arranca con el primer hook y se cierra solo a los 5 minutos sin actividad.
-- **Sin depender del color.** Cada estado tiene su forma o su icono, y todo respeta *reducir movimiento* de Windows.
+- **Sin depender del color.** Cada estado tiene su forma o su icono, y todo respeta *reducir movimiento* del sistema (en Windows: Accesibilidad › Efectos visuales › Efectos de animación; en GNOME: Configuración › Accesibilidad › Reducir animación).
 
 ## Instalar
 
@@ -85,10 +85,10 @@ pwsh scripts/uninstall.ps1
 
 ### Linux (GNOME)
 
-Probado en Ubuntu 25.10 con GNOME en Wayland. Necesitas [Rust](https://rustup.rs), [Node 20+](https://nodejs.org) y las librerías de Tauri:
+Probado en Ubuntu 25.10 con GNOME en Wayland. Necesitas [Rust](https://rustup.rs), [Node 20+](https://nodejs.org), el compilador de C (`build-essential`), las librerías de Tauri y `pactl` (`pulseaudio-utils`, para detectar llamadas en el modo foco):
 
 ```bash
-sudo apt install libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libasound2-dev libxdo-dev pkg-config
+sudo apt install build-essential curl pulseaudio-utils libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libasound2-dev libxdo-dev pkg-config
 git clone https://github.com/alanvdev/pulse
 cd pulse
 npm install --prefix app
@@ -96,19 +96,24 @@ scripts/install.sh                          # hooks en $CLAUDE_CONFIG_DIR o ~/.c
 scripts/install.sh ~/.claude ~/.claude-work # o en varias cuentas de Claude Code a la vez
 ```
 
-El instalador compila, copia Pulse a `~/.local/share/pulse`, registra los hooks en cada `settings.json` (con un respaldo fechado, y solo toca las entradas que llaman a Pulse) y da de alta los atajos `Ctrl+Alt+Y`, `Ctrl+Alt+N` y `Ctrl+Alt+Espacio` como atajos de GNOME.
+El instalador compila, copia Pulse a `~/.local/share/pulse`, registra los hooks en cada `settings.json` (con un respaldo fechado, y solo toca los hooks que llaman a Pulse: los tuyos se quedan aunque compartan grupo con ellos) y da de alta los atajos `Ctrl+Alt+Y`, `Ctrl+Alt+N` y `Ctrl+Alt+Espacio` como atajos de GNOME.
 
-Para quitarlo: `scripts/uninstall.sh` (con las mismas carpetas que usaste al instalar). Quita solo las entradas de Pulse y los atajos; tu configuración en `~/.claude/pulse` se queda.
+Para quitarlo: `scripts/uninstall.sh`. Sin argumentos limpia todas las cuentas donde el instalador dejó hooks (y cualquier `~/.claude*/settings.json` que todavía llame a Pulse); también acepta carpetas extra. Quita solo los hooks de Pulse y los atajos, y cierra la app al final; tu configuración en `~/.claude/pulse` se queda. Las sesiones de Claude Code que estén abiertas siguen con los hooks que leyeron al empezar: reinícialas.
 
 Diferencias con Windows:
 
 - **Corre por XWayland.** Wayland no deja que una app se ponga encima de las demás ni elija dónde va su ventana, y los bordes y la isla lo necesitan. Pulse lo activa solo.
 - **La bandeja abre un menú.** El área de notificación de GNOME no le pasa los clics a la app: el ícono abre un menú con Bolsillo, el menú rápido, la paleta y Mosaico.
-- **Atajos sin "mantener".** Los atajos de GNOME son un golpe de tecla, así que un comando delicado se aprueba manteniendo el botón de la isla.
-- **Modo foco.** Detecta llamadas (cualquier app grabando del micrófono) y tu horario; la pantalla completa no, porque Wayland no deja ver las ventanas de otras apps.
-- **Sin Razer Chroma.** Su SDK solo existe en Windows.
+- **Atajos sin "mantener".** Los atajos de GNOME son un golpe de tecla, así que un comando delicado se aprueba manteniendo el botón de la isla (`Ctrl+Alt+Y` sirve para los demás).
+- **Modo foco.** Detecta llamadas (cualquier app grabando del micrófono) y tu horario; la pantalla completa no, porque Wayland no deja ver las ventanas de otras apps, así que esa opción no aparece en Ajustes.
+- **Sin Razer Chroma.** Su SDK solo existe en Windows; sus opciones no aparecen.
+- **Pulsos en todos los monitores.** Wayland no deja saber en qué ventana ni en qué monitor estás, así que no hay "monitor activo" y la opción *Dónde* no aparece en Ajustes.
+- **La isla se mueve igual.** `Ctrl` + arrastrar la lleva a cualquier lugar y a cualquier monitor; `Ctrl` + doble clic la regresa arriba.
+- **En pantalla completa GNOME baja la isla.** Si llega un permiso o una pregunta, la tarjeta queda tapada: suena y se encienden los bordes. Un permiso normal se contesta con `Ctrl+Alt+Y` / `Ctrl+Alt+N`; uno delicado (el que pide mantener el botón), con `Ctrl+Alt+N`, en la terminal o saliendo de pantalla completa; una pregunta, en la terminal o saliendo de pantalla completa.
 
 ## Desarrollo
+
+Solo puede correr un Pulse a la vez, porque uno solo puede ocupar `\\.\pipe\pulse` (en Linux, `pulse.sock`): antes de `npm run tauri dev` cierra el instalado (bandeja › Salir, o `pkill -x pulse-app` en Linux), o la versión de desarrollo se cierra sola al arrancar. Al terminar cierra también la de desarrollo, porque mientras viva se queda con los hooks y los atajos.
 
 ```powershell
 npm run tauri dev --prefix app   # la app en desarrollo
@@ -128,7 +133,7 @@ Qué es el producto y para quién: [`PRODUCT.md`](PRODUCT.md). Cómo se ve: [`DE
 
 ## Tus datos
 
-Todo se queda en tu equipo: la configuración en `~/.claude/pulse/config.json` y la bitácora del día en `~/.claude/pulse/log.jsonl`. Pulse no se conecta a internet.
+Todo se queda en tu equipo: la configuración en `~/.claude/pulse/config.json`, la bitácora de los últimos 7 días en `~/.claude/pulse/log.jsonl` y, si la app no arranca, el motivo en `~/.claude/pulse/app.log`. Pulse no se conecta a internet.
 
 ---
 
