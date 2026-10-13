@@ -34,11 +34,13 @@ fn as_dock(w: &tauri::WebviewWindow) -> tauri::Result<()> {
     no_frame_sync(&g);
     Ok(())
 }
-/// GNOME deja de avisar "cuadro mostrado" a estas ventanas (dock, o tapadas por otra transparente); con la sincronización
-/// de cuadros activa, GTK se queda esperando ese aviso y la ventana deja de pintarse a media animación. Sin ella pinta a su ritmo.
+/// GNOME no siempre avisa "cuadro mostrado" a estas ventanas (en la pantalla de la laptop, con dos tarjetas gráficas,
+/// nunca llega); con la sincronización de cuadros activa, GTK y WebKit se quedan esperando ese aviso y la ventana deja de
+/// pintarse a media animación. Sin ella pinta a su ritmo.
 #[cfg(not(windows))]
 fn no_frame_sync(g: &gtk::ApplicationWindow) {
     use gtk::prelude::*;
+    g.realize();   // crea la ventana X sin mostrarla: hasta entonces no hay a quién apagarle la sincronización
     if let Some(x) = g.window().and_then(|x| x.downcast::<gdkx11::X11Window>().ok()) { x.set_frame_sync_enabled(false); }
 }
 
