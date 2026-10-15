@@ -142,7 +142,7 @@ fn permission_label_full(tool: &str, input: Option<&Value>) -> String {
 /// fuera del recorte (`npm ci && … && rm -rf dist`), se muestra el final, que es donde está.
 fn permission(tool: &str, input: Option<&Value>) -> (String, bool) {
     let full = permission_label_full(tool, input);
-    let dangerous = is_dangerous(&full);
+    let dangerous = danger_applies(tool) && is_dangerous(&full);
     let short = truncate(&full);
     if !dangerous || is_dangerous(&short) { return (short, dangerous); }
     let n = full.chars().count();
@@ -182,11 +182,18 @@ pub fn envelope_from_hook(i: &HookInput, at_ms: i64, ask: bool) -> Option<Envelo
 /// Si el evento lanza la app cuando no está abierta. `SessionEnd` no: cerrar Claude Code no debe hacer aparecer Pulse.
 pub fn wakes_app(e: &PulseEvent) -> bool { !matches!(e, PulseEvent::SessionEnd) }
 
+/// Si la revisión de "delicado" aplica a la herramienta. Las que leen o editan archivos y las de la web no: su texto es
+/// una ruta o una URL, y `db/migrate/…` o `…/how-to-migrate` no son comandos. Bash, PowerShell y las de MCP (un SQL con
+/// `drop table`) sí.
+pub fn danger_applies(tool: &str) -> bool {
+    !matches!(tool, "Edit" | "MultiEdit" | "Write" | "NotebookEdit" | "Read" | "Glob" | "Grep" | "WebFetch" | "WebSearch")
+}
+
 /// Comandos que se aprueban manteniendo presionado (Windows y Linux). Va sobre el comando completo.
 pub fn is_dangerous(cmd: &str) -> bool {
     let c = cmd.to_lowercase();
     let sub = ["push --force", "push -f", "rm -rf", "rm -fr", "rm -r ", "rm --recursive", "migrate", "reset --hard", "remove-item -recurse", "drop table", "drop database",
-        "mkfs", "of=/dev/", "> /dev/sd", "git clean -f", " -delete"];
+        "mkfs", "of=/dev/", "> /dev/sd", "> /dev/nvme", "git clean -f", " -delete"];
     if sub.iter().any(|p| c.contains(p)) { return true; }
     // `format C:` de Windows; `--format json` o `clang-format` no cuentan
     let t: Vec<&str> = c.split_whitespace().collect();
@@ -264,6 +271,14 @@ mod tests {
         // un sobre viejo sin `dangerous` se sigue leyendo
         let e: PulseEvent = serde_json::from_str(r#"{"kind":"permission","tool":"Bash","command":"ls"}"#).unwrap();
         assert_eq!(e, PulseEvent::Permission { tool: "Bash".into(), command: "ls".into(), description: String::new(), dangerous: false });
+    }
+    #[test] fn file_and_web_tools_are_never_dangerous() {
+        let perm = |tool: &str, input: &str| match map_hook(&hook(&format!(r#"{{"session_id":"a","hook_event_name":"PermissionRequest","tool_name":"{tool}","tool_input":{input}}}"#))) { Some(PulseEvent::Permission { dangerous, .. }) => dangerous, o => panic!("{o:?}") };
+        assert!(!perm("Edit", r#"{"file_path":"db/migrate/2024_add_users.rb"}"#));
+        assert!(!perm("WebFetch", r#"{"url":"https://x.dev/how-to-migrate"}"#));
+        assert!(perm("Bash", r#"{"command":"rails db:migrate"}"#));
+        assert!(perm("mcp__db__execute_sql", r#"{"query":"DROP TABLE users"}"#));
+        assert!(is_dangerous("cat img > /dev/nvme0n1"));
     }
     #[test] fn ask_timeout_comes_from_the_config_and_is_clamped() {
         assert_eq!(ask_timeout_from_config(r#"{"island":{"ask_timeout_s":60}}"#), 60);

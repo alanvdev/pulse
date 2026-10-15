@@ -1,5 +1,5 @@
 use std::collections::{BTreeMap, VecDeque};
-use pulse_protocol::{is_dangerous, owner::Owner, project_name, Envelope, PulseEvent};
+use pulse_protocol::{danger_applies, is_dangerous, owner::Owner, project_name, Envelope, PulseEvent};
 use serde::Serialize;
 
 fn first_question(q: &serde_json::Value) -> String { q.get(0).and_then(|x| x.get("question")).and_then(|x| x.as_str()).unwrap_or("Claude te hace una pregunta").to_string() }
@@ -97,7 +97,7 @@ impl Store {
     pub fn add_pending(&mut self, id: u64, e: &Envelope, timeout_ms: i64) {
         let base = |kind: &str, tool: &str, command: String, description: String, danger: bool, questions: Option<serde_json::Value>| Pending { id, kind: kind.into(), session_id: e.session_id.clone(), project: e.project.clone(), tool: tool.into(), command, description, danger, at_ms: e.at_ms, timeout_ms, deadline_ms: e.at_ms + timeout_ms, paused: false, left_ms: timeout_ms, questions };
         match &e.event {
-            PulseEvent::Permission { tool, command, description, dangerous } => self.pending.push(base("permission", tool, command.clone(), description.clone(), *dangerous || is_dangerous(command), None)),
+            PulseEvent::Permission { tool, command, description, dangerous } => self.pending.push(base("permission", tool, command.clone(), description.clone(), *dangerous || (danger_applies(tool) && is_dangerous(command)), None)),
             PulseEvent::Question { questions } => self.pending.push(base("question", "AskUserQuestion", first_question(questions), String::new(), false, Some(questions.clone()))),
             _ => {}
         }
