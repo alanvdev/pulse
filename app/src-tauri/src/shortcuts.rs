@@ -34,7 +34,7 @@ pub fn tap(app: &AppHandle, k: Key) {
     if k == Key::Allow {
         let st = app.state::<AppState>();
         let (keys, hold) = { let c = st.config.lock().unwrap(); (c.island.keys, c.island.hold) };
-        let top = st.store.lock().unwrap().first_permission().cloned();
+        let top = st.store.lock().unwrap().shown_permission().cloned();
         if let Some(p) = top.filter(|p| keys && hold && p.danger) {
             crate::emit_fx(app, crate::Fx { kind: "notice".into(), session_id: p.session_id, project: p.project, slot: 0, text: format!("hold|{}", p.command), visual: false, sound: false, monitor: crate::windows::active_monitor_index(app) });
             return;
@@ -50,7 +50,7 @@ pub fn key(app: &AppHandle, k: Key, pressed: bool) {
     let (keys, hold) = { let c = st.config.lock().unwrap(); (c.island.keys, c.island.hold) };
     if k == Key::Palette { if pressed { let _ = app.emit("pulse://palette", ()); } return; }
     if !keys { return; }
-    let top = st.store.lock().unwrap().first_permission().cloned();
+    let top = st.store.lock().unwrap().shown_permission().cloned();
     let Some(p) = top else { return };
     if k == Key::Deny && pressed { resolve(&app, p.id, Decision::Deny); }
     if k == Key::Allow {

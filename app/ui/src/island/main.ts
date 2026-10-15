@@ -1,5 +1,5 @@
 import { listen } from '@tauri-apps/api/event';
-import { allowAll, answer, dailySummary, decide, holdQuestion, skip, getConfig, getSnapshot, forgetSessions, islandDrag, islandFocus, muteSession, onConfig, onFx, onState, openDashboard, setConfig, setFocus, setIslandHitbox, type Config, type DaySummary, type Fx, type Snapshot } from '../shared/bridge';
+import { allowAll, answer, dailySummary, decide, holdQuestion, skip, getConfig, getSnapshot, forgetSessions, islandDrag, islandFocus, islandShown, muteSession, onConfig, onFx, onState, openDashboard, setConfig, setFocus, setIslandHitbox, type Config, type DaySummary, type Fx, type Snapshot } from '../shared/bridge';
 import { SP_MOVE, SP_OPEN, T } from '../shared/motion';
 import { mountComando } from './comando';
 import { mountOrbe, type OrbeCtx } from './orbe';
@@ -16,6 +16,8 @@ let notice: Notice | null = null, noticeT = 0;
 let day: DaySummary | null = null, dayAt = 0;
 type Mode = { render(): void; light(kind: string): void; destroy(): void; open?: () => void; openMenu?: () => void };
 let mode: Mode | null = null, modeName = '';
+/** Último permiso a la vista que se le dijo al núcleo (se manda solo cuando cambia). */
+let shownId: number | null | undefined;   // undefined: la ventana recién cargó y el núcleo puede tener uno viejo
 /** La isla pidió el teclado (paleta, "Otra…", menú del Orbe). Solo entonces lo devuelve sola; un clic del usuario no cuenta. */
 let kbOwned = false;
 
@@ -48,6 +50,7 @@ const ctx: OrbeCtx = {
   decide: (id, allow) => { decide(id, allow); }, answer: (id, a) => { answer(id, a); }, skip: id => { skip(id); }, hold: (id, on) => { holdQuestion(id, on); }, allowAll: () => { allowAll(); }, setFocus: on => { setFocus(on); },
   muteSession: (id, minutes) => { muteSession(id, minutes); }, forgetSessions: ids => { forgetSessions(ids); }, openDashboard: view => { openDashboard(view); },
   islandFocus: on => { kbOwned = on; islandFocus(on); }, hitbox,
+  shown: id => { if (id !== shownId) { shownId = id; islandShown(id); } },
   setSide: side => { cfg = { ...cfg, island: { ...cfg.island, orb_side: side } }; setConfig(cfg); },
 };
 
@@ -59,7 +62,8 @@ function mount() {
 }
 // Si la isla tiene el teclado pero ya no hay nada donde escribir (la pregunta se respondió en otro lado, se acabó el
 // tiempo, se cerró la paleta), se le devuelve a la ventana donde estabas.
-const render = () => { mode?.render(); if (kbOwned && document.hasFocus() && !board.querySelector('.qcard, .pal, .o-menu')) { kbOwned = false; islandFocus(false); } };
+// Solo cuenta la capa de arriba: la anterior sigue ~150 ms desvaneciéndose y retenía el teclado hasta el siguiente tic.
+const render = () => { mode?.render(); if (kbOwned && document.hasFocus() && !board.querySelector('.layer:last-child :is(.qcard, .pal, .o-menu, .card[data-pid])')) { kbOwned = false; islandFocus(false); } };
 
 function show(n: Notice) { notice = n; clearTimeout(noticeT); noticeT = window.setTimeout(() => { notice = null; render(); }, T(n.life)); render(); }
 
@@ -89,6 +93,9 @@ function holdBegin(id: number) { if (holdRaf) return; holdId = id; holdT0 = perf
 function holdEnd() { if (!holdRaf) return; cancelAnimationFrame(holdRaf); holdRaf = 0; setHold(0); }
 document.addEventListener('pointerdown', e => { const b = (e.target as HTMLElement).closest<HTMLElement>('.btn[data-danger="1"]'); if (b) { e.preventDefault(); holdBegin(Number(b.dataset.id)); } });
 ['pointerup', 'pointercancel'].forEach(t => document.addEventListener(t, holdEnd));
+// arrastrar fuera de «Mantener» antes de soltar es arrepentirse: no se aprueba
+document.addEventListener('pointerout', e => { const b = (e.target as HTMLElement).closest('.btn[data-danger="1"]'); if (b && !b.contains(e.relatedTarget as Node | null)) holdEnd(); });
+window.addEventListener('blur', holdEnd);
 
 /* Ctrl + arrastrar: mueve la isla (tarjeta, pastilla u Orbe) a cualquier lugar, en cualquier monitor. Ctrl + doble clic la regresa.
    Va en fase de captura para ganarle al arrastre del Orbe entre lados y a los botones de las tarjetas. */

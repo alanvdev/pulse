@@ -41,6 +41,8 @@ pub struct Store {
     focus_manual: Option<bool>,
     focus_auto: bool,
     last_event_ms: i64,
+    /// El permiso que la isla tiene a la vista (`island_shown`): Ctrl+Alt+Y/N contestan ese y no otro.
+    shown: Option<u64>,
 }
 
 impl Store {
@@ -99,8 +101,10 @@ impl Store {
         }
     }
 
-    /// El primer permiso de verdad (los atajos Ctrl+Alt+Y/N no contestan preguntas).
-    pub fn first_permission(&self) -> Option<&Pending> { self.pending.iter().find(|p| p.kind == "permission") }
+    pub fn set_shown(&mut self, id: Option<u64>) { self.shown = id; }
+    /// El permiso que la isla muestra, si sigue esperando. Con una pregunta, el menú o nada a la vista, ninguno: los atajos
+    /// Ctrl+Alt+Y/N no contestan algo que no estás viendo (una tarjeta recogida con Esc o un permiso tapado por una pregunta).
+    pub fn shown_permission(&self) -> Option<&Pending> { self.shown.and_then(|id| self.pending.iter().find(|p| p.id == id && p.kind == "permission")) }
     /// Permisos que "Aprobar todo" puede aprobar: con `hold`, los delicados quedan fuera (solo se aprueban manteniendo).
     pub fn allowable(&self, hold: bool) -> Vec<u64> { self.pending.iter().filter(|p| p.kind == "permission" && !(hold && p.danger)).map(|p| p.id).collect() }
 
@@ -290,9 +294,12 @@ mod tests {
         assert_eq!((p.kind.as_str(), p.command.as_str(), p.danger), ("question", "¿Qué framework?", false));
         assert!(p.questions.is_some());
         assert_eq!(s.snapshot().sessions[0].state, SessionState::Waiting);
-        assert!(s.first_permission().is_none(), "Ctrl+Alt+Y/N no deben contestar preguntas");
+        s.set_shown(Some(5));
+        assert!(s.shown_permission().is_none(), "Ctrl+Alt+Y/N no deben contestar preguntas");
         let e = perm("a", 1, "ls"); s.apply(&e); s.add_pending(6, &e, 30_000);
-        assert_eq!(s.first_permission().unwrap().id, 6);
+        assert!(s.shown_permission().is_none(), "ni el permiso que la pregunta tapa");
+        s.set_shown(Some(6));
+        assert_eq!(s.shown_permission().unwrap().id, 6);
     }
     #[test] fn question_countdown_pauses_while_answering() {
         let mut s = Store::default();

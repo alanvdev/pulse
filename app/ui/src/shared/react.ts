@@ -45,6 +45,8 @@ export function useHold(onDone: () => void) {
   const begin = () => { if (raf.current) return; t0.current = performance.now(); const step = (t: number) => { const x = Math.min(1, (t - t0.current) / 900); setP(x); if (x >= 1) { raf.current = 0; setP(0); onDone(); return; } raf.current = requestAnimationFrame(step); }; raf.current = requestAnimationFrame(step); };
   const end = () => { if (!raf.current) return; cancelAnimationFrame(raf.current); raf.current = 0; setP(0); };
   useEffect(() => () => cancelAnimationFrame(raf.current), []);   // al desmontar no debe aprobar nada
+  // la ventana pierde el foco con la tecla aún abajo: el keyup llega a otra ventana y la aprobación seguiría sola
+  useEffect(() => { const off = () => end(); window.addEventListener('blur', off); return () => window.removeEventListener('blur', off); });
   return { p, begin, end };
 }
 

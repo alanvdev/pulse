@@ -37,6 +37,8 @@ export const forgetSessions = (ids: string[]) => invoke('forget_sessions', { ids
 export const muteSession = (sessionId: string, minutes: number) => invoke('mute_session', { sessionId, minutes });
 export const dailySummary = () => invoke<DaySummary>('daily_summary');
 export const setIslandHitbox = (rect: { x: number; y: number; w: number; h: number } | null) => invoke('set_island_hitbox', { rect });
+/** El permiso que la isla tiene a la vista: Ctrl+Alt+Y/N contestan ese. */
+export const islandShown = (id: number | null) => invoke('island_shown', { id });
 export const islandFocus = (on: boolean) => invoke('island_focus', { on });
 /** Ctrl + arrastrar la isla: `start`, `move`, `end` (guarda dónde quedó) o `reset` (vuelve a su lugar). */
 export const islandDrag = (phase: 'start' | 'move' | 'end' | 'reset') => invoke('island_drag', { phase });

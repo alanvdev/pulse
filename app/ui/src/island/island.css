@@ -138,3 +138,5 @@
 
 /* Ctrl + arrastrar: la isla se mueve con el cursor */
 body.moving, body.moving * { cursor: grabbing !important; user-select: none }
+/* WebKitGTK anterior a 2.48 ignora scrollbar-width */
+.cmd::-webkit-scrollbar, .pal-list::-webkit-scrollbar { display: none }

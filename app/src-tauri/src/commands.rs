@@ -45,6 +45,8 @@ use tauri::{AppHandle, Emitter, State};
 #[tauri::command] pub async fn daily_summary() -> crate::daylog::DaySummary { tauri::async_runtime::spawn_blocking(crate::daylog::today).await.unwrap_or_default() }
 #[derive(serde::Deserialize)] pub struct Rect { x: f64, y: f64, w: f64, h: f64 }
 #[tauri::command] pub fn set_island_hitbox(app: AppHandle, hb: State<crate::windows::Hitbox>, rect: Option<Rect>) { *hb.0.lock().unwrap() = rect.map(|r| (r.x - 6.0, r.y - 6.0, r.w + 12.0, r.h + 12.0)); crate::windows::hitbox_changed(&app); }
+/// La isla dice qué permiso tiene a la vista (o ninguno): es el que contestan Ctrl+Alt+Y/N.
+#[tauri::command] pub fn island_shown(st: State<AppState>, id: Option<u64>) { st.store.lock().unwrap().set_shown(id); }
 #[tauri::command] pub fn island_focus(app: AppHandle, on: bool) { crate::windows::island_keyboard(&app, on); }
 #[tauri::command] pub fn island_drag(app: AppHandle, phase: String) { crate::windows::island_drag(&app, &phase); }
 // Async: en Windows, crear una ventana desde un comando síncrono bloquea el hilo principal.

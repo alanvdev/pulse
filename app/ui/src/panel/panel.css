@@ -45,3 +45,5 @@ html, body, #root { height: 100%; background: transparent }
 .tab:active { transform: scale(.95) }
 @media (prefers-reduced-motion: reduce) { .tab:active { transform: none } }
 .bp-view .fold { --fold-gap: -20px }
+/* WebKitGTK anterior a 2.48 ignora scrollbar-width */
+.bp-view::-webkit-scrollbar, .pb-c::-webkit-scrollbar { display: none }

@@ -84,7 +84,7 @@ export function bindQuestions(root: HTMLElement, find: (id: number) => Pending |
     next.querySelector('span')!.textContent = last ? 'Enviar' : 'Siguiente';
     next.disabled = last ? buildAnswers(qs, picks) === null : !answered(picks[step]);
     card.querySelector<HTMLElement>('[data-act="back"]')!.hidden = step === 0;
-    const q = qs[step], chosen = picks[step].labels.length + (picks[step].other ? 1 : 0);
+    const q = qs[step], chosen = (picks[step]?.labels.length ?? 0) + (picks[step]?.other ? 1 : 0);
     card.querySelector<HTMLElement>('.qhint')!.textContent = qHint(!!q?.multiSelect, (q?.options.length ?? 0) + 1, chosen);
   };
   const go = (card: HTMLElement, p: Pending, step: number) => {
@@ -173,6 +173,8 @@ export function bindQuestions(root: HTMLElement, find: (id: number) => Pending |
   root.addEventListener('mousemove', e => { if (hovered) return; const c = cardOf(e.target as Element); if (c) { hovered = c; sync(); } });
   window.addEventListener('focus', sync);
   // Texto y barra de la cuenta regresiva.
+  // una tarjeta reemplazada sin mouseout (la tapó la paleta o el menú) no puede dejar la pregunta en pausa
+  setInterval(() => { if (held !== null) sync(); }, 1000);
   setInterval(() => root.querySelectorAll<HTMLElement>('.qcard').forEach(card => {
     const p = find(Number(card.dataset.qid)); if (!p) return;
     if (!card.dataset.ready) { card.dataset.ready = '1'; refresh(card, p); }

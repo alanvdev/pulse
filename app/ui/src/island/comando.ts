@@ -11,9 +11,9 @@ export interface Ctx {
   snap(): Snapshot; cfg(): Config; notice(): Notice | null; day(): DaySummary | null; refreshDay(): void;
   decide(id: number, allow: boolean): void; answer(id: number, answers: Record<string, string>): void; skip(id: number): void; hold(id: number, on: boolean): void;
   allowAll(): void; setFocus(on: boolean): void; muteSession(id: string, minutes: number): void; forgetSessions(ids: string[]): void; openDashboard(view?: string): void;
-  islandFocus(on: boolean): void; hitbox(el: HTMLElement | null): void;
+  islandFocus(on: boolean): void; hitbox(el: HTMLElement | null): void; shown(id: number | null): void;
 }
-type Item = { g: string; icon: string; text: string; meta: string; run: () => void };
+type Item = { k: string; g: string; icon: string; text: string; meta: string; run: () => void };
 const SETTINGS = ([['isla', 'la isla'], ['pulsos', 'pulsos'], ['sonidos', 'sonidos'], ['foco', 'foco'], ['teclado', 'teclado'], ['apariencia', 'apariencia']] as [string, string][]).filter(([id]) => hasChroma || id !== 'teclado');
 /** Posición de `el` dentro de `stop` (la capa), sumando offsets. */
 const offsetIn = (el: HTMLElement, stop: HTMLElement) => { let x = 0, y = 0, n: HTMLElement | null = el; while (n && n !== stop) { x += n.offsetLeft; y += n.offsetTop; n = n.offsetParent as HTMLElement | null; } return [x, y]; };
@@ -24,31 +24,33 @@ export function mountComando(board: HTMLElement, ctx: Ctx) {
   const rail = document.createElement('div'); rail.className = 'rail'; rail.setAttribute('aria-hidden', 'true');
   sh.append(rail); board.append(sh);
   const m: Morph = { el: sh, w: 0, h: 0, sig: '', op: 0 };
-  let open = false, q = '', sel = 0, items: Item[] = [], hover = false, leaveT = 0, palList = '';
+  // `selK` sigue a la fila elegida: si llega o se resuelve un permiso, las filas se corren y un Enter con solo el índice
+  // aprobaría un comando que no estaba seleccionado
+  let open = false, q = '', sel = 0, selK = '', items: Item[] = [], hover = false, leaveT = 0, palList = '';
   const collapsed = new Set<number>();   // tarjetas recogidas con Esc: se vuelven a abrir desde el resumen
   const $ = <E extends Element = HTMLElement>(s: string) => sh.querySelector<E>(s);
   const $$ = (s: string) => [...sh.querySelectorAll<HTMLElement>(s)];
 
   /* ---------- paleta ---------- */
-  function openPal() { open = true; q = ''; sel = 0; hover = false; ctx.islandFocus(true); render(); requestAnimationFrame(() => $<HTMLInputElement>('input')?.focus({ preventScroll: true })); }
+  function openPal() { open = true; q = ''; sel = 0; selK = ''; hover = false; ctx.islandFocus(true); render(); requestAnimationFrame(() => $<HTMLInputElement>('input')?.focus({ preventScroll: true })); }
   function close() { open = false; ctx.islandFocus(false); render(); }
   function build(): Item[] {
     const L: Item[] = [], s = ctx.snap(), now = Date.now(), hold = ctx.cfg().island.hold;
     // un comando delicado solo se aprueba manteniendo «Mantener» en su tarjeta: la paleta no lo permite con un Enter
     const perms = s.pending.filter(p => p.kind === 'permission'), quick = perms.filter(p => !(hold && p.danger)).length;
     perms.forEach(p => {
-      if (!(hold && p.danger)) L.push({ g: 'Pendiente', icon: 'check', text: `Permitir ${p.command}`, meta: p.project, run: () => ctx.decide(p.id, true) });
-      L.push({ g: 'Pendiente', icon: 'close', text: `Denegar ${p.command}`, meta: p.project, run: () => ctx.decide(p.id, false) });
+      if (!(hold && p.danger)) L.push({ k: `allow${p.id}`, g: 'Pendiente', icon: 'check', text: `Permitir ${p.command}`, meta: p.project, run: () => ctx.decide(p.id, true) });
+      L.push({ k: `deny${p.id}`, g: 'Pendiente', icon: 'close', text: `Denegar ${p.command}`, meta: p.project, run: () => ctx.decide(p.id, false) });
     });
-    L.push({ g: 'Acciones', icon: 'dark_mode', text: s.focus ? 'Salir del modo foco' : 'Activar modo foco', meta: '', run: () => ctx.setFocus(!s.focus) });
+    L.push({ k: 'focus', g: 'Acciones', icon: 'dark_mode', text: s.focus ? 'Salir del modo foco' : 'Activar modo foco', meta: '', run: () => ctx.setFocus(!s.focus) });
     const allMuted = s.sessions.length > 0 && s.sessions.every(x => x.muted_until_ms > now);
-    if (s.sessions.length) L.push({ g: 'Acciones', icon: allMuted ? 'notifications_active' : 'notifications_paused', text: allMuted ? 'Quitar silencio' : 'Silenciar 30 min', meta: '', run: () => s.sessions.forEach(x => ctx.muteSession(x.id, allMuted ? 0 : 30)) });
+    if (s.sessions.length) L.push({ k: 'mute', g: 'Acciones', icon: allMuted ? 'notifications_active' : 'notifications_paused', text: allMuted ? 'Quitar silencio' : 'Silenciar 30 min', meta: '', run: () => s.sessions.forEach(x => ctx.muteSession(x.id, allMuted ? 0 : 30)) });
     const quiet = inactiveIds(s);
-    if (quiet.length) L.push({ g: 'Acciones', icon: 'clear_all', text: quiet.length === 1 ? 'Quitar la sesión inactiva' : `Quitar ${quiet.length} sesiones inactivas`, meta: '', run: () => ctx.forgetSessions(quiet) });
-    L.push({ g: 'Acciones', icon: 'done_all', text: 'Aprobar todos los permisos', meta: quick ? String(quick) : '', run: ctx.allowAll });
-    L.push({ g: 'Acciones', icon: 'open_in_new', text: 'Abrir Pulse', meta: '', run: () => ctx.openDashboard() });
-    s.sessions.forEach(x => L.push({ g: 'Sesiones', icon: 'stacks', text: x.project, meta: LBL[x.state], run: () => ctx.openDashboard(`sesiones/${x.id}`) }));
-    SETTINGS.forEach(([id, name]) => L.push({ g: 'Ajustes', icon: 'tune', text: `Ajustes de ${name}`, meta: 'Ajustes', run: () => ctx.openDashboard(`ajustes/${id}`) }));
+    if (quiet.length) L.push({ k: 'forget', g: 'Acciones', icon: 'clear_all', text: quiet.length === 1 ? 'Quitar la sesión inactiva' : `Quitar ${quiet.length} sesiones inactivas`, meta: '', run: () => ctx.forgetSessions(quiet) });
+    L.push({ k: 'allowall', g: 'Acciones', icon: 'done_all', text: 'Aprobar todos los permisos', meta: quick ? String(quick) : '', run: ctx.allowAll });
+    L.push({ k: 'open', g: 'Acciones', icon: 'open_in_new', text: 'Abrir Pulse', meta: '', run: () => ctx.openDashboard() });
+    s.sessions.forEach(x => L.push({ k: `s${x.id}`, g: 'Sesiones', icon: 'stacks', text: x.project, meta: LBL[x.state], run: () => ctx.openDashboard(`sesiones/${x.id}`) }));
+    SETTINGS.forEach(([id, name]) => L.push({ k: `a${id}`, g: 'Ajustes', icon: 'tune', text: `Ajustes de ${name}`, meta: 'Ajustes', run: () => ctx.openDashboard(`ajustes/${id}`) }));
     return L;
   }
   function palHTML() {
@@ -60,7 +62,12 @@ export function mountComando(board: HTMLElement, ctx: Ctx) {
       if (it.g !== g) { g = it.g; rows += `<div class="pal-g">${g}</div>`; }
       rows += `<div class="pi" role="option" data-n="${n}" aria-selected="false"><span class="ms">${it.icon}</span><span class="pi-t">${f.html}</span><span class="pi-r"><small>${esc(it.meta)}</small><kbd class="kbd">↵</kbd></span></div>`;
     });
+    // la fila elegida sigue elegida aunque cambie de lugar; si desapareció (se resolvió en otro lado), la selección pasa
+    // a la primera acción y no a otro permiso que quedó en su lugar
+    const at = selK ? items.findIndex(it => it.k === selK) : sel, calm = items.findIndex(it => it.g !== 'Pendiente');
+    sel = at >= 0 ? at : calm >= 0 ? calm : 0;
     sel = Math.min(sel, Math.max(0, items.length - 1));
+    selK = items[sel]?.k ?? '';
     return `<div class="pal"><div class="pal-in"><span class="ms">search</span><input type="text" value="${esc(q)}" placeholder="Busca un permiso, una sesión o una acción" aria-label="Buscar en Pulse">${keys(['Esc'])}</div><div class="pal-list" role="listbox" aria-label="Resultados"><i class="pal-hl"></i>${rows || `<div class="pal-empty">${PAL_EMPTY}</div>`}</div></div>`;
   }
   function moveHL(instant?: boolean) {
@@ -77,14 +84,15 @@ export function mountComando(board: HTMLElement, ctx: Ctx) {
     const it = items[n]; if (!it) return;
     setTimeout(() => { open = false; ctx.islandFocus(false); it.run(); render(); }, T(reduceMotion() ? 0 : 120));
   }
-  function bindRows() { $$('.pi').forEach(r => { r.onmouseenter = () => { sel = +r.dataset.n!; moveHL(); }; r.onclick = () => run(+r.dataset.n!); }); }
+  function pick(n: number) { sel = n; selK = items[n]?.k ?? ''; moveHL(); }
+  function bindRows() { $$('.pi').forEach(r => { r.onmouseenter = () => pick(+r.dataset.n!); r.onclick = () => run(+r.dataset.n!); }); }
   function bindPalette() {
     const inp = $<HTMLInputElement>('input'); if (!inp) return;
-    inp.addEventListener('input', () => { q = inp.value; sel = 0; render(); });
+    inp.addEventListener('input', () => { q = inp.value; sel = 0; selK = ''; render(); });
     inp.addEventListener('keydown', e => {
       e.stopPropagation();
-      if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(items.length - 1, sel + 1); moveHL(); }
-      else if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(0, sel - 1); moveHL(); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); pick(Math.min(items.length - 1, sel + 1)); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); pick(Math.max(0, sel - 1)); }
       else if (e.key === 'Enter') { e.preventDefault(); run(sel); }
       else if (e.key === 'Escape') { e.preventDefault(); close(); }
     });
@@ -148,6 +156,7 @@ export function mountComando(board: HTMLElement, ctx: Ctx) {
     else if (n) { html = noticeHTML(n); sig = 'n' + n.id; o.hidden = false; o.life = n.life; }
     else if (hover && rows.length) { html = summaryHTML(rows, now); sig = 'S' + rows.map(r => r.id + r.dot + (ago(r) ? 'done' + r.since : r.what)).join('|') + dayLine(ctx.day()); o.hidden = false; }
     else if (rows.length && (showDots(s, cfg) || collapsed.size)) { html = dotsHTML(rows, s.focus); sig = 'D' + rows.map(r => r.id + r.dot).join('|') + s.focus; o.hidden = false; }
+    ctx.shown(!open && top?.kind === 'permission' ? top.id : null);
     sh.classList.toggle('stacked', stacked);
     const r = morph(m, sig, html, o);
     if (r.changed) { ctx.hitbox(html ? sh : null); fitCommand(sh); }
