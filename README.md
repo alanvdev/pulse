@@ -85,16 +85,19 @@ pwsh scripts/uninstall.ps1
 
 ### Linux (GNOME)
 
-Probado en Ubuntu 25.10 con GNOME en Wayland. Necesitas [Rust](https://rustup.rs), [Node 20+](https://nodejs.org), el compilador de C (`build-essential`), las librerías de Tauri y `pactl` (`pulseaudio-utils`, para detectar llamadas en el modo foco):
+Probado en Ubuntu 25.10 con GNOME en Wayland; en Ubuntu 24.04 se probó desde un clon limpio que se instala, se reinstala y se desinstala. Solo necesitas `git` y [Rust](https://rustup.rs) instalado con rustup (el `cargo` de apt es muy viejo para Tauri):
 
 ```bash
-sudo apt install build-essential curl pulseaudio-utils libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libasound2-dev libxdo-dev pkg-config
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh   # si aún no tienes Rust
 git clone https://github.com/alanvdev/pulse
 cd pulse
-npm install --prefix app
 scripts/install.sh                          # hooks en $CLAUDE_CONFIG_DIR o ~/.claude
 scripts/install.sh ~/.claude ~/.claude-work # o en varias cuentas de Claude Code a la vez
 ```
+
+Lo demás lo resuelve el instalador: si faltan paquetes del sistema (las librerías de Tauri, el compilador de C, Node 18+ y `pactl`, que detecta llamadas en el modo foco), los instala con `apt` y te pide tu contraseña solo para eso. No lo corras con `sudo`: Pulse se instala en tu usuario.
+
+Para actualizar: `git pull && scripts/install.sh` (con las mismas carpetas, si usas varias cuentas).
 
 El instalador compila, copia Pulse a `~/.local/share/pulse`, registra los hooks en cada `settings.json` (con un respaldo fechado, y solo toca los hooks que llaman a Pulse: los tuyos se quedan aunque compartan grupo con ellos) y da de alta los atajos `Ctrl+Alt+Y`, `Ctrl+Alt+N` y `Ctrl+Alt+Espacio` como atajos de GNOME.
 

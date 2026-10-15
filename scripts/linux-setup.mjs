@@ -4,8 +4,9 @@
 //   node scripts/linux-setup.mjs hooks-remove <settings.json>
 //   node scripts/linux-setup.mjs keys-add <ruta de pulse>
 //   node scripts/linux-setup.mjs keys-remove
-import { existsSync, readFileSync, writeFileSync, copyFileSync, mkdirSync, constants } from 'node:fs';
-import { dirname } from 'node:path';
+import { existsSync, readFileSync, writeFileSync, copyFileSync, mkdirSync, renameSync, realpathSync, constants } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { homedir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 
 const [cmd, ...args] = process.argv.slice(2);
@@ -13,7 +14,7 @@ const [cmd, ...args] = process.argv.slice(2);
 const OURS = /[\\/]pulse(\.exe)?"? (emit|ask)\b|sounds\/play\.ps1/;
 // Se quitan hook por hook, no el grupo entero: el menú /hooks de Claude Code mete en el mismo grupo los hooks
 // con el mismo matcher, y ahí puede haber uno tuyo junto al de Pulse. Un grupo solo se va si queda vacío.
-const stripOurs = list => (list ?? []).map(e => ({ ...e, hooks: (e.hooks ?? []).filter(h => !OURS.test(h.command ?? '')) })).filter(e => e.hooks.length);
+const stripOurs = list => (Array.isArray(list) ? list : []).map(e => ({ ...e, hooks: (e.hooks ?? []).filter(h => !OURS.test(h.command ?? '')) })).filter(e => e.hooks.length);
 const countOurs = hooks => Object.values(hooks ?? {}).flat().flatMap(e => e?.hooks ?? []).filter(h => OURS.test(h.command ?? '')).length;
 
 // Hora local, como en install.ps1: yyyyMMdd-HHmmss.
@@ -33,7 +34,13 @@ function backup(path) {
     try { copyFileSync(path, to, constants.COPYFILE_EXCL); return to; } catch (e) { if (e.code !== 'EEXIST') throw e; }
   }
 }
-const write = (path, s) => writeFileSync(path, JSON.stringify(s, null, 2) + '\n');
+// Aparte y renombrado encima: Claude Code vigila settings.json y podía leerlo a medio escribir. Se sigue el enlace
+// simbólico, para reemplazar el archivo real y no el enlace.
+const write = (path, s) => {
+  const real = existsSync(path) ? realpathSync(path) : path, tmp = `${real}.pulse-tmp`;
+  writeFileSync(tmp, JSON.stringify(s, null, 2) + '\n');
+  renameSync(tmp, real);
+};
 
 function entry(pulse, sub, matcher, async, timeout) {
   const hook = { type: 'command', command: `"${pulse}" ${sub}` };
@@ -50,6 +57,9 @@ const EVENTS = {
 };
 
 function hooksAdd(path, pulse) {
+  // Una carpeta mal escrita (`~/.claud-work`) no se crea con hooks dentro: solo la de siempre puede no existir aún.
+  const dir = dirname(resolve(path));
+  if (!existsSync(dir) && dir !== join(homedir(), '.claude')) { console.log(`  ${dir} no existe: ahí no se registraron hooks (¿la ruta está bien escrita?)`); return; }
   const s = readSettings(path);
   const saved = backup(path);
   s.hooks ??= {};
@@ -91,7 +101,8 @@ const KEYS = [
 const gs = (...a) => execFileSync('gsettings', a, { encoding: 'utf8' }).trim();
 // Texto como valor GVariant: entre comillas simples y escapado (si no, `"ruta" key allow` no se puede leer).
 const gstr = v => `'${v.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
-const hasGnome = () => { try { gs('get', SCHEMA, 'custom-keybindings'); return true; } catch { return false; } };
+// sin GNOME, gsettings se queja por stderr ("No such schema"): eso ya lo dice el mensaje de abajo
+const hasGnome = () => { try { execFileSync('gsettings', ['get', SCHEMA, 'custom-keybindings'], { stdio: 'ignore' }); return true; } catch { return false; } };
 // gsettings imprime "['/a/', '/b/']" o "@as []".
 const readList = () => [...gs('get', SCHEMA, 'custom-keybindings').matchAll(/'([^']*)'/g)].map(m => m[1]);
 const writeList = l => gs('set', SCHEMA, 'custom-keybindings', `[${l.map(p => `'${p}'`).join(', ')}]`);
