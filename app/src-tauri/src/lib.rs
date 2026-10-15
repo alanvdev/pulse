@@ -134,7 +134,8 @@ pub fn run() {
     // Otra instancia ya es dueña del canal (la instalada, o una de desarrollo olvidada): se avisa en vez de cerrarse en silencio.
     let first = match tauri::async_runtime::block_on(async { server::create_first(&endpoint) }) {
         Ok(s) => s,
-        Err(e) => { eprintln!("Pulse ya está abierto: otra instancia escucha en {endpoint} ({e}). Ciérrala desde la bandeja › Salir o con `pkill -x pulse-app`."); return }
+        Err(e) if e.kind() == std::io::ErrorKind::AddrInUse => { eprintln!("Pulse ya está abierto: otra instancia escucha en {endpoint}. Ciérrala desde la bandeja › Salir o con `pkill -x pulse-app`."); return }
+        Err(e) => { eprintln!("Pulse no pudo abrir {endpoint}: {e}"); return }
     };
     let builder = tauri::Builder::default();
     // En Linux los atajos globales los registra el escritorio (scripts/install.sh) y llegan por `pulse key`.
@@ -181,7 +182,9 @@ pub fn run() {
             chroma::start(&h);
             Ok(())
         })
-        .build(tauri::generate_context!()).expect("no se pudo iniciar Pulse")
+        .build(tauri::generate_context!())
+        // sin pánico: el error queda en app.log y el proceso sale limpio (el hook no espera a la app)
+        .unwrap_or_else(|e| { eprintln!("Pulse no pudo iniciar: {e}"); std::process::exit(1) })
         .run(|_app, e| if let tauri::RunEvent::ExitRequested { api, code: None, .. } = e { api.prevent_exit(); });
 }
 

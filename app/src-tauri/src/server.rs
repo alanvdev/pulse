@@ -38,11 +38,16 @@ mod imp {
         let _ = LOCK.set(f);
         if std::os::unix::net::UnixStream::connect(name).is_ok() { return Err(std::io::ErrorKind::AddrInUse.into()); }
         let _ = std::fs::remove_file(name);
-        UnixListener::bind(name)
+        let l = UnixListener::bind(name)?;
+        // solo tu usuario: quien conecta puede aprobar permisos
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(name, std::fs::Permissions::from_mode(0o600))?;
+        Ok(l)
     }
     pub async fn serve(first: Listener, _name: String, tx: super::UnboundedSender<super::Incoming>) {
         loop {
-            let Ok((conn, _)) = first.accept().await else { continue };
+            // un error (sin descriptores libres) no puede girar al 100 % de CPU
+            let Ok((conn, _)) = first.accept().await else { tokio::time::sleep(std::time::Duration::from_millis(100)).await; continue };
             tokio::spawn(super::connection(conn, tx.clone()));
         }
     }

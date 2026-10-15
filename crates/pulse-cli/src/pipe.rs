@@ -52,18 +52,51 @@ fn app_log() -> Stdio {
     std::fs::OpenOptions::new().create(true).append(true).open(p).map(Stdio::from).unwrap_or_else(|_| Stdio::null())
 }
 
+/// Una terminal de un snap (VS Code instalado con snap) deja en el entorno rutas de GTK de su propio runtime; la app las
+/// heredaba y GTK no arrancaba ("symbol lookup error"). Se vuelve a lo que había antes del snap, o se quitan.
+#[cfg(unix)]
+fn clean_env(c: &mut Command) {
+    const VARS: [&str; 11] = ["GTK_PATH", "GTK_EXE_PREFIX", "GTK_IM_MODULE_FILE", "GIO_MODULE_DIR", "GDK_PIXBUF_MODULE_FILE", "GDK_PIXBUF_MODULEDIR",
+        "GSETTINGS_SCHEMA_DIR", "LOCPATH", "XDG_DATA_DIRS", "XDG_CONFIG_DIRS", "LD_LIBRARY_PATH"];
+    let orig = |v: &str| std::env::var_os(format!("{v}_VSCODE_SNAP_ORIG"));
+    if std::env::var_os("SNAP").is_none() && !VARS.iter().any(|v| orig(v).is_some()) { return; }
+    for v in VARS { match orig(v) { Some(o) if !o.is_empty() => { c.env(v, o); } _ => { c.env_remove(v); } } }
+}
+#[cfg(windows)] fn clean_env(_: &mut Command) {}
+
+/// Cuándo se lanzó la app por última vez (fecha del archivo `~/.claude/pulse/launch`).
+fn last_launch() -> Option<Duration> {
+    let p = pulse_protocol::data_dir()?.join("launch");
+    std::fs::metadata(p).ok()?.modified().ok()?.elapsed().ok()
+}
+
 fn spawn_app(app: &Path) -> Result<(), String> {
+    if let Some(d) = pulse_protocol::data_dir() { let _ = std::fs::create_dir_all(&d); let _ = std::fs::File::create(d.join("launch")); }
     let mut c = Command::new(app);
     detach(&mut c);
+    clean_env(&mut c);
+    // en `/`: con la carpeta del proyecto como directorio de trabajo, la app la mantenía ocupada (no se podía expulsar un USB)
+    c.current_dir(if cfg!(windows) { std::env::temp_dir() } else { "/".into() });
     c.stdin(Stdio::null()).stdout(app_log()).stderr(app_log())
         .spawn().map(|_| ()).map_err(|e| format!("no se pudo lanzar {}: {e}", app.display()))
+}
+
+/// Si nadie escucha: se lanza la app, salvo que se haya lanzado hace poco. Hace menos de 10 s otro hook la está abriendo
+/// (se espera sin lanzar otra); entre 10 y 60 s no arrancó (sin pantalla, falta una librería): cada hook la relanzaba,
+/// esperaba 3 s y dejaba otro error en app.log. Se reintenta pasado el minuto.
+fn launch(app: &Path) -> Result<(), String> {
+    match last_launch() {
+        Some(t) if t < Duration::from_secs(10) => Ok(()),
+        Some(t) if t < Duration::from_secs(60) => Err("la app no arrancó hace poco (ver ~/.claude/pulse/app.log)".into()),
+        _ => spawn_app(app),
+    }
 }
 
 /// Abre la conexión. Si nadie escucha y hay `app`, la lanza y reintenta hasta 3 s.
 pub fn open(pipe: &str, app: Option<&Path>) -> Result<Conn, String> {
     match try_open(pipe) {
         Try::Ok(f) => return Ok(f),
-        Try::NoServer => match app { Some(a) => spawn_app(a)?, None => return Err("no hay servidor".into()) },
+        Try::NoServer => match app { Some(a) => launch(a)?, None => return Err("no hay servidor".into()) },
         Try::Busy => {}
         Try::Err(e) => return Err(e),
     }

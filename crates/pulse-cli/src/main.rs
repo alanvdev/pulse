@@ -1,6 +1,9 @@
 mod pipe;
-use std::{io::Read, thread, time::Duration};
+use std::{io::{Read, Write}, thread, time::Duration};
 use pulse_protocol::*;
+
+/// Sin `println!`: si Claude Code ya cerró la salida, `println!` entra en pánico y el proceso sale con 101.
+fn out(s: &str) { let _ = writeln!(std::io::stdout().lock(), "{s}"); }
 
 fn now_ms() -> i64 { std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as i64).unwrap_or(0) }
 
@@ -42,7 +45,7 @@ fn ask() -> Result<(), String> {
         let env = Envelope { v: PROTOCOL_VERSION, session_id: input.session_id.clone(), project: project_name(&input.cwd), cwd: input.cwd.clone(), at_ms: now_ms(), ask: true, owner: owner::find(), event: event.clone() };
         let line = serde_json::to_string(&env).map_err(|e| e.to_string())? + "\n";
         let reply = pipe::request(&endpoint(), &line, app_path().as_deref(), Duration::from_secs(QUESTION_MAX_WAIT_S)).and_then(|r| serde_json::from_str::<Reply>(&r).ok());
-        if let Some(Reply { decision: Decision::Allow, answers: Some(a) }) = reply { println!("{}", answer_output(questions, &a)); }
+        if let Some(Reply { decision: Decision::Allow, answers: Some(a) }) = reply { out(&answer_output(questions, &a)); }
         return Ok(());
     }
     let Some(mut env) = stamped(&input, true) else { return Ok(()) };
@@ -56,7 +59,7 @@ fn ask() -> Result<(), String> {
     deadline(wait.as_millis() as u64 + 4_000);   // 3 s para que arranque la app y un poco más; sigue por debajo de los 130 s del hook
     let reply = pipe::request(&endpoint(), &line, app_path().as_deref(), wait);
     let decision = reply.and_then(|r| serde_json::from_str::<Reply>(&r).ok()).map(|r| r.decision).unwrap_or(Decision::None);
-    if let Some(out) = permission_output(decision) { println!("{out}"); }
+    if let Some(o) = permission_output(decision) { out(&o); }
     Ok(())
 }
 
@@ -76,9 +79,9 @@ fn main() {
         Some("emit") => emit(),
         Some("ask") => ask(),
         Some("key") => key(std::env::args().nth(2)),
-        Some("--version") => { println!("pulse {}", env!("CARGO_PKG_VERSION")); Ok(()) }
+        Some("--version") => { out(&format!("pulse {}", env!("CARGO_PKG_VERSION"))); Ok(()) }
         _ => Err("uso: pulse emit | pulse ask  (leen el JSON del hook por stdin) | pulse key <acción>".into()),
     };
-    if let Err(e) = r { eprintln!("pulse: {e}"); }
+    if let Err(e) = r { let _ = writeln!(std::io::stderr().lock(), "pulse: {e}"); }
     std::process::exit(0);
 }

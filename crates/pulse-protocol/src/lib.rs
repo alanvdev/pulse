@@ -5,12 +5,23 @@ pub mod owner;
 
 pub const PIPE_NAME: &str = r"\\.\pipe\pulse";
 
-/// Dónde escucha la app: el named pipe en Windows; en Linux un socket Unix en `$XDG_RUNTIME_DIR` (o en el temporal, por usuario).
+/// Dónde escucha la app: el named pipe en Windows; en Linux un socket Unix en `$XDG_RUNTIME_DIR`.
+#[cfg(windows)]
+pub fn endpoint() -> String { PIPE_NAME.to_string() }
+
+/// Sin `$XDG_RUNTIME_DIR` (SSH, `sudo -u`, un cron) se busca la misma carpeta por el uid, para que el hook y la app
+/// coincidan. Nunca una carpeta compartida como `/tmp`: quien escucha en el socket puede aprobar permisos, y otro usuario
+/// podría crearlo primero. Último recurso: `~/.claude/pulse/`, que es tuya.
+#[cfg(unix)]
 pub fn endpoint() -> String {
-    if cfg!(windows) { return PIPE_NAME.to_string(); }
-    match std::env::var("XDG_RUNTIME_DIR") {
-        Ok(d) if !d.is_empty() => format!("{d}/pulse.sock"),
-        _ => std::env::temp_dir().join(format!("pulse-{}.sock", std::env::var("USER").unwrap_or_default())).to_string_lossy().into_owned(),
+    use std::os::unix::fs::MetadataExt;
+    if let Some(d) = std::env::var_os("XDG_RUNTIME_DIR").filter(|d| !d.is_empty()) { return format!("{}/pulse.sock", d.to_string_lossy()); }
+    let uid = std::fs::metadata("/proc/self").map(|m| m.uid()).ok();
+    let run = uid.map(|u| format!("/run/user/{u}")).filter(|d| std::fs::metadata(d).is_ok_and(|m| m.is_dir() && Some(m.uid()) == uid && m.mode() & 0o077 == 0));
+    if let Some(d) = run { return format!("{d}/pulse.sock"); }
+    match data_dir() {
+        Some(d) => { let _ = std::fs::create_dir_all(&d); d.join("pulse.sock").to_string_lossy().into_owned() }
+        None => std::env::temp_dir().join(format!("pulse-{}.sock", uid.unwrap_or(0))).to_string_lossy().into_owned(),
     }
 }
 

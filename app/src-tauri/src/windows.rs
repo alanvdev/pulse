@@ -143,10 +143,15 @@ pub fn active_monitor_index(_app: &AppHandle) -> Option<usize> { None }
 
 #[derive(Default)] pub struct Hitbox(pub Mutex<Option<(f64, f64, f64, f64)>>);
 
+/// El monitor principal. GTK sobre Wayland (sin XWayland) no sabe cuál es y devuelve `None`: entonces el primero.
+fn main_monitor(app: &AppHandle) -> Option<tauri::Monitor> {
+    app.primary_monitor().ok().flatten().or_else(|| app.available_monitors().ok()?.into_iter().next())
+}
+
 /// Isla: franja transparente arriba del monitor principal (todo el ancho, para que el Orbe pueda ir a la izquierda, centro o derecha).
 /// No recibe clics salvo dentro del rectángulo que reporta la interfaz.
 pub fn create_island(app: &AppHandle) -> tauri::Result<()> {
-    let m = app.primary_monitor()?.ok_or(tauri::Error::WindowNotFound)?;
+    let m = main_monitor(app).ok_or(tauri::Error::WindowNotFound)?;
     let (scale, pos, (w, h)) = (m.scale_factor(), m.position(), island_size(&m));
     let win = WebviewWindowBuilder::new(app, "island", WebviewUrl::App("island.html".into()))
         .transparent(true).decorations(false).always_on_top(true).skip_taskbar(true).focused(false)
@@ -194,7 +199,7 @@ fn island_anchor(mode: crate::config::IslandMode, side: crate::config::Side, wid
 /// Linux, los monitores cambiaron: la isla con el tamaño de ahora y en su lugar.
 #[cfg(not(windows))]
 fn place_island(app: &AppHandle) {
-    let (Some(win), Ok(Some(m))) = (app.get_webview_window("island"), app.primary_monitor()) else { return };
+    let (Some(win), Some(m)) = (app.get_webview_window("island"), main_monitor(app)) else { return };
     let (scale, (w, h)) = (m.scale_factor(), island_size(&m));
     let _ = win.set_size(tauri::LogicalSize::new(w, h));
     let (x, y) = island_spot(app, w * scale, scale);
@@ -204,7 +209,7 @@ fn place_island(app: &AppHandle) {
 /// Lugar de siempre de la isla (físico): arriba del monitor principal; en Linux, en la esquina de su área libre (bajo la
 /// barra superior de GNOME y a la derecha del dock).
 fn island_home(app: &AppHandle) -> (i32, i32) {
-    let Ok(Some(m)) = app.primary_monitor() else { return (0, 0) };
+    let Some(m) = main_monitor(app) else { return (0, 0) };
     if cfg!(windows) { (m.position().x, m.position().y) } else { let (l, t, _, _) = work_area(app); (l as i32, t as i32) }
 }
 fn on_screen(app: &AppHandle, x: f64, y: f64) -> bool {
@@ -295,7 +300,7 @@ fn work_area(_app: &AppHandle) -> (f64, f64, f64, f64) {
 /// Linux: sin la barra superior de GNOME ni el dock.
 #[cfg(not(windows))]
 fn work_area(app: &AppHandle) -> (f64, f64, f64, f64) {
-    let Ok(Some(m)) = app.primary_monitor() else { return (0.0, 0.0, 1920.0, 1080.0) };
+    let Some(m) = main_monitor(app) else { return (0.0, 0.0, 1920.0, 1080.0) };
     let w = m.work_area();
     (w.position.x as f64, w.position.y as f64, w.position.x as f64 + w.size.width as f64, w.position.y as f64 + w.size.height as f64)
 }

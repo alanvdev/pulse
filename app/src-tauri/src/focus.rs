@@ -95,7 +95,8 @@ pub fn mic_in_use() -> bool {
 /// sin contar las que graban lo que suena en la PC (fuentes `.monitor`).
 #[cfg(not(windows))]
 pub fn mic_in_use() -> bool {
-    let run = |args: &[&str]| std::process::Command::new("pactl").env("LC_ALL", "C").args(args).output().ok().filter(|o| o.status.success()).and_then(|o| serde_json::from_slice::<serde_json::Value>(&o.stdout).ok());
+    // con `timeout`: un PipeWire trabado no puede congelar la detección del foco (ni el hilo que la corre)
+    let run = |args: &[&str]| std::process::Command::new("timeout").arg("2").arg("pactl").env("LC_ALL", "C").args(args).output().ok().filter(|o| o.status.success()).and_then(|o| serde_json::from_slice::<serde_json::Value>(&o.stdout).ok());
     let Some(outputs) = run(&["-f", "json", "list", "source-outputs"]) else { return false };
     let monitors: Vec<u64> = run(&["-f", "json", "list", "sources"]).and_then(|v| v.as_array().cloned()).unwrap_or_default().iter()
         .filter(|s| s["name"].as_str().is_some_and(|n| n.ends_with(".monitor"))).filter_map(|s| s["index"].as_u64()).collect();

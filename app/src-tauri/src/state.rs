@@ -31,6 +31,8 @@ pub struct Deferred { pub session_id: String, pub project: String, pub kind: Str
 #[derive(Debug, Clone, Serialize)]
 pub struct Snapshot { pub sessions: Vec<Session>, pub pending: Vec<Pending>, pub feed: Vec<FeedItem>, pub focus: bool, pub focus_auto: bool, pub deferred: Vec<Deferred> }
 
+const MAX_DEFERRED: usize = 30;
+
 #[derive(Debug, Default)]
 pub struct Store {
     sessions: BTreeMap<String, Session>,
@@ -163,7 +165,13 @@ impl Store {
         if was && !self.focus() { std::mem::take(&mut self.deferred) } else { Vec::new() }
     }
 
-    pub fn defer(&mut self, e: &Envelope, kind: &str) { self.deferred.push(Deferred { session_id: e.session_id.clone(), project: e.project.clone(), kind: kind.into(), at_ms: e.at_ms }); }
+    /// Un foco largo (un micrófono que nunca se suelta) no puede crecer sin fin: de cada sesión y tipo queda el último,
+    /// y a lo más `MAX_DEFERRED` (viajan en cada estado a todas las ventanas).
+    pub fn defer(&mut self, e: &Envelope, kind: &str) {
+        self.deferred.retain(|d| !(d.session_id == e.session_id && d.kind == kind));
+        self.deferred.push(Deferred { session_id: e.session_id.clone(), project: e.project.clone(), kind: kind.into(), at_ms: e.at_ms });
+        if self.deferred.len() > MAX_DEFERRED { self.deferred.remove(0); }
+    }
 
     /// Cuánto lleva el turno de la sesión (desde su último prompt) en `at_ms`, para el aviso "terminó 6m 12s".
     pub fn turn_ms(&self, session_id: &str, at_ms: i64) -> Option<i64> { self.turn_start.get(session_id).map(|t| at_ms - t) }
